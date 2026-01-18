@@ -1,0 +1,63 @@
+# Ralph执行进度记录
+
+## 当前状态
+- 当前spec: 01-project-setup.md
+- 状态: **已完成**
+- 迭代次数: 1
+
+## 技术栈
+Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
+
+## Phase完成状态
+- [x] Phase 1: 想法捕获 (IDEA.md)
+- [x] Phase 2: 需求挖掘 (PRD.md, 17个问题已澄清)
+- [x] Phase 3: 需求确认 (PRD-SIGNED.md, 2026-01-18)
+- [x] Phase 4: 技术拆解 (01-project-setup.md已创建)
+- [ ] Phase 5: Ralph循环 (进行中)
+- [ ] Phase 6: 验收交付
+
+## 已完成的Specs
+- [x] 01-project-setup.md ✓ (2026-01-18)
+  - Nx workspace初始化
+  - api应用 (NestJS)
+  - web应用 (React + Vite)
+  - shared库 (types, utils, constants)
+  - Docker Compose (PostgreSQL + MinIO)
+  - ESLint + Prettier配置
+  - 所有验收标准通过
+
+## 进行中
+- [ ] 02-database-schema.md (待创建spec)
+
+## Specs执行状态
+
+### Wave 1
+- [x] 01-project-setup.md ✓
+
+### Wave 2
+- [ ] 02-database-schema.md (待创建spec)
+
+### Wave 3
+- [ ] 03-graphql-foundation.md (待创建spec)
+
+### Wave 4
+- [ ] 04-file-storage.md (待创建spec)
+- [ ] 05-contract-parser-basic.md (待创建spec)
+
+### Wave 5
+- [ ] 06-contract-crud.md (待创建spec)
+
+## 验收标准完成情况 (01-project-setup.md)
+- [x] AC-01: Nx工作区创建成功 - `pnpm nx --version` 返回 v22.3.3
+- [x] AC-02: 后端应用已创建 - apps/api/
+- [x] AC-03: 前端应用已创建 - apps/web/
+- [x] AC-04: 共享库已创建 - libs/shared/
+- [x] AC-05: Lint检查通过 - `pnpm nx run-many -t lint` 通过
+- [x] AC-06: Docker环境已配置 - docker/docker-compose.yml
+- [x] AC-07: 环境变量已配置 - .env.example
+- [x] AC-08: 构建成功 - `pnpm nx run-many -t build` 通过
+
+## 最近更新
+- 2026-01-18: 01-project-setup.md 执行完成，所有验收标准通过
+- 2026-01-18: PRD已签署，创建01-project-setup.md详细规格
+- 2026-01-18: 完成6阶段项目结构重组
