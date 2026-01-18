@@ -36,3 +36,5 @@ vite.config.*.timestamp*
 # Temporary files
 tmp/
 temp/
+
+/generated/prisma

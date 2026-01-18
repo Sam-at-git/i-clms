@@ -1,0 +1,364 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ================================
+// 用户与权限
+// ================================
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  password     String
+  role         UserRole   @default(USER)
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联
+  uploadedContracts Contract[] @relation("ContractUploader")
+
+  @@index([departmentId])
+  @@index([email])
+}
+
+enum UserRole {
+  USER       // 普通用户
+  DEPT_ADMIN // 部门管理员
+  ADMIN      // 系统管理员
+}
+
+model Department {
+  id   String         @id @default(cuid())
+  name String         @unique
+  code DepartmentCode @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联
+  users     User[]
+  contracts Contract[] @relation("ContractDepartment")
+}
+
+enum DepartmentCode {
+  FINANCE   // 财务部门
+  DELIVERY  // PMO/交付部门
+  SALES     // 业务/销售部门
+  MARKETING // 市场部门
+  LEGAL     // 法务/风控部门
+  EXECUTIVE // 管理层
+}
+
+// ================================
+// 客户
+// ================================
+
+model Customer {
+  id            String  @id @default(cuid())
+  name          String  // 客户公司全称
+  shortName     String? // 简称
+  creditCode    String? @unique // 统一社会信用代码
+  industry      String? // 所属行业
+  address       String? // 地址
+  contactPerson String? // 联系人
+  contactPhone  String? // 联系电话
+  contactEmail  String? // 联系邮箱
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联
+  contracts Contract[]
+
+  @@index([name])
+  @@index([creditCode])
+}
+
+// ================================
+// 合同主表
+// ================================
+
+model Contract {
+  id String @id @default(cuid())
+
+  // 身份标识
+  contractNo String @unique // 合同编号
+  name       String // 合同名称
+
+  // 合同类型与状态
+  type   ContractType
+  status ContractStatus @default(DRAFT)
+
+  // 签约方信息
+  ourEntity  String // 我方主体（签约子公司/法律实体）
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  // 财务条款
+  amountWithTax    Decimal  @db.Decimal(18, 2) // 含税金额
+  amountWithoutTax Decimal? @db.Decimal(18, 2) // 不含税金额
+  currency         String   @default("CNY") // 币种
+  taxRate          Decimal? @db.Decimal(5, 2) // 税率
+  taxAmount        Decimal? @db.Decimal(18, 2) // 税额
+  paymentMethod    String? // 付款方式
+  paymentTerms     String? // 付款条件
+
+  // 时间周期
+  signedAt    DateTime? // 签署日期
+  effectiveAt DateTime? // 生效日期
+  expiresAt   DateTime? // 终止日期
+  duration    String? // 合同期限描述
+
+  // 物理属性
+  fileUrl      String? // 合同文件存储路径
+  fileType     String? // 文件类型 (pdf/docx)
+  copies       Int? // 合同份数
+  signLocation String? // 签订地点
+
+  // 分类信息
+  industry     String? // 所属行业
+  departmentId String
+  department   Department @relation("ContractDepartment", fields: [departmentId], references: [id])
+  salesPerson  String? // 销售负责人
+
+  // 解析状态
+  parseStatus       ParseStatus @default(PENDING)
+  parsedAt          DateTime? // 解析完成时间
+  parseConfidence   Float? // 解析置信度
+  needsManualReview Boolean     @default(false) // 是否需要人工确认
+
+  // 关联主合同（补充协议用）
+  parentContractId String?
+  parentContract   Contract?  @relation("ContractSupplements", fields: [parentContractId], references: [id])
+  supplements      Contract[] @relation("ContractSupplements")
+
+  // 上传信息
+  uploadedById String
+  uploadedBy   User   @relation("ContractUploader", fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 类型特定关联
+  staffAugmentation  StaffAugmentationDetail?
+  projectOutsourcing ProjectOutsourcingDetail?
+  productSales       ProductSalesDetail?
+
+  // 通用标签
+  tags ContractTag[]
+
+  @@index([customerId])
+  @@index([type])
+  @@index([status])
+  @@index([departmentId])
+  @@index([signedAt])
+  @@index([expiresAt])
+  @@index([parentContractId])
+}
+
+enum ContractType {
+  STAFF_AUGMENTATION  // 人力框架合同
+  PROJECT_OUTSOURCING // 项目外包合同
+  PRODUCT_SALES       // 产品购销合同
+}
+
+enum ContractStatus {
+  DRAFT            // 草拟
+  PENDING_APPROVAL // 审批中
+  ACTIVE           // 已生效
+  EXECUTING        // 执行中
+  COMPLETED        // 已完结
+  TERMINATED       // 已终止
+  EXPIRED          // 已过期
+}
+
+enum ParseStatus {
+  PENDING       // 待解析
+  PROCESSING    // 解析中
+  COMPLETED     // 解析完成
+  FAILED        // 解析失败
+  MANUAL_REVIEW // 人工审核中
+}
+
+// ================================
+// 人力框架合同详情
+// ================================
+
+model StaffAugmentationDetail {
+  id         String   @id @default(cuid())
+  contractId String   @unique
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  estimatedTotalHours   Int? // 预计总工时
+  monthlyHoursCap       Int? // 每月工时上限
+  yearlyHoursCap        Int? // 每年工时上限
+  settlementCycle       String? // 结算周期
+  timesheetApprovalFlow String? // 工时审批流程
+  adjustmentMechanism   String? // 工时调整机制
+  staffReplacementFlow  String? // 人员更换流程
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 费率明细
+  rateItems StaffRateItem[]
+}
+
+model StaffRateItem {
+  id       String                  @id @default(cuid())
+  detailId String
+  detail   StaffAugmentationDetail @relation(fields: [detailId], references: [id], onDelete: Cascade)
+
+  role              String // 人员级别/角色
+  rateType          RateType // 计费类型
+  rate              Decimal   @db.Decimal(18, 2) // 费率
+  rateEffectiveFrom DateTime? // 费率生效日期
+  rateEffectiveTo   DateTime? // 费率失效日期
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([detailId])
+}
+
+enum RateType {
+  HOURLY  // 时薪
+  DAILY   // 日薪
+  MONTHLY // 月薪
+}
+
+// ================================
+// 项目外包合同详情
+// ================================
+
+model ProjectOutsourcingDetail {
+  id         String   @id @default(cuid())
+  contractId String   @unique
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  sowSummary           String? // SOW范围摘要
+  deliverables         String? // 关键交付物清单
+  acceptanceCriteria   String? // 最终验收标准
+  acceptanceFlow       String? // 验收流程
+  changeManagementFlow String? // 范围变更流程
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 里程碑
+  milestones ProjectMilestone[]
+}
+
+model ProjectMilestone {
+  id       String                   @id @default(cuid())
+  detailId String
+  detail   ProjectOutsourcingDetail @relation(fields: [detailId], references: [id], onDelete: Cascade)
+
+  sequence           Int // 顺序
+  name               String // 里程碑名称
+  deliverables       String? // 该里程碑交付物
+  amount             Decimal?        @db.Decimal(18, 2) // 对应金额
+  paymentPercentage  Decimal?        @db.Decimal(5, 2) // 付款比例
+  plannedDate        DateTime? // 计划完成日期
+  actualDate         DateTime? // 实际完成日期
+  acceptanceCriteria String? // 验收标准
+  status             MilestoneStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([detailId])
+  @@index([sequence])
+}
+
+enum MilestoneStatus {
+  PENDING     // 待开始
+  IN_PROGRESS // 进行中
+  DELIVERED   // 已交付
+  ACCEPTED    // 已验收
+  REJECTED    // 被拒绝
+}
+
+// ================================
+// 产品购销合同详情
+// ================================
+
+model ProductSalesDetail {
+  id         String   @id @default(cuid())
+  contractId String   @unique
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  deliveryContent        String? // 交付内容
+  deliveryDate           DateTime? // 交付日期
+  deliveryLocation       String? // 交付地点
+  shippingResponsibility String? // 运输与保险责任
+  ipOwnership            String? // 知识产权归属
+  warrantyPeriod         String? // 保修期
+  afterSalesTerms        String? // 售后服务条款
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 产品明细
+  lineItems ProductLineItem[]
+}
+
+model ProductLineItem {
+  id       String             @id @default(cuid())
+  detailId String
+  detail   ProductSalesDetail @relation(fields: [detailId], references: [id], onDelete: Cascade)
+
+  productName         String // 产品名称
+  specification       String? // 规格与配置
+  quantity            Int // 数量
+  unit                String  @default("套") // 单位
+  unitPriceWithTax    Decimal @db.Decimal(18, 2) // 含税单价
+  unitPriceWithoutTax Decimal? @db.Decimal(18, 2) // 不含税单价
+  subtotal            Decimal @db.Decimal(18, 2) // 小计
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([detailId])
+}
+
+// ================================
+// 合同标签
+// ================================
+
+model Tag {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  category String? // 标签类别
+  color    String? // 显示颜色
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contracts ContractTag[]
+}
+
+model ContractTag {
+  id         String   @id @default(cuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  tagId      String
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([contractId, tagId])
+  @@index([contractId])
+  @@index([tagId])
+}
