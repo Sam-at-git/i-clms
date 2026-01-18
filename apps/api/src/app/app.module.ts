@@ -13,6 +13,7 @@ import { ContractModule } from '../contract';
 import { AuthModule } from '../auth';
 import { FinanceModule } from '../finance';
 import { DeliveryModule } from '../delivery';
+import { SalesModule } from '../sales';
 import { DateTimeScalar, DecimalScalar } from '../common/scalars';
 
 @Module({
@@ -37,6 +38,7 @@ import { DateTimeScalar, DecimalScalar } from '../common/scalars';
     AuthModule,
     FinanceModule,
     DeliveryModule,
+    SalesModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar],

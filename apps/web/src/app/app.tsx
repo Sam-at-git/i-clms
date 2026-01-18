@@ -5,6 +5,7 @@ import ContractDetailPage from '../pages/contracts/[id]';
 import LoginPage from '../pages/login';
 import FinancePage from '../pages/finance';
 import DeliveryPage from '../pages/delivery';
+import SalesPage from '../pages/sales';
 import { ProtectedRoute } from '../components/auth';
 import { userState, authTokenState, clearAuthState, isAuthenticatedState } from '../state';
 
@@ -36,6 +37,9 @@ function Layout({ children }: { children: React.ReactNode }) {
             </Link>
             <Link to="/delivery" style={styles.navLink}>
               交付管理
+            </Link>
+            <Link to="/sales" style={styles.navLink}>
+              销售管理
             </Link>
           </div>
           <div style={styles.userSection}>
@@ -99,6 +103,14 @@ export function App() {
                   element={
                     <ProtectedRoute>
                       <DeliveryPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/sales"
+                  element={
+                    <ProtectedRoute>
+                      <SalesPage />
                     </ProtectedRoute>
                   }
                 />

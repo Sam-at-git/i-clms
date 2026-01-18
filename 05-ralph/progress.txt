@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 09-delivery-view.md
+- 当前spec: 10-sales-view.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -116,6 +116,17 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - ProjectMap/MilestoneTracker/ResourceChart组件
   - Lint + Build通过
 
+- [x] 10-sales-view.md ✓ (2026-01-18)
+  - SalesModule模块创建
+  - CustomerOverview客户概览 (按行业/Top客户)
+  - Customer360客户360°视图 (合同历史/价值统计)
+  - RenewalOverview续约看板 (到期提醒/优先级/续约率)
+  - SalesPerformance销售业绩 (新签/续签/月度趋势/人员排名)
+  - GraphQL Resolver (customerOverview/customer360/renewalOverview/salesPerformance)
+  - 前端销售仪表盘页面
+  - Customer360/RenewalBoard/SalesMetrics组件
+  - Lint + Build通过
+
 ## 进行中
 - (无)
 
@@ -146,14 +157,20 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 ### Wave 8
 - [x] 09-delivery-view.md ✓
 
-## 验收标准完成情况 (09-delivery-view.md)
-- [x] AC-01: ProjectOverview查询返回项目概览数据
-- [x] AC-02: MilestoneOverview查询返回里程碑统计
-- [x] AC-03: ResourceUtilization查询返回资源利用率
-- [x] AC-04: 前端交付仪表盘页面显示完整
-- [x] AC-05: lint + build 通过
+### Wave 9
+- [x] 10-sales-view.md ✓
+
+## 验收标准完成情况 (10-sales-view.md)
+- [x] AC-01: CustomerOverview查询返回客户概览数据
+- [x] AC-02: Customer360查询返回单个客户详情
+- [x] AC-03: RenewalOverview查询返回续约看板数据
+- [x] AC-04: SalesPerformance查询返回销售业绩数据
+- [x] AC-05: 前端销售仪表盘页面显示完整
+- [x] AC-06: lint + build 通过
 
 ## 最近更新
+- 2026-01-18: 10-sales-view.md 执行完成
+- 2026-01-18: 销售管理仪表盘完成 (客户360/续约看板/业绩指标)
 - 2026-01-18: 09-delivery-view.md 执行完成
 - 2026-01-18: 交付管理仪表盘完成 (项目概览/里程碑/资源利用)
 - 2026-01-18: 08-finance-view.md 执行完成
