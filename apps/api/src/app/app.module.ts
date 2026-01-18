@@ -9,6 +9,7 @@ import { PrismaModule } from '../prisma';
 import { HealthModule } from '../health';
 import { StorageModule } from '../storage';
 import { ParserModule } from '../parser';
+import { ContractModule } from '../contract';
 import { DateTimeScalar, DecimalScalar } from '../common/scalars';
 
 @Module({
@@ -29,6 +30,7 @@ import { DateTimeScalar, DecimalScalar } from '../common/scalars';
     HealthModule,
     StorageModule,
     ParserModule,
+    ContractModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar],

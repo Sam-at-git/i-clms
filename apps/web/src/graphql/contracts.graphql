@@ -1,0 +1,105 @@
+query GetContracts($filter: ContractFilterInput, $skip: Int, $take: Int, $orderBy: ContractOrderInput) {
+  contracts(filter: $filter, skip: $skip, take: $take, orderBy: $orderBy) {
+    nodes {
+      id
+      contractNo
+      name
+      type
+      status
+      ourEntity
+      amountWithTax
+      currency
+      signedAt
+      expiresAt
+      parseStatus
+      createdAt
+      customer {
+        id
+        name
+        shortName
+      }
+      department {
+        id
+        name
+        code
+      }
+    }
+    totalCount
+    hasNextPage
+    hasPreviousPage
+  }
+}
+
+query GetContract($id: ID!) {
+  contract(id: $id) {
+    id
+    contractNo
+    name
+    type
+    status
+    ourEntity
+    amountWithTax
+    amountWithoutTax
+    currency
+    taxRate
+    taxAmount
+    paymentMethod
+    paymentTerms
+    signedAt
+    effectiveAt
+    expiresAt
+    duration
+    fileUrl
+    fileType
+    industry
+    salesPerson
+    parseStatus
+    parsedAt
+    parseConfidence
+    needsManualReview
+    createdAt
+    updatedAt
+    customer {
+      id
+      name
+      shortName
+      creditCode
+      industry
+      address
+      contactPerson
+      contactPhone
+      contactEmail
+    }
+    department {
+      id
+      name
+      code
+    }
+    uploadedBy {
+      id
+      name
+      email
+    }
+  }
+}
+
+mutation CreateContract($input: CreateContractInput!) {
+  createContract(input: $input) {
+    id
+    contractNo
+    name
+  }
+}
+
+mutation UpdateContract($id: ID!, $input: UpdateContractInput!) {
+  updateContract(id: $id, input: $input) {
+    id
+    contractNo
+    name
+    status
+  }
+}
+
+mutation DeleteContract($id: ID!) {
+  deleteContract(id: $id)
+}

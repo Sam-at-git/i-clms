@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 05-contract-parser-basic.md
+- 当前spec: 06-contract-crud.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -12,8 +12,8 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 - [x] Phase 1: 想法捕获 (IDEA.md)
 - [x] Phase 2: 需求挖掘 (PRD.md, 17个问题已澄清)
 - [x] Phase 3: 需求确认 (PRD-SIGNED.md, 2026-01-18)
-- [x] Phase 4: 技术拆解 (01~03 specs已创建)
-- [ ] Phase 5: Ralph循环 (进行中)
+- [x] Phase 4: 技术拆解 (01~06 specs已创建)
+- [ ] Phase 5: Ralph循环 (阶段一完成)
 - [ ] Phase 6: 验收交付
 
 ## 已完成的Specs
@@ -72,8 +72,18 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - GraphQL Query/Mutation (parseDocument, parseAndExtract)
   - Lint + Build通过
 
+- [x] 06-contract-crud.md ✓ (2026-01-18)
+  - Contract GraphQL类型定义 (ObjectType/InputType)
+  - Contract/Customer/Department/User模型
+  - ContractService CRUD + 分页 + 过滤
+  - ContractResolver (Query/Mutation)
+  - React Router路由配置
+  - 合同列表页 (ContractList)
+  - 合同详情页 (ContractDetail)
+  - Lint + Build通过
+
 ## 进行中
-- [ ] 06-contract-crud.md (待创建spec)
+- [ ] 07-auth-rbac.md (阶段二开始)
 
 ## Specs执行状态
 
@@ -91,17 +101,20 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 - [x] 05-contract-parser-basic.md ✓
 
 ### Wave 5
-- [ ] 06-contract-crud.md (待创建spec)
+- [x] 06-contract-crud.md ✓
 
-## 验收标准完成情况 (05-contract-parser-basic.md)
-- [x] AC-01: 依赖安装成功 (pdf-parse, mammoth)
-- [x] AC-02: PDF解析功能正常
-- [x] AC-03: Word解析功能正常
-- [x] AC-04: 字段提取功能正常
-- [x] AC-05: GraphQL集成完整
+## 验收标准完成情况 (06-contract-crud.md)
+- [x] AC-01: GraphQL类型定义完整
+- [x] AC-02: Query实现 (contracts/contract/contractByNo)
+- [x] AC-03: Mutation实现 (create/update/delete)
+- [x] AC-04: 前端列表页完成
+- [x] AC-05: 前端详情页完成
 - [x] AC-06: 背压检查通过 - lint/build通过
 
 ## 最近更新
+- 2026-01-18: 06-contract-crud.md 执行完成
+- 2026-01-18: 阶段一完成 (01~06 specs全部完成)
+- 2026-01-18: 合同CRUD + 前端页面完成
 - 2026-01-18: 05-contract-parser-basic.md 执行完成
 - 2026-01-18: 合同文档解析服务配置完成 (PDF/Word)
 - 2026-01-18: 04-file-storage.md 执行完成
