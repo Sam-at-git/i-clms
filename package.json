@@ -37,10 +37,13 @@
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
     "@types/jest": "^30.0.0",
+    "@types/minio": "^7.1.1",
+    "@types/multer": "^2.0.0",
     "@types/node": "20.19.9",
     "@types/pg": "^8.16.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/uuid": "^11.0.0",
     "@vitejs/plugin-react": "^4.2.0",
     "@vitest/ui": "^4.0.0",
     "dotenv": "^17.2.3",
@@ -75,6 +78,7 @@
     "@as-integrations/express5": "^1.1.2",
     "@nestjs/apollo": "^13.2.3",
     "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.0",
     "@nestjs/graphql": "^13.2.3",
     "@nestjs/platform-express": "^11.0.0",
@@ -83,11 +87,13 @@
     "axios": "^1.6.0",
     "graphql": "^16.12.0",
     "graphql-scalars": "^1.25.0",
+    "minio": "^8.0.6",
     "pg": "^8.17.1",
     "prisma": "^7.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.0"
+    "rxjs": "^7.8.0",
+    "uuid": "^13.0.0"
   }
 }

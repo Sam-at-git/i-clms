@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 03-graphql-foundation.md
+- 当前spec: 04-file-storage.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -53,8 +53,19 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - 自动生成types和hooks
   - Lint + Build通过
 
+- [x] 04-file-storage.md ✓ (2026-01-18)
+  - MinIO客户端配置 (minio.config.ts)
+  - StorageService实现 (上传/下载/删除/签名URL)
+  - REST上传端点 (POST /storage/upload)
+  - GraphQL查询 (getFileUrl, fileExists, deleteFile)
+  - 文件类型验证 (PDF, Word)
+  - 文件大小限制 (50MB)
+  - Docker Compose添加MinIO服务
+  - 环境变量配置
+  - Lint + Build通过
+
 ## 进行中
-- [ ] 04-file-storage.md (待创建spec)
+- [ ] 05-contract-parser-basic.md (待创建spec)
 
 ## Specs执行状态
 
@@ -68,23 +79,25 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 - [x] 03-graphql-foundation.md ✓
 
 ### Wave 4
-- [ ] 04-file-storage.md (待创建spec)
+- [x] 04-file-storage.md ✓
 - [ ] 05-contract-parser-basic.md (待创建spec)
 
 ### Wave 5
 - [ ] 06-contract-crud.md (待创建spec)
 
-## 验收标准完成情况 (03-graphql-foundation.md)
-- [x] AC-01: GraphQL依赖安装成功
-- [x] AC-02: Apollo Server配置正确 (schema.gql自动生成)
-- [x] AC-03: 标量类型工作正常 (DateTime, Decimal)
-- [x] AC-04: 枚举类型定义完整
-- [x] AC-05: 健康检查Resolver工作正常
-- [x] AC-06: Apollo Client配置正确
-- [x] AC-07: Codegen配置正确
-- [x] AC-08: 背压检查通过 - lint/test/build通过
+## 验收标准完成情况 (04-file-storage.md)
+- [x] AC-01: MinIO客户端配置正确
+- [x] AC-02: StorageService实现完整
+- [x] AC-03: REST上传端点工作正常
+- [x] AC-04: GraphQL查询定义完整
+- [x] AC-05: 文件类型验证正确
+- [x] AC-06: 文件大小限制生效
+- [x] AC-07: Docker MinIO服务配置正确
+- [x] AC-08: 背压检查通过 - lint/build通过
 
 ## 最近更新
+- 2026-01-18: 04-file-storage.md 执行完成
+- 2026-01-18: MinIO文件存储服务配置完成
 - 2026-01-18: 03-graphql-foundation.md 执行完成
 - 2026-01-18: GraphQL基础设施配置完成
 - 2026-01-18: codegen自动生成类型和React hooks

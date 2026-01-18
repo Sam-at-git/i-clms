@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
@@ -6,10 +7,15 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from '../prisma';
 import { HealthModule } from '../health';
+import { StorageModule } from '../storage';
 import { DateTimeScalar, DecimalScalar } from '../common/scalars';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+    }),
     PrismaModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
@@ -20,6 +26,7 @@ import { DateTimeScalar, DecimalScalar } from '../common/scalars';
       context: ({ req, res }: { req: unknown; res: unknown }) => ({ req, res }),
     }),
     HealthModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar],
