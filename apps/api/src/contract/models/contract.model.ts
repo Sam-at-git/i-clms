@@ -1,8 +1,8 @@
 import { ObjectType, Field, ID, Float, Int } from '@nestjs/graphql';
 import { ContractType, ContractStatus, ParseStatus } from './enums';
 import { Customer } from './customer.model';
-import { Department } from './department.model';
-import { User } from './user.model';
+import { UserDto } from '../../user/dto/user.dto';
+import { DepartmentDto } from '../../department/dto/department.dto';
 
 @ObjectType()
 export class Contract {
@@ -75,8 +75,8 @@ export class Contract {
   @Field(() => String, { nullable: true })
   industry?: string | null;
 
-  @Field(() => Department)
-  department!: Department;
+  @Field(() => DepartmentDto)
+  department!: DepartmentDto;
 
   @Field(() => String, { nullable: true })
   salesPerson?: string | null;
@@ -99,8 +99,8 @@ export class Contract {
   @Field(() => [Contract])
   supplements!: Contract[];
 
-  @Field(() => User)
-  uploadedBy!: User;
+  @Field(() => UserDto)
+  uploadedBy!: UserDto;
 
   @Field()
   createdAt!: Date;

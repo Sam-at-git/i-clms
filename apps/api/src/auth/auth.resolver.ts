@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 import { GqlAuthGuard } from './guards';
 import { CurrentUser } from './decorators';
 import { LoginInput, RegisterInput, AuthResponse, ChangePasswordInput, ChangePasswordResult } from './dto';
-import { User } from '../contract/models';
+import { UserDto } from '../user/dto/user.dto';
 
 interface GqlContext {
   req: {
@@ -28,14 +28,14 @@ export class AuthResolver {
     return this.authService.login(user);
   }
 
-  @Mutation(() => User, { description: 'Register a new user' })
-  async register(@Args('input') input: RegisterInput): Promise<User> {
+  @Mutation(() => UserDto, { description: 'Register a new user' })
+  async register(@Args('input') input: RegisterInput): Promise<UserDto> {
     return this.authService.register(input);
   }
 
-  @Query(() => User, { description: 'Get current authenticated user' })
+  @Query(() => UserDto, { description: 'Get current authenticated user' })
   @UseGuards(GqlAuthGuard)
-  async me(@CurrentUser() user: { id: string }): Promise<User> {
+  async me(@CurrentUser() user: { id: string }): Promise<UserDto> {
     const fullUser = await this.authService.getUserById(user.id);
     if (!fullUser) {
       throw new UnauthorizedException('User not found');
