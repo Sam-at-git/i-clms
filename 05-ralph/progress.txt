@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 04-file-storage.md
+- 当前spec: 05-contract-parser-basic.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -64,8 +64,16 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - 环境变量配置
   - Lint + Build通过
 
+- [x] 05-contract-parser-basic.md ✓ (2026-01-18)
+  - pdf-parse v2.x (PDFParse类) PDF解析
+  - mammoth.js Word文档解析
+  - 字段提取器 (合同编号/甲乙方/日期/金额等)
+  - ParserService集成StorageService
+  - GraphQL Query/Mutation (parseDocument, parseAndExtract)
+  - Lint + Build通过
+
 ## 进行中
-- [ ] 05-contract-parser-basic.md (待创建spec)
+- [ ] 06-contract-crud.md (待创建spec)
 
 ## Specs执行状态
 
@@ -80,22 +88,22 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 
 ### Wave 4
 - [x] 04-file-storage.md ✓
-- [ ] 05-contract-parser-basic.md (待创建spec)
+- [x] 05-contract-parser-basic.md ✓
 
 ### Wave 5
 - [ ] 06-contract-crud.md (待创建spec)
 
-## 验收标准完成情况 (04-file-storage.md)
-- [x] AC-01: MinIO客户端配置正确
-- [x] AC-02: StorageService实现完整
-- [x] AC-03: REST上传端点工作正常
-- [x] AC-04: GraphQL查询定义完整
-- [x] AC-05: 文件类型验证正确
-- [x] AC-06: 文件大小限制生效
-- [x] AC-07: Docker MinIO服务配置正确
-- [x] AC-08: 背压检查通过 - lint/build通过
+## 验收标准完成情况 (05-contract-parser-basic.md)
+- [x] AC-01: 依赖安装成功 (pdf-parse, mammoth)
+- [x] AC-02: PDF解析功能正常
+- [x] AC-03: Word解析功能正常
+- [x] AC-04: 字段提取功能正常
+- [x] AC-05: GraphQL集成完整
+- [x] AC-06: 背压检查通过 - lint/build通过
 
 ## 最近更新
+- 2026-01-18: 05-contract-parser-basic.md 执行完成
+- 2026-01-18: 合同文档解析服务配置完成 (PDF/Word)
 - 2026-01-18: 04-file-storage.md 执行完成
 - 2026-01-18: MinIO文件存储服务配置完成
 - 2026-01-18: 03-graphql-foundation.md 执行完成
