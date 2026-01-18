@@ -1,75 +1,15 @@
 import { registerEnumType } from '@nestjs/graphql';
 
-// 用户角色
-export enum UserRole {
-  USER = 'USER',
-  DEPT_ADMIN = 'DEPT_ADMIN',
-  ADMIN = 'ADMIN',
-}
+// 重新导出 contract/models/enums.ts 中的枚举（避免重复注册）
+export {
+  UserRole,
+  DepartmentCode,
+  ContractType,
+  ContractStatus,
+  ParseStatus,
+} from '../../contract/models/enums';
 
-registerEnumType(UserRole, {
-  name: 'UserRole',
-  description: '用户角色',
-});
-
-// 部门代码
-export enum DepartmentCode {
-  FINANCE = 'FINANCE',
-  DELIVERY = 'DELIVERY',
-  SALES = 'SALES',
-  MARKETING = 'MARKETING',
-  LEGAL = 'LEGAL',
-  EXECUTIVE = 'EXECUTIVE',
-}
-
-registerEnumType(DepartmentCode, {
-  name: 'DepartmentCode',
-  description: '部门代码',
-});
-
-// 合同类型
-export enum ContractType {
-  STAFF_AUGMENTATION = 'STAFF_AUGMENTATION',
-  PROJECT_OUTSOURCING = 'PROJECT_OUTSOURCING',
-  PRODUCT_SALES = 'PRODUCT_SALES',
-}
-
-registerEnumType(ContractType, {
-  name: 'ContractType',
-  description: '合同类型',
-});
-
-// 合同状态
-export enum ContractStatus {
-  DRAFT = 'DRAFT',
-  PENDING_APPROVAL = 'PENDING_APPROVAL',
-  ACTIVE = 'ACTIVE',
-  EXECUTING = 'EXECUTING',
-  COMPLETED = 'COMPLETED',
-  TERMINATED = 'TERMINATED',
-  EXPIRED = 'EXPIRED',
-}
-
-registerEnumType(ContractStatus, {
-  name: 'ContractStatus',
-  description: '合同状态',
-});
-
-// 解析状态
-export enum ParseStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-  MANUAL_REVIEW = 'MANUAL_REVIEW',
-}
-
-registerEnumType(ParseStatus, {
-  name: 'ParseStatus',
-  description: '解析状态',
-});
-
-// 费率类型
+// 费率类型（仅在此处定义）
 export enum RateType {
   HOURLY = 'HOURLY',
   DAILY = 'DAILY',
@@ -81,7 +21,7 @@ registerEnumType(RateType, {
   description: '费率类型',
 });
 
-// 里程碑状态
+// 里程碑状态（仅在此处定义）
 export enum MilestoneStatus {
   PENDING = 'PENDING',
   IN_PROGRESS = 'IN_PROGRESS',
