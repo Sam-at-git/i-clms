@@ -38,3 +38,13 @@ tmp/
 temp/
 
 /generated/prisma
+
+# Project documentation (internal)
+/01-discovery/
+/02-requirements/
+/03-specs/
+/04-code/
+/05-ralph/
+/06-delivery/
+从客户想法到Ralph执行的完整工程流程.md
+智能合同全生命周期管理系统项目建议书.md
