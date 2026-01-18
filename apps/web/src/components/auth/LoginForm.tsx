@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
-import { useSetRecoilState } from 'recoil';
 import { useNavigate } from 'react-router-dom';
-import { userState, authTokenState, persistAuthState, User } from '../../state';
+import { useAuthStore, User } from '../../state';
 
 const LOGIN_MUTATION = gql`
   mutation Login($input: LoginInput!) {
@@ -36,16 +35,13 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const setUser = useSetRecoilState(userState);
-  const setToken = useSetRecoilState(authTokenState);
+  const setAuth = useAuthStore((state) => state.setAuth);
   const navigate = useNavigate();
 
   const [login, { loading }] = useMutation<LoginResponse>(LOGIN_MUTATION, {
     onCompleted: (data) => {
       const { accessToken, user } = data.login;
-      setToken(accessToken);
-      setUser(user);
-      persistAuthState(accessToken, user);
+      setAuth(accessToken, user);
       navigate('/contracts');
     },
     onError: (err) => {

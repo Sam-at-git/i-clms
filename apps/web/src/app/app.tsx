@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
 import ContractsPage from '../pages/contracts';
 import ContractDetailPage from '../pages/contracts/[id]';
 import LoginPage from '../pages/login';
@@ -10,18 +9,15 @@ import MarketPage from '../pages/market';
 import LegalPage from '../pages/legal';
 import ExecutivePage from '../pages/executive';
 import { ProtectedRoute } from '../components/auth';
-import { userState, authTokenState, clearAuthState, isAuthenticatedState } from '../state';
+import { useAuthStore } from '../state';
 
 function Layout({ children }: { children: React.ReactNode }) {
-  const user = useRecoilValue(userState);
-  const isAuthenticated = useRecoilValue(isAuthenticatedState);
-  const setUser = useSetRecoilState(userState);
-  const setToken = useSetRecoilState(authTokenState);
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
 
   const handleLogout = () => {
-    setUser(null);
-    setToken(null);
-    clearAuthState();
+    clearAuth();
   };
 
   return (

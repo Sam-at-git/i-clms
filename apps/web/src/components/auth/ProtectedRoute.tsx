@@ -1,13 +1,12 @@
-import { useRecoilValue } from 'recoil';
 import { Navigate, useLocation } from 'react-router-dom';
-import { isAuthenticatedState } from '../../state';
+import { useAuthStore } from '../../state';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const isAuthenticated = useRecoilValue(isAuthenticatedState);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const location = useLocation();
 
   if (!isAuthenticated) {
