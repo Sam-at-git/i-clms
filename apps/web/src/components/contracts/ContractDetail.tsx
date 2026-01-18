@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { useParams, Link } from 'react-router-dom';
+import { ContractEdit } from './ContractEdit';
+import { ContractDelete } from './ContractDelete';
 
 const GET_CONTRACT = gql`
   query GetContract($id: ID!) {
@@ -138,7 +141,9 @@ const PARSE_STATUS_LABELS: Record<string, string> = {
 
 export function ContractDetail() {
   const { id } = useParams<{ id: string }>();
-  const { loading, error, data } = useQuery<ContractData>(GET_CONTRACT, {
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const { loading, error, data, refetch } = useQuery<ContractData>(GET_CONTRACT, {
     variables: { id },
     skip: !id,
   });
@@ -191,6 +196,14 @@ export function ContractDetail() {
               {CONTRACT_STATUS_LABELS[contract.status] || contract.status}
             </span>
           </div>
+        </div>
+        <div style={styles.headerActions}>
+          <button onClick={() => setShowEdit(true)} style={styles.editButton}>
+            编辑
+          </button>
+          <button onClick={() => setShowDelete(true)} style={styles.deleteButton}>
+            删除
+          </button>
         </div>
       </div>
 
@@ -283,6 +296,26 @@ export function ContractDetail() {
           </div>
         </div>
       </div>
+
+      {showEdit && (
+        <ContractEdit
+          contract={contract}
+          onClose={() => setShowEdit(false)}
+          onSuccess={() => {
+            setShowEdit(false);
+            refetch();
+          }}
+        />
+      )}
+
+      {showDelete && (
+        <ContractDelete
+          contractId={contract.id}
+          contractNo={contract.contractNo}
+          contractName={contract.name}
+          onClose={() => setShowDelete(false)}
+        />
+      )}
     </div>
   );
 }
@@ -319,6 +352,31 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     marginBottom: '24px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerActions: {
+    display: 'flex',
+    gap: '12px',
+  },
+  editButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    color: '#3b82f6',
+    backgroundColor: '#eff6ff',
+    border: '1px solid #3b82f6',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  deleteButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    color: '#dc2626',
+    backgroundColor: '#fef2f2',
+    border: '1px solid #dc2626',
+    borderRadius: '6px',
+    cursor: 'pointer',
   },
   title: {
     fontSize: '24px',

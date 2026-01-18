@@ -2,11 +2,432 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AnalyticsDimension {
+  dimension: String!
+  metrics: AnalyticsMetrics!
+  value: String!
+}
+
+type AnalyticsMetrics {
+  avgValue: Float!
+  count: Int!
+  totalValue: Float!
+}
+
+type AuthResponse {
+  accessToken: String!
+  user: User!
+}
+
+type CaseOverview {
+  byIndustry: [IndustryCases!]!
+  featured: [CaseStudy!]!
+  totalCases: Int!
+}
+
+type CaseStudy {
+  amount: Float!
+  contractNo: String!
+  customerName: String!
+  description: String
+  highlights: [String!]!
+  id: String!
+  industry: String
+  name: String!
+  signedAt: DateTime
+  tags: [String!]!
+  type: ContractType!
+}
+
+type CashFlowForecast {
+  expectedIncome: Float!
+  month: String!
+  pendingAmount: Float!
+  receivedAmount: Float!
+}
+
+type CategoryTags {
+  category: String!
+  tags: [TagStats!]!
+}
+
+type ClassificationResult {
+  confidence: Float!
+  contractType: String!
+  industry: String
+  scale: String!
+}
+
+type ClauseCheck {
+  clauseName: String!
+  clauseType: String!
+  exists: Boolean!
+  riskLevel: RiskLevel
+  suggestion: String
+}
+
+type CompanyHealth {
+  alerts: [HealthAlert!]!
+  dimensions: [HealthDimension!]!
+  overallScore: Float!
+  trend: [MonthlyScore!]!
+}
+
+type ComplianceOverview {
+  avgScore: Float!
+  byLevel: [ComplianceStats!]!
+  lowScoreContracts: [ContractCompliance!]!
+  totalScanned: Float!
+}
+
+type ComplianceStats {
+  count: Float!
+  level: String!
+  percentage: Float!
+}
+
+type Contract {
+  amountWithTax: String!
+  amountWithoutTax: String
+  contractNo: String!
+  copies: Int
+  createdAt: DateTime!
+  currency: String!
+  customer: Customer!
+  department: Department!
+  duration: String
+  effectiveAt: DateTime
+  expiresAt: DateTime
+  fileType: String
+  fileUrl: String
+  id: ID!
+  industry: String
+  name: String!
+  needsManualReview: Boolean!
+  ourEntity: String!
+  parentContract: Contract
+  parseConfidence: Float
+  parseStatus: ParseStatus!
+  parsedAt: DateTime
+  paymentMethod: String
+  paymentTerms: String
+  salesPerson: String
+  signLocation: String
+  signedAt: DateTime
+  status: ContractStatus!
+  supplements: [Contract!]!
+  taxAmount: String
+  taxRate: String
+  type: ContractType!
+  updatedAt: DateTime!
+  uploadedBy: User!
+}
+
+type ContractCompliance {
+  clauses: [ClauseCheck!]!
+  contractId: String!
+  contractName: String!
+  contractNo: String!
+  lastScannedAt: DateTime
+  missingClauses: [String!]!
+  overallScore: Float!
+  riskyClauses: [String!]!
+}
+
+type ContractConnection {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  nodes: [Contract!]!
+  totalCount: Int!
+}
+
+input ContractFilterInput {
+  customerId: String
+  departmentId: String
+  expiresAfter: DateTime
+  expiresBefore: DateTime
+  needsManualReview: Boolean
+  parseStatuses: [ParseStatus!]
+  search: String
+  signedAfter: DateTime
+  signedBefore: DateTime
+  statuses: [ContractStatus!]
+  types: [ContractType!]
+}
+
+"""Field to order contracts by"""
+enum ContractOrderField {
+  AMOUNT
+  CONTRACT_NO
+  CREATED_AT
+  EXPIRES_AT
+  NAME
+  SIGNED_AT
+  UPDATED_AT
+}
+
+input ContractOrderInput {
+  direction: SortOrder! = DESC
+  field: ContractOrderField! = CREATED_AT
+}
+
+type ContractProfile {
+  contractId: String!
+  features: [FeatureScore!]!
+  keywords: [String!]!
+  tags: [String!]!
+}
+
+type ContractRiskScore {
+  contractId: String!
+  contractName: String!
+  contractNo: String!
+  customerName: String!
+  factors: [RiskFactor!]!
+  overallScore: Float!
+  riskLevel: RiskLevel!
+  trend: String
+}
+
+input ContractSearchInput {
+  industries: [String!]
+  keyword: String
+  limit: Int = 20
+  maxAmount: Float
+  minAmount: Float
+  offset: Int = 0
+  tags: [String!]
+  types: [ContractType!]
+}
+
+type ContractSearchResult {
+  amount: Float!
+  contractNo: String!
+  customerName: String!
+  highlight: String
+  id: String!
+  industry: String
+  name: String!
+  signedAt: DateTime
+  tags: [String!]!
+  type: ContractType!
+}
+
+"""Status of contract"""
+enum ContractStatus {
+  """已生效"""
+  ACTIVE
+
+  """已完结"""
+  COMPLETED
+
+  """草拟"""
+  DRAFT
+
+  """执行中"""
+  EXECUTING
+
+  """已过期"""
+  EXPIRED
+
+  """审批中"""
+  PENDING_APPROVAL
+
+  """已终止"""
+  TERMINATED
+}
+
+type ContractSummary {
+  amount: Float!
+  contractNo: String!
+  expiresAt: DateTime
+  id: String!
+  name: String!
+  signedAt: DateTime
+  status: ContractStatus!
+  type: ContractType!
+}
+
+"""Type of contract"""
+enum ContractType {
+  """产品购销合同"""
+  PRODUCT_SALES
+
+  """项目外包合同"""
+  PROJECT_OUTSOURCING
+
+  """人力框架合同"""
+  STAFF_AUGMENTATION
+}
+
+type CoreKPIs {
+  categories: [KPICategory!]!
+  highlights: [String!]!
+  period: String!
+}
+
+input CreateContractInput {
+  amountWithTax: String!
+  amountWithoutTax: String
+  contractNo: String!
+  currency: String = "CNY"
+  customerId: String!
+  departmentId: String!
+  duration: String
+  effectiveAt: DateTime
+  expiresAt: DateTime
+  fileType: String
+  fileUrl: String
+  industry: String
+  name: String!
+  ourEntity: String!
+  parentContractId: String
+  paymentMethod: String
+  paymentTerms: String
+  salesPerson: String
+  signedAt: DateTime
+  status: ContractStatus = DRAFT
+  taxAmount: String
+  taxRate: String
+  type: ContractType!
+  uploadedById: String!
+}
+
+type Customer {
+  address: String
+  contactEmail: String
+  contactPerson: String
+  contactPhone: String
+  createdAt: DateTime!
+  creditCode: String
+  id: ID!
+  industry: String
+  name: String!
+  shortName: String
+  updatedAt: DateTime!
+}
+
+type Customer360 {
+  activeContracts: Int!
+  contractHistory: [ContractSummary!]!
+  customerId: String!
+  customerName: String!
+  firstContractDate: DateTime
+  industry: String
+  lastContractDate: DateTime
+  totalContracts: Int!
+  totalValue: Float!
+}
+
+type CustomerOverview {
+  activeCustomers: Int!
+  byIndustry: [IndustryCount!]!
+  newCustomersThisYear: Int!
+  topCustomers: [Customer360!]!
+  totalCustomers: Int!
+}
+
+type CustomerProjects {
+  activeCount: Int!
+  customerId: String!
+  customerName: String!
+  projectCount: Int!
+}
+
+type CustomerRevenue {
+  amount: Float!
+  contractCount: Int!
+  customerId: String!
+  customerName: String!
+}
+
 """DateTime custom scalar type"""
 scalar DateTime
 
 """Decimal custom scalar type"""
 scalar Decimal
+
+type Department {
+  code: DepartmentCode!
+  createdAt: DateTime!
+  id: ID!
+  name: String!
+  updatedAt: DateTime!
+}
+
+"""Department code"""
+enum DepartmentCode {
+  DELIVERY
+  EXECUTIVE
+  FINANCE
+  LEGAL
+  MARKETING
+  SALES
+}
+
+type Evidence {
+  createdAt: DateTime!
+  description: String!
+  eventDate: DateTime!
+  eventType: String!
+  fileUrl: String
+  id: String!
+}
+
+type EvidenceChain {
+  completenessScore: Float!
+  contractId: String!
+  contractName: String!
+  contractNo: String!
+  customerName: String!
+  evidences: [Evidence!]!
+  milestonesCovered: Int!
+  totalMilestones: Int!
+}
+
+type ExtractedFields {
+  amount: String
+  contractName: String
+  contractNumber: String
+  partyA: String
+  partyB: String
+  rawMatches: [FieldMatch!]!
+  signDate: String
+  validPeriod: String
+}
+
+type ExtractedTag {
+  category: String!
+  confidence: Float!
+  name: String!
+  source: String!
+}
+
+type FeatureScore {
+  feature: String!
+  score: Float!
+}
+
+type FieldMatch {
+  confidence: Float!
+  field: String!
+  value: String!
+}
+
+type ForecastResult {
+  confidence: Float!
+  currentValue: Float!
+  forecastValue: Float!
+  metric: String!
+  trend: String!
+}
+
+type HealthAlert {
+  dimension: String!
+  level: String!
+  message: String!
+  value: Float!
+}
 
 type HealthCheck {
   status: String!
@@ -14,7 +435,564 @@ type HealthCheck {
   version: String!
 }
 
+type HealthDimension {
+  description: String!
+  dimension: String!
+  score: Float!
+  trend: String!
+}
+
+type IndustryCases {
+  count: Int!
+  industry: String!
+  totalValue: Float!
+}
+
+type IndustryCount {
+  count: Int!
+  industry: String!
+  totalValue: Float!
+}
+
+type KPICategory {
+  category: String!
+  metrics: [KPIMetric!]!
+}
+
+type KPIMetric {
+  achievement: Float
+  name: String!
+  previousValue: Float
+  target: Float
+  trend: String!
+  unit: String!
+  value: Float!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type MilestoneItem {
+  actualDate: DateTime
+  amount: Float
+  contractNo: String!
+  customerName: String!
+  daysOverdue: Int
+  id: String!
+  name: String!
+  plannedDate: DateTime
+  status: MilestoneStatus!
+}
+
+type MilestoneOverview {
+  completedCount: Int!
+  overdueCount: Int!
+  overdueMilestones: [MilestoneItem!]!
+  pendingCount: Int!
+  totalMilestones: Int!
+  upcomingMilestones: [MilestoneItem!]!
+}
+
+"""里程碑状态"""
+enum MilestoneStatus {
+  ACCEPTED
+  DELIVERED
+  IN_PROGRESS
+  PENDING
+  REJECTED
+}
+
+type MonthlyRevenue {
+  amount: Float!
+  count: Int!
+  month: String!
+}
+
+type MonthlySales {
+  month: String!
+  newSignValue: Float!
+  renewalValue: Float!
+  totalValue: Float!
+}
+
+type MonthlyScore {
+  month: String!
+  score: Float!
+}
+
+type MonthlyUtilization {
+  hoursAllocated: Int!
+  month: String!
+  value: Float!
+}
+
+type Mutation {
+  """自动分类合同"""
+  autoClassifyContract(contractId: String!): ClassificationResult!
+
+  """Create a new contract"""
+  createContract(input: CreateContractInput!): Contract!
+
+  """Delete a contract"""
+  deleteContract(id: ID!): Boolean!
+
+  """删除文件"""
+  deleteFile(objectName: String!): Boolean!
+
+  """提取标签"""
+  extractTags(contractId: String!): [ExtractedTag!]!
+
+  """生成合同画像"""
+  generateProfile(contractId: String!): ContractProfile!
+
+  """Login with email and password"""
+  login(input: LoginInput!): AuthResponse!
+
+  """Parse a document and extract contract fields"""
+  parseAndExtract(objectName: String!): ParseResult!
+
+  """Register a new user"""
+  register(input: RegisterInput!): User!
+
+  """Update an existing contract"""
+  updateContract(id: ID!, input: UpdateContractInput!): Contract!
+}
+
+type OverdueAlert {
+  amount: Float!
+  contractId: String!
+  contractNo: String!
+  customerName: String!
+  daysOverdue: Int!
+  expectedDate: DateTime!
+  level: OverdueLevel!
+}
+
+"""逾期等级"""
+enum OverdueLevel {
+  CRITICAL
+  HIGH
+  LOW
+  MEDIUM
+}
+
+type ParseResult {
+  error: String
+  extractedFields: ExtractedFields
+  pageCount: Int
+  success: Boolean!
+  text: String
+}
+
+"""Document parsing status"""
+enum ParseStatus {
+  """解析完成"""
+  COMPLETED
+
+  """解析失败"""
+  FAILED
+
+  """人工审核中"""
+  MANUAL_REVIEW
+
+  """待解析"""
+  PENDING
+
+  """解析中"""
+  PROCESSING
+}
+
+type PresignedUrl {
+  expiresIn: Int!
+  objectName: String!
+  url: String!
+}
+
+type ProjectOverview {
+  byCustomer: [CustomerProjects!]!
+  byStatus: [StatusCount!]!
+  completionRate: Float!
+  totalProjects: Int!
+}
+
 type Query {
+  """多维度分析"""
+  analyzeByDimension(dimension: String!, groupBy: String): [AnalyticsDimension!]!
+
+  """评估合同风险"""
+  assessContractRisk(contractId: String!): RiskAssessment!
+
+  """获取案例库概览"""
+  caseOverview: CaseOverview!
+
+  """获取现金流预测"""
+  cashFlowForecast(months: Int = 6): [CashFlowForecast!]!
+
+  """获取公司健康度"""
+  companyHealth: CompanyHealth!
+
+  """获取合规概览"""
+  complianceOverview: ComplianceOverview!
+
+  """Get a single contract by ID"""
+  contract(id: ID!): Contract
+
+  """Get a contract by contract number"""
+  contractByNo(contractNo: String!): Contract
+
+  """获取合同合规扫描结果"""
+  contractCompliance(contractId: String!): ContractCompliance!
+
+  """获取合同风险评分"""
+  contractRiskScore(contractId: String!): ContractRiskScore!
+
+  """Get paginated list of contracts"""
+  contracts(filter: ContractFilterInput, orderBy: ContractOrderInput, skip: Int = 0, take: Int = 20): ContractConnection!
+
+  """获取核心KPI指标"""
+  coreKPIs(period: String = "monthly"): CoreKPIs!
+
+  """获取客户360°视图"""
+  customer360(customerId: String!): Customer360
+
+  """获取客户概览"""
+  customerOverview: CustomerOverview!
+
+  """检测风险条款"""
+  detectRiskClauses(contractId: String!): [RiskClause!]!
+
+  """获取履约证据链"""
+  evidenceChain(contractId: String!): EvidenceChain!
+
+  """Extract contract fields from provided text"""
+  extractFieldsFromText(text: String!): ExtractedFields!
+
+  """检查文件是否存在"""
+  fileExists(objectName: String!): Boolean!
+
+  """查找相似合同"""
+  findSimilarContracts(contractId: String!, limit: Int = 5): [SimilarContract!]!
+
+  """预测分析"""
+  forecast(metric: String!): ForecastResult!
+
+  """获取文件预签名URL"""
+  getFileUrl(expirySeconds: Int = 3600, objectName: String!): PresignedUrl!
+
+  """获取风险预警"""
+  getRiskAlerts(limit: Int = 10): [RiskAlert!]!
+
+  """趋势分析"""
+  getTrend(metric: String!, periods: Int = 12): [TrendPoint!]!
+
   """健康检查"""
   health: HealthCheck!
+
+  """Get current authenticated user"""
+  me: User!
+
+  """获取里程碑概览"""
+  milestoneOverview: MilestoneOverview!
+
+  """获取逾期预警"""
+  overdueAlerts: [OverdueAlert!]!
+
+  """Parse a document from storage and extract text content"""
+  parseDocument(objectName: String!): ParseResult!
+
+  """获取项目交付概览"""
+  projectOverview: ProjectOverview!
+
+  """获取续约看板"""
+  renewalOverview: RenewalOverview!
+
+  """获取资源利用率"""
+  resourceUtilization: ResourceUtilization!
+
+  """获取收入统计"""
+  revenueStats(filter: RevenueFilterInput): RevenueStats!
+
+  """获取风险热力图"""
+  riskHeatmap(groupBy: String = "department"): RiskHeatmap!
+
+  """获取风险概览"""
+  riskOverview: RiskOverview!
+
+  """获取销售业绩"""
+  salesPerformance(year: Int): SalesPerformance!
+
+  """搜索合同知识库"""
+  searchContracts(input: ContractSearchInput!): SearchResponse!
+
+  """语义搜索合同"""
+  semanticSearch(limit: Int = 10, query: String!): [SemanticSearchResult!]!
+
+  """获取智能标签概览"""
+  tagOverview: TagOverview!
+}
+
+input RegisterInput {
+  departmentId: String!
+  email: String!
+  name: String!
+  password: String!
+}
+
+type RenewalItem {
+  amount: Float!
+  contractId: String!
+  contractNo: String!
+  customerName: String!
+  daysUntilExpiry: Int!
+  expiresAt: DateTime!
+  priority: RenewalPriority!
+  renewalProbability: Float!
+}
+
+type RenewalOverview {
+  expiringThisMonth: Int!
+  expiringThisQuarter: Int!
+  renewalItems: [RenewalItem!]!
+  renewalRate: Float!
+  totalRenewalValue: Float!
+}
+
+"""续约优先级"""
+enum RenewalPriority {
+  HIGH
+  LOW
+  MEDIUM
+}
+
+type ResourceUtilization {
+  byRole: [RoleUtilization!]!
+  monthlyTrend: [MonthlyUtilization!]!
+  totalStaffContracts: Int!
+}
+
+input RevenueFilterInput {
+  endDate: DateTime
+  startDate: DateTime
+  year: Int
+}
+
+type RevenueStats {
+  byContractType: [TypeRevenue!]!
+  byCustomer: [CustomerRevenue!]!
+  byMonth: [MonthlyRevenue!]!
+  totalRevenue: Float!
+}
+
+type RiskAlert {
+  alertType: String!
+  contractId: String!
+  createdAt: DateTime!
+  id: String!
+  message: String!
+  severity: String!
+}
+
+type RiskAssessment {
+  contractId: String!
+  factors: [RiskFactorDetail!]!
+  level: String!
+  recommendations: [String!]!
+  totalScore: Float!
+}
+
+type RiskCell {
+  category: String!
+  contractCount: Int!
+  riskLevel: String!
+  riskScore: Float!
+  subCategory: String!
+  totalValue: Float!
+}
+
+type RiskClause {
+  clauseType: String!
+  content: String!
+  riskLevel: String!
+  suggestion: String!
+}
+
+type RiskFactor {
+  description: String!
+  factor: String!
+  score: Float!
+  weight: Float!
+}
+
+type RiskFactorDetail {
+  description: String!
+  factor: String!
+  score: Float!
+  weight: Float!
+}
+
+type RiskHeatmap {
+  cells: [RiskCell!]!
+  columns: [String!]!
+  rows: [String!]!
+  summary: RiskSummary!
+}
+
+"""风险等级"""
+enum RiskLevel {
+  CRITICAL
+  HIGH
+  LOW
+  MEDIUM
+}
+
+type RiskLevelStats {
+  count: Int!
+  level: RiskLevel!
+  percentage: Float!
+}
+
+type RiskOverview {
+  avgRiskScore: Float!
+  byRiskLevel: [RiskLevelStats!]!
+  highRiskContracts: [ContractRiskScore!]!
+  totalContracts: Int!
+}
+
+type RiskSummary {
+  avgRiskScore: Float!
+  criticalRiskCount: Int!
+  highRiskCount: Int!
+  totalContracts: Int!
+}
+
+type RoleUtilization {
+  count: Int!
+  role: String!
+  totalValue: Float!
+}
+
+type SalesPerformance {
+  bySalesPerson: [SalesPersonPerformance!]!
+  monthlyTrend: [MonthlySales!]!
+  newSignValue: Float!
+  renewalValue: Float!
+  totalSalesValue: Float!
+}
+
+type SalesPersonPerformance {
+  newSignValue: Float!
+  renewalValue: Float!
+  salesPerson: String!
+  totalContracts: Int!
+  totalValue: Float!
+}
+
+type SearchResponse {
+  results: [ContractSearchResult!]!
+  total: Int!
+}
+
+type SemanticSearchResult {
+  contractId: String!
+  contractNo: String!
+  highlights: [String!]!
+  name: String!
+  similarity: Float!
+}
+
+type SimilarContract {
+  contractId: String!
+  contractNo: String!
+  customerName: String!
+  matchReasons: [String!]!
+  name: String!
+  similarity: Float!
+}
+
+"""Sort direction"""
+enum SortOrder {
+  ASC
+  DESC
+}
+
+type StatusCount {
+  count: Int!
+  status: ContractStatus!
+}
+
+type TagOverview {
+  byCategory: [CategoryTags!]!
+  topTags: [TagStats!]!
+  totalTags: Int!
+}
+
+type TagStats {
+  category: String
+  color: String
+  count: Int!
+  tagId: String!
+  tagName: String!
+  totalValue: Float!
+}
+
+type TrendPoint {
+  growth: Float
+  period: String!
+  value: Float!
+}
+
+type TypeRevenue {
+  amount: Float!
+  percentage: Float!
+  type: ContractType!
+}
+
+input UpdateContractInput {
+  amountWithTax: String
+  amountWithoutTax: String
+  contractNo: String
+  currency: String = "CNY"
+  customerId: String
+  departmentId: String
+  duration: String
+  effectiveAt: DateTime
+  expiresAt: DateTime
+  fileType: String
+  fileUrl: String
+  industry: String
+  name: String
+  needsManualReview: Boolean
+  ourEntity: String
+  parentContractId: String
+  parseConfidence: Float
+  parseStatus: ParseStatus
+  parsedAt: DateTime
+  paymentMethod: String
+  paymentTerms: String
+  salesPerson: String
+  signedAt: DateTime
+  status: ContractStatus
+  taxAmount: String
+  taxRate: String
+  type: ContractType
+  uploadedById: String
+}
+
+type User {
+  createdAt: DateTime!
+  department: Department!
+  email: String!
+  id: ID!
+  name: String!
+  role: UserRole!
+  updatedAt: DateTime!
+}
+
+"""User role"""
+enum UserRole {
+  ADMIN
+  DEPT_ADMIN
+  USER
 }
