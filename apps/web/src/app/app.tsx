@@ -6,6 +6,7 @@ import LoginPage from '../pages/login';
 import FinancePage from '../pages/finance';
 import DeliveryPage from '../pages/delivery';
 import SalesPage from '../pages/sales';
+import MarketPage from '../pages/market';
 import { ProtectedRoute } from '../components/auth';
 import { userState, authTokenState, clearAuthState, isAuthenticatedState } from '../state';
 
@@ -40,6 +41,9 @@ function Layout({ children }: { children: React.ReactNode }) {
             </Link>
             <Link to="/sales" style={styles.navLink}>
               销售管理
+            </Link>
+            <Link to="/market" style={styles.navLink}>
+              市场知识库
             </Link>
           </div>
           <div style={styles.userSection}>
@@ -111,6 +115,14 @@ export function App() {
                   element={
                     <ProtectedRoute>
                       <SalesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/market"
+                  element={
+                    <ProtectedRoute>
+                      <MarketPage />
                     </ProtectedRoute>
                   }
                 />

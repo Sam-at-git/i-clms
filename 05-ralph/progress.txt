@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 10-sales-view.md
+- 当前spec: 11-market-view.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -127,6 +127,16 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - Customer360/RenewalBoard/SalesMetrics组件
   - Lint + Build通过
 
+- [x] 11-market-view.md ✓ (2026-01-18)
+  - MarketModule模块创建
+  - ContractSearch合同知识库搜索 (关键词/标签/类型/行业/金额筛选)
+  - TagOverview智能标签概览 (标签云/分类/热门标签)
+  - CaseOverview案例库概览 (按行业/精选案例)
+  - GraphQL Resolver (searchContracts/tagOverview/caseOverview)
+  - 前端市场仪表盘页面
+  - ContractSearch/TagCloud/CaseList组件
+  - Lint + Build通过
+
 ## 进行中
 - (无)
 
@@ -160,6 +170,16 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 ### Wave 9
 - [x] 10-sales-view.md ✓
 
+### Wave 10
+- [x] 11-market-view.md ✓
+
+## 验收标准完成情况 (11-market-view.md)
+- [x] AC-01: ContractSearch查询返回搜索结果
+- [x] AC-02: TagOverview查询返回标签概览数据
+- [x] AC-03: CaseOverview查询返回案例库数据
+- [x] AC-04: 前端市场仪表盘页面显示完整
+- [x] AC-05: lint + build 通过
+
 ## 验收标准完成情况 (10-sales-view.md)
 - [x] AC-01: CustomerOverview查询返回客户概览数据
 - [x] AC-02: Customer360查询返回单个客户详情
@@ -169,6 +189,8 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 - [x] AC-06: lint + build 通过
 
 ## 最近更新
+- 2026-01-18: 11-market-view.md 执行完成
+- 2026-01-18: 市场知识库完成 (合同搜索/标签云/案例库)
 - 2026-01-18: 10-sales-view.md 执行完成
 - 2026-01-18: 销售管理仪表盘完成 (客户360/续约看板/业绩指标)
 - 2026-01-18: 09-delivery-view.md 执行完成
