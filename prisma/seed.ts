@@ -55,8 +55,8 @@ async function main() {
       create: {
         email: 'admin@iclms.com',
         name: '系统管理员',
-        // bcrypt hash of "password" with 10 rounds
-        password: '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW',
+        // bcrypt hash of "password" with 10 rounds (generated with bcrypt@5.x)
+        password: '$2b$10$CSXjCBa7mmOAhbWOt6FYmORmCE7ZxaZs9qLwBjPmqE9nwEfx7PnuG',
         role: UserRole.ADMIN,
         departmentId: adminDept.id,
       },
