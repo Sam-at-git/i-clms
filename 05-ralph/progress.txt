@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 07-auth-rbac.md
+- 当前spec: 08-finance-view.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -96,6 +96,16 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - LocalStorage持久化认证状态
   - Lint + Build通过
 
+- [x] 08-finance-view.md ✓ (2026-01-18)
+  - FinanceModule模块创建
+  - RevenueStats收入统计 (按月/类型/客户)
+  - CashFlowForecast现金流预测
+  - OverdueAlerts逾期预警 (分级预警)
+  - GraphQL Resolver (revenueStats/cashFlowForecast/overdueAlerts)
+  - 前端财务仪表盘页面
+  - RevenueChart/CashFlowChart/OverdueList组件
+  - Lint + Build通过
+
 ## 进行中
 - (无)
 
@@ -120,17 +130,19 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 ### Wave 6
 - [x] 07-auth-rbac.md ✓
 
-## 验收标准完成情况 (07-auth-rbac.md)
-- [x] AC-01: JWT认证策略实现
-- [x] AC-02: 密码哈希 (bcrypt)
-- [x] AC-03: GraphQL Auth Guard
-- [x] AC-04: RBAC角色守卫
-- [x] AC-05: 前端登录页面
-- [x] AC-06: 前端状态管理 (Recoil)
-- [x] AC-07: 受保护路由
-- [x] AC-08: 背压检查通过 - lint/build通过
+### Wave 7
+- [x] 08-finance-view.md ✓
+
+## 验收标准完成情况 (08-finance-view.md)
+- [x] AC-01: RevenueStats查询返回正确的统计数据
+- [x] AC-02: CashFlowForecast查询返回未来N个月预测
+- [x] AC-03: OverdueAlerts查询返回逾期预警列表
+- [x] AC-04: 前端仪表盘页面显示完整
+- [x] AC-05: lint + build 通过
 
 ## 最近更新
+- 2026-01-18: 08-finance-view.md 执行完成
+- 2026-01-18: 财务仪表盘完成 (收入统计/现金流预测/逾期预警)
 - 2026-01-18: 07-auth-rbac.md 执行完成
 - 2026-01-18: JWT认证 + RBAC权限完成
 - 2026-01-18: 前端登录页 + Recoil状态管理完成

@@ -11,6 +11,7 @@ import { StorageModule } from '../storage';
 import { ParserModule } from '../parser';
 import { ContractModule } from '../contract';
 import { AuthModule } from '../auth';
+import { FinanceModule } from '../finance';
 import { DateTimeScalar, DecimalScalar } from '../common/scalars';
 
 @Module({
@@ -33,6 +34,7 @@ import { DateTimeScalar, DecimalScalar } from '../common/scalars';
     ParserModule,
     ContractModule,
     AuthModule,
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar],

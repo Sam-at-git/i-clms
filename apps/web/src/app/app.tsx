@@ -3,6 +3,7 @@ import { useRecoilValue, useSetRecoilState } from 'recoil';
 import ContractsPage from '../pages/contracts';
 import ContractDetailPage from '../pages/contracts/[id]';
 import LoginPage from '../pages/login';
+import FinancePage from '../pages/finance';
 import { ProtectedRoute } from '../components/auth';
 import { userState, authTokenState, clearAuthState, isAuthenticatedState } from '../state';
 
@@ -28,6 +29,9 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div style={styles.navLinks}>
             <Link to="/contracts" style={styles.navLink}>
               合同管理
+            </Link>
+            <Link to="/finance" style={styles.navLink}>
+              财务仪表盘
             </Link>
           </div>
           <div style={styles.userSection}>
@@ -75,6 +79,14 @@ export function App() {
                   element={
                     <ProtectedRoute>
                       <ContractDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/finance"
+                  element={
+                    <ProtectedRoute>
+                      <FinancePage />
                     </ProtectedRoute>
                   }
                 />
