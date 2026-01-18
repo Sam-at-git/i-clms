@@ -8,6 +8,7 @@ import DeliveryPage from '../pages/delivery';
 import SalesPage from '../pages/sales';
 import MarketPage from '../pages/market';
 import LegalPage from '../pages/legal';
+import ExecutivePage from '../pages/executive';
 import { ProtectedRoute } from '../components/auth';
 import { userState, authTokenState, clearAuthState, isAuthenticatedState } from '../state';
 
@@ -48,6 +49,9 @@ function Layout({ children }: { children: React.ReactNode }) {
             </Link>
             <Link to="/legal" style={styles.navLink}>
               法务合规
+            </Link>
+            <Link to="/executive" style={styles.navLink}>
+              管理驾驶舱
             </Link>
           </div>
           <div style={styles.userSection}>
@@ -135,6 +139,14 @@ export function App() {
                   element={
                     <ProtectedRoute>
                       <LegalPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/executive"
+                  element={
+                    <ProtectedRoute>
+                      <ExecutivePage />
                     </ProtectedRoute>
                   }
                 />

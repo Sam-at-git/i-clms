@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 12-legal-view.md
+- 当前spec: 13-executive-view.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -147,6 +147,16 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - ComplianceScanner/RiskMatrix/EvidenceTimeline组件
   - Lint + Build通过
 
+- [x] 13-executive-view.md ✓ (2026-01-18)
+  - ExecutiveModule模块创建
+  - CompanyHealth公司健康度 (综合评分/四维度分析/预警/趋势)
+  - RiskHeatmap风险热力图 (部门/行业分组/多维度风险)
+  - CoreKPIs核心KPI (合同/客户/交付/财务四大类指标)
+  - GraphQL Resolver (companyHealth/riskHeatmap/coreKPIs)
+  - 前端管理层仪表盘页面
+  - HealthGauge/RiskHeatmapChart/KPIDashboard组件
+  - Lint + Build通过
+
 ## 进行中
 - (无)
 
@@ -186,6 +196,16 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 ### Wave 11
 - [x] 12-legal-view.md ✓
 
+### Wave 12
+- [x] 13-executive-view.md ✓
+
+## 验收标准完成情况 (13-executive-view.md)
+- [x] AC-01: CompanyHealth查询返回健康度数据
+- [x] AC-02: RiskHeatmap查询返回热力图数据
+- [x] AC-03: CoreKPIs查询返回KPI指标
+- [x] AC-04: 前端管理层仪表盘页面显示完整
+- [x] AC-05: lint + build 通过
+
 ## 验收标准完成情况 (12-legal-view.md)
 - [x] AC-01: ContractCompliance查询返回条款合规扫描结果
 - [x] AC-02: RiskOverview查询返回风险概览数据
@@ -209,6 +229,9 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 - [x] AC-06: lint + build 通过
 
 ## 最近更新
+- 2026-01-18: 13-executive-view.md 执行完成
+- 2026-01-18: 管理层驾驶舱完成 (健康度/风险热力图/KPI)
+- 2026-01-18: 阶段二部门赋能视图全部完成
 - 2026-01-18: 12-legal-view.md 执行完成
 - 2026-01-18: 法务合规完成 (合规扫描/风险评分/证据链)
 - 2026-01-18: 11-market-view.md 执行完成
