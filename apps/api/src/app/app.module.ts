@@ -17,6 +17,10 @@ import { SalesModule } from '../sales';
 import { MarketModule } from '../market';
 import { LegalModule } from '../legal';
 import { ExecutiveModule } from '../executive';
+import { TaggingModule } from '../tagging';
+import { RiskEngineModule } from '../risk-engine';
+import { VectorSearchModule } from '../vector-search';
+import { AnalyticsModule } from '../analytics';
 import { DateTimeScalar, DecimalScalar } from '../common/scalars';
 
 @Module({
@@ -45,6 +49,10 @@ import { DateTimeScalar, DecimalScalar } from '../common/scalars';
     MarketModule,
     LegalModule,
     ExecutiveModule,
+    TaggingModule,
+    RiskEngineModule,
+    VectorSearchModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar],
