@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 11-market-view.md
+- 当前spec: 12-legal-view.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -137,6 +137,16 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - ContractSearch/TagCloud/CaseList组件
   - Lint + Build通过
 
+- [x] 12-legal-view.md ✓ (2026-01-18)
+  - LegalModule模块创建
+  - ContractCompliance条款合规扫描 (必备条款检查/风险标记)
+  - RiskOverview风险评分模型 (综合评分/多因子分析/风险等级)
+  - EvidenceChain履约证据链 (事件时间线/完整性评估)
+  - GraphQL Resolver (contractCompliance/riskOverview/evidenceChain)
+  - 前端法务仪表盘页面
+  - ComplianceScanner/RiskMatrix/EvidenceTimeline组件
+  - Lint + Build通过
+
 ## 进行中
 - (无)
 
@@ -173,6 +183,16 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 ### Wave 10
 - [x] 11-market-view.md ✓
 
+### Wave 11
+- [x] 12-legal-view.md ✓
+
+## 验收标准完成情况 (12-legal-view.md)
+- [x] AC-01: ContractCompliance查询返回条款合规扫描结果
+- [x] AC-02: RiskOverview查询返回风险概览数据
+- [x] AC-03: EvidenceChain查询返回履约证据链
+- [x] AC-04: 前端法务仪表盘页面显示完整
+- [x] AC-05: lint + build 通过
+
 ## 验收标准完成情况 (11-market-view.md)
 - [x] AC-01: ContractSearch查询返回搜索结果
 - [x] AC-02: TagOverview查询返回标签概览数据
@@ -189,6 +209,8 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 - [x] AC-06: lint + build 通过
 
 ## 最近更新
+- 2026-01-18: 12-legal-view.md 执行完成
+- 2026-01-18: 法务合规完成 (合规扫描/风险评分/证据链)
 - 2026-01-18: 11-market-view.md 执行完成
 - 2026-01-18: 市场知识库完成 (合同搜索/标签云/案例库)
 - 2026-01-18: 10-sales-view.md 执行完成
