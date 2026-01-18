@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 02-database-schema.md
+- 当前spec: 03-graphql-foundation.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -12,7 +12,7 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 - [x] Phase 1: 想法捕获 (IDEA.md)
 - [x] Phase 2: 需求挖掘 (PRD.md, 17个问题已澄清)
 - [x] Phase 3: 需求确认 (PRD-SIGNED.md, 2026-01-18)
-- [x] Phase 4: 技术拆解 (01-project-setup.md, 02-database-schema.md已创建)
+- [x] Phase 4: 技术拆解 (01~03 specs已创建)
 - [ ] Phase 5: Ralph循环 (进行中)
 - [ ] Phase 6: 验收交付
 
@@ -40,8 +40,21 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - 类型定义同步至shared库
   - Lint + Build通过
 
+- [x] 03-graphql-foundation.md ✓ (2026-01-18)
+  - @nestjs/graphql + @nestjs/apollo安装
+  - Apollo Server 5.x配置 (code-first)
+  - GraphQL Playground启用
+  - DateTime + Decimal自定义标量
+  - 枚举类型定义 (UserRole, DepartmentCode, ContractType等)
+  - 健康检查Resolver (health query)
+  - Apollo Client 4.x配置
+  - ApolloProvider集成React
+  - graphql-codegen配置 (typescript-react-apollo)
+  - 自动生成types和hooks
+  - Lint + Build通过
+
 ## 进行中
-- [ ] 03-graphql-foundation.md (待创建spec)
+- [ ] 04-file-storage.md (待创建spec)
 
 ## Specs执行状态
 
@@ -52,7 +65,7 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 - [x] 02-database-schema.md ✓
 
 ### Wave 3
-- [ ] 03-graphql-foundation.md (待创建spec)
+- [x] 03-graphql-foundation.md ✓
 
 ### Wave 4
 - [ ] 04-file-storage.md (待创建spec)
@@ -61,22 +74,20 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 ### Wave 5
 - [ ] 06-contract-crud.md (待创建spec)
 
-## 验收标准完成情况 (02-database-schema.md)
-- [x] AC-01: Prisma安装成功 - prisma v7.2.0
-- [x] AC-02: Schema文件存在且语法正确 - prisma validate通过
-- [x] AC-03: 数据库迁移 - 待Docker启动后执行
-- [x] AC-04: Prisma Client生成成功 - npx prisma generate通过
-- [x] AC-05: PrismaService集成到NestJS - apps/api/src/prisma/
-- [x] AC-06: 类型定义与Schema一致 - libs/shared/src/types/更新
-- [x] AC-07: Seed数据可执行 - prisma/seed.ts已创建
-- [x] AC-08: 背压检查通过 - lint/build通过
-
-## 注意事项
-- Docker未运行，数据库迁移需要在Docker启动后执行
-- 执行迁移命令: `npx prisma migrate dev --name init`
-- 执行种子数据: `npx prisma db seed`
+## 验收标准完成情况 (03-graphql-foundation.md)
+- [x] AC-01: GraphQL依赖安装成功
+- [x] AC-02: Apollo Server配置正确 (schema.gql自动生成)
+- [x] AC-03: 标量类型工作正常 (DateTime, Decimal)
+- [x] AC-04: 枚举类型定义完整
+- [x] AC-05: 健康检查Resolver工作正常
+- [x] AC-06: Apollo Client配置正确
+- [x] AC-07: Codegen配置正确
+- [x] AC-08: 背压检查通过 - lint/test/build通过
 
 ## 最近更新
+- 2026-01-18: 03-graphql-foundation.md 执行完成
+- 2026-01-18: GraphQL基础设施配置完成
+- 2026-01-18: codegen自动生成类型和React hooks
 - 2026-01-18: 02-database-schema.md 执行完成
 - 2026-01-18: Prisma 7.x配置完成，使用@prisma/adapter-pg
 - 2026-01-18: 15个数据模型定义完成

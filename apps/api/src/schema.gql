@@ -1,0 +1,20 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+"""DateTime custom scalar type"""
+scalar DateTime
+
+"""Decimal custom scalar type"""
+scalar Decimal
+
+type HealthCheck {
+  status: String!
+  timestamp: String!
+  version: String!
+}
+
+type Query {
+  """健康检查"""
+  health: HealthCheck!
+}
