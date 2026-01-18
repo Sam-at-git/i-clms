@@ -20,6 +20,15 @@ export class User {
   department!: Department;
 
   @Field()
+  isActive!: boolean;
+
+  @Field()
+  mustChangePassword!: boolean;
+
+  @Field({ nullable: true })
+  lastPasswordChangedAt?: Date;
+
+  @Field()
   createdAt!: Date;
 
   @Field()

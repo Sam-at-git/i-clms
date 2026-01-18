@@ -21,7 +21,10 @@ import { TaggingModule } from '../tagging';
 import { RiskEngineModule } from '../risk-engine';
 import { VectorSearchModule } from '../vector-search';
 import { AnalyticsModule } from '../analytics';
-import { DateTimeScalar, DecimalScalar } from '../common/scalars';
+import { DateTimeScalar, DecimalScalar, JSONScalar } from '../common/scalars';
+import { AuditModule } from '../audit';
+import { UserModule } from '../user';
+import { DepartmentModule } from '../department';
 
 @Module({
   imports: [
@@ -53,8 +56,11 @@ import { DateTimeScalar, DecimalScalar } from '../common/scalars';
     RiskEngineModule,
     VectorSearchModule,
     AnalyticsModule,
+    AuditModule,
+    UserModule,
+    DepartmentModule,
   ],
   controllers: [AppController],
-  providers: [AppService, DateTimeScalar, DecimalScalar],
+  providers: [AppService, DateTimeScalar, DecimalScalar, JSONScalar],
 })
 export class AppModule {}

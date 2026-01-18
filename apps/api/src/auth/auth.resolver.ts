@@ -1,10 +1,19 @@
-import { Resolver, Mutation, Query, Args } from '@nestjs/graphql';
+import { Resolver, Mutation, Query, Args, Context } from '@nestjs/graphql';
 import { UseGuards, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { GqlAuthGuard } from './guards';
 import { CurrentUser } from './decorators';
-import { LoginInput, RegisterInput, AuthResponse } from './dto';
+import { LoginInput, RegisterInput, AuthResponse, ChangePasswordInput, ChangePasswordResult } from './dto';
 import { User } from '../contract/models';
+
+interface GqlContext {
+  req: {
+    ip?: string;
+    headers?: {
+      'x-forwarded-for'?: string;
+    };
+  };
+}
 
 @Resolver()
 export class AuthResolver {
@@ -32,5 +41,16 @@ export class AuthResolver {
       throw new UnauthorizedException('User not found');
     }
     return fullUser;
+  }
+
+  @Mutation(() => ChangePasswordResult, { description: 'Change your own password' })
+  @UseGuards(GqlAuthGuard)
+  async changePassword(
+    @Args('input') input: ChangePasswordInput,
+    @CurrentUser() user: { id: string },
+    @Context() context: GqlContext
+  ): Promise<ChangePasswordResult> {
+    const ipAddress = context.req?.headers?.['x-forwarded-for'] || context.req?.ip;
+    return this.authService.changePassword(user.id, input, ipAddress);
   }
 }

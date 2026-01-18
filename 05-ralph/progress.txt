@@ -1,8 +1,8 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 17-analytics-engine.md
-- 状态: **已完成**
+- 当前spec: SPEC-ADMIN-ENHANCEMENT.md
+- 状态: **后端API已完成**
 - 迭代次数: 1
 
 ## 技术栈
@@ -188,8 +188,28 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - GraphQL Query (analyzeByDimension/getTrend/forecast)
   - Lint + Build通过
 
+- [x] SPEC-ADMIN-ENHANCEMENT.md (后端API) ✓ (2026-01-19)
+  - AuditModule: 审计日志服务
+    - AuditService: log(), getAuditLogs(), getDistinctActions(), getDistinctEntityTypes()
+    - AuditResolver: auditLogs query
+  - UserModule: 用户管理服务
+    - UserService: getUsers(), getUser(), createUser(), updateUser(), toggleUserStatus(), resetUserPassword()
+    - UserResolver: users query, createUser/updateUser/toggleUserStatus/resetUserPassword mutations
+  - DepartmentModule: 部门管理服务
+    - DepartmentService: getDepartments(), getDepartment(), createDepartment(), updateDepartment(), deleteDepartment()
+    - DepartmentResolver: departments query, createDepartment/updateDepartment/deleteDepartment mutations
+  - TaggingModule扩展: 标签CRUD + 指派
+    - TaggingService扩展: getTags(), getTag(), getTagCategories(), createTag(), updateTag(), deleteTag(), assignTagToContract(), removeTagFromContract(), assignTagsToContract()
+    - TaggingResolver扩展: tags/tag/tagCategories queries, createTag/updateTag/deleteTag/assignTagToContract/removeTagFromContract/assignTagsToContract mutations
+  - AuthModule扩展: 密码管理
+    - AuthService扩展: changePassword(), validateUser()增强isActive检查
+    - AuthResolver扩展: changePassword mutation
+  - User模型扩展: isActive, mustChangePassword, lastPasswordChangedAt
+  - JSON自定义标量: JSONScalar
+  - Lint + Build通过
+
 ## 进行中
-- (无)
+- [ ] SPEC-ADMIN-ENHANCEMENT.md 前端UI待完成
 
 ## Specs执行状态
 
@@ -241,6 +261,17 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 
 ### Wave 16
 - [x] 17-analytics-engine.md ✓
+
+### Wave 17 (阶段四: 系统管理增强)
+- [x] SPEC-ADMIN-ENHANCEMENT.md (后端API) ✓
+
+## 验收标准完成情况 (SPEC-ADMIN-ENHANCEMENT.md)
+- [x] AC-1-backend: 用户管理GraphQL API (users/createUser/updateUser/toggleUserStatus/resetUserPassword)
+- [x] AC-2-backend: 密码管理GraphQL API (changePassword)
+- [x] AC-3-backend: 部门管理GraphQL API (departments/createDepartment/updateDepartment/deleteDepartment)
+- [x] AC-4-backend: 标签管理GraphQL API (tags/createTag/updateTag/deleteTag/assignTagToContract/removeTagFromContract)
+- [x] AC-5-backend: 审计日志GraphQL API (auditLogs/auditActions/auditEntityTypes)
+- [x] AC-6: lint + build 通过
 
 ## 验收标准完成情况 (17-analytics-engine.md)
 - [x] AC-01: analyzeByDimension返回多维分析结果
@@ -295,6 +326,15 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 - [x] AC-06: lint + build 通过
 
 ## 最近更新
+- 2026-01-19: SPEC-ADMIN-ENHANCEMENT.md 后端API执行完成
+- 2026-01-19: 阶段四系统管理增强后端完成:
+  - AuditModule: 审计日志服务 (AuditService/AuditResolver)
+  - UserModule: 用户管理服务 (UserService/UserResolver)
+  - DepartmentModule: 部门管理服务 (DepartmentService/DepartmentResolver)
+  - TaggingModule扩展: 标签CRUD + 指派/移除
+  - AuthService扩展: changePassword + isActive检查
+  - User模型扩展: isActive/mustChangePassword/lastPasswordChangedAt
+  - JSON自定义标量支持
 - 2026-01-18: 17-analytics-engine.md 执行完成
 - 2026-01-18: 多维分析引擎完成 (多维聚合/趋势分析/预测)
 - 2026-01-18: 16-vector-search.md 执行完成

@@ -2,13 +2,16 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma';
-import { RegisterInput } from './dto';
+import { RegisterInput, ChangePasswordInput, ChangePasswordResult } from './dto';
 import { JwtPayload } from './strategies/jwt.strategy';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction, EntityType } from '../audit/dto/audit.dto';
 
 const SALT_ROUNDS = 10;
 
@@ -18,7 +21,8 @@ export class AuthService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly auditService: AuditService
   ) {}
 
   async validateUser(email: string, password: string) {
@@ -31,6 +35,11 @@ export class AuthService {
 
     if (!user) {
       return null;
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is disabled');
     }
 
     const isPasswordValid = await this.comparePassword(password, user.password);
@@ -126,6 +135,66 @@ export class AuthService {
     return this.transformUser(user);
   }
 
+  /**
+   * Change user's password
+   */
+  async changePassword(
+    userId: string,
+    input: ChangePasswordInput,
+    ipAddress?: string
+  ): Promise<ChangePasswordResult> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Validate current password
+    const isCurrentValid = await this.comparePassword(input.currentPassword, user.password);
+    if (!isCurrentValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    // Validate new password is different
+    if (input.currentPassword === input.newPassword) {
+      throw new BadRequestException('New password must be different from current password');
+    }
+
+    // Validate new password length
+    if (input.newPassword.length < 6) {
+      throw new BadRequestException('New password must be at least 6 characters');
+    }
+
+    const hashedPassword = await this.hashPassword(input.newPassword);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        mustChangePassword: false,
+        lastPasswordChangedAt: new Date(),
+      },
+    });
+
+    // Log the audit
+    await this.auditService.log({
+      action: AuditAction.CHANGE_PASSWORD,
+      entityType: EntityType.USER,
+      entityId: userId,
+      entityName: user.name,
+      operatorId: userId,
+      ipAddress,
+    });
+
+    this.logger.log(`Password changed for user ${user.email}`);
+    return {
+      success: true,
+      message: 'Password changed successfully',
+    };
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private transformUser(user: any) {
     return {
@@ -134,6 +203,9 @@ export class AuthService {
       name: user.name,
       role: user.role,
       department: user.department,
+      isActive: user.isActive,
+      mustChangePassword: user.mustChangePassword,
+      lastPasswordChangedAt: user.lastPasswordChangedAt ?? undefined,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

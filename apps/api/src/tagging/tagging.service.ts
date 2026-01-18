@@ -1,10 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction, EntityType } from '../audit/dto/audit.dto';
 import {
   ClassificationResult,
   ExtractedTag,
   ContractProfile,
   FeatureScore,
+  TagDto,
+  CreateTagInput,
+  UpdateTagInput,
+  TagDeleteResult,
 } from './dto/tagging.dto';
 
 type DecimalValue = { toString(): string } | null | undefined;
@@ -13,7 +19,12 @@ const INDUSTRIES = ['金融', '制造', '零售', '医疗', '教育', '政府', 
 
 @Injectable()
 export class TaggingService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(TaggingService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService
+  ) {}
 
   async autoClassifyContract(contractId: string): Promise<ClassificationResult> {
     const contract = await this.prisma.contract.findUnique({
@@ -129,6 +140,371 @@ export class TaggingService {
       features,
     };
   }
+
+  // ==================== Tag CRUD Methods ====================
+
+  /**
+   * Get all tags with optional filters
+   */
+  async getTags(
+    category?: string,
+    includeInactive = false,
+    search?: string
+  ): Promise<TagDto[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {};
+
+    if (!includeInactive) {
+      where.isActive = true;
+    }
+
+    if (category) {
+      where.category = category;
+    }
+
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
+
+    const tags = await this.prisma.tag.findMany({
+      where,
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    });
+
+    return tags.map((t) => this.toTagDto(t));
+  }
+
+  /**
+   * Get a single tag by ID
+   */
+  async getTag(id: string): Promise<TagDto | null> {
+    const tag = await this.prisma.tag.findUnique({
+      where: { id },
+    });
+
+    return tag ? this.toTagDto(tag) : null;
+  }
+
+  /**
+   * Get all tag categories
+   */
+  async getTagCategories(): Promise<string[]> {
+    const result = await this.prisma.tag.findMany({
+      select: { category: true },
+      distinct: ['category'],
+      orderBy: { category: 'asc' },
+    });
+    return result.map((r: { category: string }) => r.category);
+  }
+
+  /**
+   * Create a new tag
+   */
+  async createTag(
+    input: CreateTagInput,
+    operatorId: string,
+    ipAddress?: string
+  ): Promise<TagDto> {
+    // Check if name already exists
+    const existing = await this.prisma.tag.findUnique({
+      where: { name: input.name },
+    });
+
+    if (existing) {
+      throw new ConflictException('Tag name already exists');
+    }
+
+    const tag = await this.prisma.tag.create({
+      data: {
+        name: input.name,
+        category: input.category,
+        color: input.color || '#3b82f6',
+        isActive: true,
+        isSystem: false,
+      },
+    });
+
+    // Log the audit
+    await this.auditService.log({
+      action: AuditAction.CREATE_TAG,
+      entityType: EntityType.TAG,
+      entityId: tag.id,
+      entityName: tag.name,
+      newValue: {
+        name: tag.name,
+        category: tag.category,
+        color: tag.color,
+      },
+      operatorId,
+      ipAddress,
+    });
+
+    this.logger.log(`Tag created: ${tag.name} (${tag.category})`);
+    return this.toTagDto(tag);
+  }
+
+  /**
+   * Update a tag
+   */
+  async updateTag(
+    id: string,
+    input: UpdateTagInput,
+    operatorId: string,
+    ipAddress?: string
+  ): Promise<TagDto> {
+    const existing = await this.prisma.tag.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Tag not found');
+    }
+
+    // If name is being changed, check it doesn't conflict
+    if (input.name && input.name !== existing.name) {
+      const nameConflict = await this.prisma.tag.findUnique({
+        where: { name: input.name },
+      });
+      if (nameConflict) {
+        throw new ConflictException('Tag name already exists');
+      }
+    }
+
+    const oldValue = {
+      name: existing.name,
+      category: existing.category,
+      color: existing.color,
+    };
+
+    const tag = await this.prisma.tag.update({
+      where: { id },
+      data: {
+        name: input.name,
+        category: input.category,
+        color: input.color,
+      },
+    });
+
+    // Log the audit
+    await this.auditService.log({
+      action: AuditAction.UPDATE_TAG,
+      entityType: EntityType.TAG,
+      entityId: tag.id,
+      entityName: tag.name,
+      oldValue,
+      newValue: {
+        name: tag.name,
+        category: tag.category,
+        color: tag.color,
+      },
+      operatorId,
+      ipAddress,
+    });
+
+    return this.toTagDto(tag);
+  }
+
+  /**
+   * Delete a tag (soft delete)
+   */
+  async deleteTag(
+    id: string,
+    operatorId: string,
+    ipAddress?: string
+  ): Promise<TagDeleteResult> {
+    const existing = await this.prisma.tag.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Tag not found');
+    }
+
+    await this.prisma.tag.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    // Log the audit
+    await this.auditService.log({
+      action: AuditAction.DELETE_TAG,
+      entityType: EntityType.TAG,
+      entityId: existing.id,
+      entityName: existing.name,
+      oldValue: { isActive: true },
+      newValue: { isActive: false },
+      operatorId,
+      ipAddress,
+    });
+
+    this.logger.log(`Tag soft deleted: ${existing.name}`);
+    return {
+      success: true,
+      message: 'Tag deleted successfully',
+    };
+  }
+
+  /**
+   * Assign a tag to a contract
+   */
+  async assignTagToContract(
+    contractId: string,
+    tagId: string,
+    operatorId: string,
+    ipAddress?: string
+  ): Promise<void> {
+    // Verify contract exists
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+    });
+
+    if (!contract) {
+      throw new NotFoundException('Contract not found');
+    }
+
+    // Verify tag exists
+    const tag = await this.prisma.tag.findUnique({
+      where: { id: tagId },
+    });
+
+    if (!tag) {
+      throw new NotFoundException('Tag not found');
+    }
+
+    // Check if already assigned
+    const existing = await this.prisma.contractTag.findUnique({
+      where: {
+        contractId_tagId: {
+          contractId,
+          tagId,
+        },
+      },
+    });
+
+    if (existing) {
+      return; // Already assigned, do nothing
+    }
+
+    await this.prisma.contractTag.create({
+      data: {
+        contractId,
+        tagId,
+      },
+    });
+
+    // Log the audit
+    await this.auditService.log({
+      action: AuditAction.ASSIGN_TAG,
+      entityType: EntityType.CONTRACT,
+      entityId: contractId,
+      entityName: contract.name,
+      newValue: {
+        tagId,
+        tagName: tag.name,
+      },
+      operatorId,
+      ipAddress,
+    });
+
+    this.logger.log(`Tag ${tag.name} assigned to contract ${contract.contractNo}`);
+  }
+
+  /**
+   * Remove a tag from a contract
+   */
+  async removeTagFromContract(
+    contractId: string,
+    tagId: string,
+    operatorId: string,
+    ipAddress?: string
+  ): Promise<void> {
+    // Verify contract exists
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+    });
+
+    if (!contract) {
+      throw new NotFoundException('Contract not found');
+    }
+
+    // Verify tag exists
+    const tag = await this.prisma.tag.findUnique({
+      where: { id: tagId },
+    });
+
+    if (!tag) {
+      throw new NotFoundException('Tag not found');
+    }
+
+    const existing = await this.prisma.contractTag.findUnique({
+      where: {
+        contractId_tagId: {
+          contractId,
+          tagId,
+        },
+      },
+    });
+
+    if (!existing) {
+      return; // Not assigned, do nothing
+    }
+
+    await this.prisma.contractTag.delete({
+      where: {
+        contractId_tagId: {
+          contractId,
+          tagId,
+        },
+      },
+    });
+
+    // Log the audit
+    await this.auditService.log({
+      action: AuditAction.REMOVE_TAG,
+      entityType: EntityType.CONTRACT,
+      entityId: contractId,
+      entityName: contract.name,
+      oldValue: {
+        tagId,
+        tagName: tag.name,
+      },
+      operatorId,
+      ipAddress,
+    });
+
+    this.logger.log(`Tag ${tag.name} removed from contract ${contract.contractNo}`);
+  }
+
+  /**
+   * Batch assign tags to a contract
+   */
+  async assignTagsToContract(
+    contractId: string,
+    tagIds: string[],
+    operatorId: string,
+    ipAddress?: string
+  ): Promise<void> {
+    for (const tagId of tagIds) {
+      await this.assignTagToContract(contractId, tagId, operatorId, ipAddress);
+    }
+  }
+
+  // Transform to TagDto
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private toTagDto(tag: any): TagDto {
+    return {
+      id: tag.id,
+      name: tag.name,
+      category: tag.category,
+      color: tag.color,
+      isActive: tag.isActive,
+      isSystem: tag.isSystem,
+      createdAt: tag.createdAt,
+      updatedAt: tag.updatedAt,
+    };
+  }
+
+  // ==================== Private Helper Methods ====================
 
   private extractKeywords(text: string): string[] {
     const keywords: string[] = [];
