@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { Link } from 'react-router-dom';
+import { ContractUpload } from './ContractUpload';
 
 const GET_CONTRACTS = gql`
   query GetContracts($skip: Int, $take: Int) {
@@ -91,7 +93,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function ContractList() {
-  const { loading, error, data, fetchMore } = useQuery<ContractsData>(
+  const [showUpload, setShowUpload] = useState(false);
+  const { loading, error, data, fetchMore, refetch } = useQuery<ContractsData>(
     GET_CONTRACTS,
     {
       variables: { skip: 0, take: 20 },
@@ -131,8 +134,14 @@ export function ContractList() {
     <div style={styles.container}>
       <div style={styles.header}>
         <h1 style={styles.title}>合同列表</h1>
-        <div style={styles.stats}>
-          共 {totalCount} 份合同
+        <div style={styles.headerRight}>
+          <span style={styles.stats}>共 {totalCount} 份合同</span>
+          <button
+            onClick={() => setShowUpload(true)}
+            style={styles.uploadButton}
+          >
+            + 上传合同
+          </button>
         </div>
       </div>
 
@@ -199,6 +208,16 @@ export function ContractList() {
           </button>
         </div>
       )}
+
+      {showUpload && (
+        <ContractUpload
+          onClose={() => setShowUpload(false)}
+          onSuccess={() => {
+            setShowUpload(false);
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -221,9 +240,24 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#111827',
     margin: 0,
   },
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+  },
   stats: {
     color: '#6b7280',
     fontSize: '14px',
+  },
+  uploadButton: {
+    padding: '10px 20px',
+    fontSize: '14px',
+    fontWeight: 500,
+    color: '#fff',
+    backgroundColor: '#3b82f6',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
   },
   loading: {
     padding: '48px',
