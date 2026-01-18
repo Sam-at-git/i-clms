@@ -10,6 +10,7 @@ import { HealthModule } from '../health';
 import { StorageModule } from '../storage';
 import { ParserModule } from '../parser';
 import { ContractModule } from '../contract';
+import { AuthModule } from '../auth';
 import { DateTimeScalar, DecimalScalar } from '../common/scalars';
 
 @Module({
@@ -31,6 +32,7 @@ import { DateTimeScalar, DecimalScalar } from '../common/scalars';
     StorageModule,
     ParserModule,
     ContractModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar],

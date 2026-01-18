@@ -1,7 +1,7 @@
 # Ralph执行进度记录
 
 ## 当前状态
-- 当前spec: 06-contract-crud.md
+- 当前spec: 07-auth-rbac.md
 - 状态: **已完成**
 - 迭代次数: 1
 
@@ -82,8 +82,22 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
   - 合同详情页 (ContractDetail)
   - Lint + Build通过
 
+- [x] 07-auth-rbac.md ✓ (2026-01-18)
+  - JWT认证策略 (@nestjs/passport + passport-jwt)
+  - bcrypt密码哈希
+  - GqlAuthGuard (GraphQL Auth Guard)
+  - RolesGuard (RBAC角色守卫)
+  - CurrentUser + Roles装饰器
+  - AuthService (login/register/validateUser)
+  - AuthResolver (login/register/me)
+  - Recoil前端状态管理 (authTokenState/userState)
+  - 登录页面 (LoginForm)
+  - 受保护路由 (ProtectedRoute)
+  - LocalStorage持久化认证状态
+  - Lint + Build通过
+
 ## 进行中
-- [ ] 07-auth-rbac.md (阶段二开始)
+- (无)
 
 ## Specs执行状态
 
@@ -103,15 +117,23 @@ Nx Monorepo + NestJS + GraphQL + React + Apollo + Recoil + Vite + PostgreSQL
 ### Wave 5
 - [x] 06-contract-crud.md ✓
 
-## 验收标准完成情况 (06-contract-crud.md)
-- [x] AC-01: GraphQL类型定义完整
-- [x] AC-02: Query实现 (contracts/contract/contractByNo)
-- [x] AC-03: Mutation实现 (create/update/delete)
-- [x] AC-04: 前端列表页完成
-- [x] AC-05: 前端详情页完成
-- [x] AC-06: 背压检查通过 - lint/build通过
+### Wave 6
+- [x] 07-auth-rbac.md ✓
+
+## 验收标准完成情况 (07-auth-rbac.md)
+- [x] AC-01: JWT认证策略实现
+- [x] AC-02: 密码哈希 (bcrypt)
+- [x] AC-03: GraphQL Auth Guard
+- [x] AC-04: RBAC角色守卫
+- [x] AC-05: 前端登录页面
+- [x] AC-06: 前端状态管理 (Recoil)
+- [x] AC-07: 受保护路由
+- [x] AC-08: 背压检查通过 - lint/build通过
 
 ## 最近更新
+- 2026-01-18: 07-auth-rbac.md 执行完成
+- 2026-01-18: JWT认证 + RBAC权限完成
+- 2026-01-18: 前端登录页 + Recoil状态管理完成
 - 2026-01-18: 06-contract-crud.md 执行完成
 - 2026-01-18: 阶段一完成 (01~06 specs全部完成)
 - 2026-01-18: 合同CRUD + 前端页面完成

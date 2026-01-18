@@ -1,8 +1,23 @@
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
 import ContractsPage from '../pages/contracts';
 import ContractDetailPage from '../pages/contracts/[id]';
+import LoginPage from '../pages/login';
+import { ProtectedRoute } from '../components/auth';
+import { userState, authTokenState, clearAuthState, isAuthenticatedState } from '../state';
 
 function Layout({ children }: { children: React.ReactNode }) {
+  const user = useRecoilValue(userState);
+  const isAuthenticated = useRecoilValue(isAuthenticatedState);
+  const setUser = useSetRecoilState(userState);
+  const setToken = useSetRecoilState(authTokenState);
+
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    clearAuthState();
+  };
+
   return (
     <div style={styles.layout}>
       <nav style={styles.nav}>
@@ -15,6 +30,20 @@ function Layout({ children }: { children: React.ReactNode }) {
               合同管理
             </Link>
           </div>
+          <div style={styles.userSection}>
+            {isAuthenticated && user ? (
+              <>
+                <span style={styles.userName}>{user.name}</span>
+                <button onClick={handleLogout} style={styles.logoutButton}>
+                  退出
+                </button>
+              </>
+            ) : (
+              <Link to="/login" style={styles.loginLink}>
+                登录
+              </Link>
+            )}
+          </div>
         </div>
       </nav>
       <main style={styles.main}>{children}</main>
@@ -25,13 +54,35 @@ function Layout({ children }: { children: React.ReactNode }) {
 export function App() {
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Navigate to="/contracts" replace />} />
-          <Route path="/contracts" element={<ContractsPage />} />
-          <Route path="/contracts/:id" element={<ContractDetailPage />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/*"
+          element={
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Navigate to="/contracts" replace />} />
+                <Route
+                  path="/contracts"
+                  element={
+                    <ProtectedRoute>
+                      <ContractsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/contracts/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ContractDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </Layout>
+          }
+        />
+      </Routes>
     </BrowserRouter>
   );
 }
@@ -63,12 +114,39 @@ const styles: Record<string, React.CSSProperties> = {
   navLinks: {
     display: 'flex',
     gap: '16px',
+    flex: 1,
   },
   navLink: {
     color: 'rgba(255,255,255,0.8)',
     textDecoration: 'none',
     fontSize: '14px',
     padding: '8px 12px',
+    borderRadius: '4px',
+  },
+  userSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  userName: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: '14px',
+  },
+  logoutButton: {
+    padding: '6px 12px',
+    fontSize: '13px',
+    color: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  loginLink: {
+    color: '#fff',
+    textDecoration: 'none',
+    fontSize: '14px',
+    padding: '6px 12px',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: '4px',
   },
   main: {
