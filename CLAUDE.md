@@ -35,15 +35,15 @@ Phase 6: 验收交付     → 06-delivery/
 包管理: pnpm
 
 # 后端
-框架: NestJS
-API: GraphQL (Apollo Server)
-ORM: Prisma
+框架: NestJS 11
+API: GraphQL (Apollo Server 5)
+ORM: Prisma 7
 数据库: PostgreSQL
 
 # 前端
-框架: React 18
+框架: React 19
 构建: Vite
-GraphQL: Apollo Client
+GraphQL: Apollo Client 4
 状态: Recoil
 
 # 测试
@@ -52,7 +52,7 @@ E2E: Playwright
 
 # 代码质量
 Lint: ESLint + Prettier
-类型: TypeScript (strict)
+类型: TypeScript 5.9 (strict mode)
 ```
 
 ---
@@ -64,14 +64,20 @@ Lint: ESLint + Prettier
 pnpm install
 
 # 开发
-pnpm nx serve api          # 启动后端
-pnpm nx serve web          # 启动前端
+pnpm nx serve api          # 启动后端 (localhost:3000)
+pnpm nx serve web          # 启动前端 (localhost:4200)
 pnpm nx run-many -t serve  # 启动所有
 
 # 测试
-pnpm nx test api           # 后端测试
-pnpm nx test web           # 前端测试
+pnpm nx test api           # 后端全部测试
+pnpm nx test web           # 前端全部测试
 pnpm nx affected -t test   # 只测受影响的
+pnpm nx test api -- --testPathPattern="contract" # 单个模块测试
+pnpm nx test api -- --testNamePattern="should create" # 按测试名筛选
+
+# E2E测试
+pnpm nx e2e api-e2e        # 后端E2E
+pnpm nx e2e web-e2e        # 前端E2E (Playwright)
 
 # 代码质量
 pnpm nx affected -t lint      # Lint
@@ -79,8 +85,15 @@ pnpm nx affected -t typecheck # 类型检查
 pnpm nx affected -t build     # 构建
 
 # 数据库
-pnpm nx prisma:migrate api    # 迁移
-pnpm nx prisma:generate api   # 生成客户端
+pnpm nx prisma:migrate api    # 运行迁移
+pnpm nx prisma:generate api   # 生成Prisma Client
+pnpm prisma db seed           # 填充初始数据
+
+# GraphQL代码生成（前端hooks/types）
+pnpm graphql-codegen          # 从schema.gql生成到libs/shared/src/generated/
+
+# 基础设施
+docker compose -f docker/docker-compose.yml up -d  # 启动PostgreSQL + MinIO
 
 # 依赖图
 pnpm nx graph
@@ -88,47 +101,93 @@ pnpm nx graph
 
 ---
 
+## 核心架构
+
+### 后端模块结构 (apps/api/src/)
+
+每个功能模块遵循 Service + Resolver 模式：
+```
+module/
+├── module.module.ts   # NestJS模块定义，imports PrismaModule
+├── module.service.ts  # 业务逻辑，注入PrismaService
+├── module.resolver.ts # GraphQL入口，@Query/@Mutation装饰器
+├── dto/               # Input types用于mutations
+└── entities/          # GraphQL Object types (@ObjectType)
+```
+
+**16个功能模块**：auth, user, department, contract, finance, delivery, sales, market, legal, executive, tagging, audit, parser, storage, risk-engine, vector-search, analytics
+
+**基础设施模块**：prisma (全局数据库), common (DateTime/Decimal/JSON标量), health, config
+
+### 数据流
+
+```
+Frontend (.graphql文件) → codegen → 生成hooks到 @i-clms/shared
+                                         ↓
+Apollo Client ←──────────────────── useXxxQuery/useXxxMutation
+     ↓
+GraphQL请求 → NestJS Resolver → Service → Prisma → PostgreSQL
+```
+
+### 合同多态设计
+
+Contract主表 + 三种类型特定详情表（1:1关系）：
+- `StaffAugmentationDetail` + `StaffRateItem[]` → 人力框架（工时计费）
+- `ProjectOutsourcingDetail` + `ProjectMilestone[]` → 项目外包（里程碑付款）
+- `ProductSalesDetail` + `ProductLineItem[]` → 产品购销（商品销售）
+
+### 共享库 (@i-clms/shared)
+
+```
+libs/shared/src/
+├── types/index.ts       # 手写的TypeScript接口（ContractType, UserRole等枚举）
+├── generated/graphql.ts # 自动生成的Apollo hooks和GraphQL类型
+├── constants/           # 共享常量
+└── utils/               # 工具函数
+```
+
+**重要**：修改GraphQL schema后必须运行 `pnpm graphql-codegen` 更新生成代码。
+
+---
+
 ## 目录结构
 
 ```
 i-clms/
-├── 01-discovery/           # Phase 1: 想法捕获
-│   ├── IDEA.md             # 客户原始想法
-│   ├── QUESTIONS.md        # 待澄清问题
-│   └── meeting-notes/      # 会议记录
-│
-├── 02-requirements/        # Phase 2-3: 需求文档
-│   ├── PRD.md              # 需求文档
-│   ├── ASSUMPTIONS.md      # 假设清单
-│   └── ACCEPTANCE-CRITERIA.md  # 验收标准
-│
-├── 03-specs/               # Phase 4: 技术规格
-│   ├── SEQUENCE.md         # 执行顺序
-│   └── *.md                # 各功能规格
-│
-├── 04-code/                # 代码占位（实际用apps/libs）
-├── apps/                   # Nx应用
+├── apps/
 │   ├── api/                # NestJS后端
-│   └── web/                # React前端
-├── libs/                   # Nx共享库
-│   ├── shared/             # 类型、工具、常量
-│   ├── ui/                 # UI组件库
-│   └── graphql-schema/     # GraphQL Schema
-│
+│   │   └── src/schema.gql  # 自动生成的GraphQL Schema
+│   ├── api-e2e/            # 后端E2E测试
+│   ├── web/                # React前端
+│   │   └── src/graphql/    # GraphQL查询定义文件
+│   └── web-e2e/            # 前端E2E测试 (Playwright)
+├── libs/shared/            # 共享类型和生成代码
+├── prisma/schema.prisma    # 数据库Schema
+├── codegen.ts              # GraphQL代码生成配置
+├── 01-discovery/           # Phase 1: 想法捕获
+├── 02-requirements/        # Phase 2-3: 需求文档
+├── 03-specs/               # Phase 4: 技术规格
 ├── 05-ralph/               # Phase 5: Ralph执行
-│   ├── PROMPT.md           # Prompt模板
-│   ├── STYLE.md            # 代码风格
-│   ├── STRUCTURE.md        # 项目结构
-│   ├── progress.txt        # 进度记录
-│   └── BLOCKED.log         # 阻塞记录
-│
-├── 06-delivery/            # Phase 6: 验收交付
-│   └── change-requests/    # 变更请求
-│
-├── prisma/                 # 数据库
-│   └── schema.prisma
-└── CLAUDE.md               # 本文件
+└── 06-delivery/            # Phase 6: 验收交付
 ```
+
+---
+
+## 开发工作流
+
+### 添加新后端功能
+
+1. **数据库变更**（如需要）：修改 `prisma/schema.prisma`，运行 `pnpm nx prisma:migrate api`
+2. **创建模块**：在 `apps/api/src/` 下创建目录，包含 module/service/resolver
+3. **注册模块**：在 `apps/api/src/app/app.module.ts` 的 imports 数组中添加
+4. **GraphQL Schema会自动生成**：启动服务后 `apps/api/src/schema.gql` 自动更新
+5. **前端类型生成**：运行 `pnpm graphql-codegen` 更新 `@i-clms/shared`
+
+### 添加新前端功能
+
+1. **定义GraphQL操作**：在 `apps/web/src/graphql/` 创建 `.graphql` 文件
+2. **生成hooks**：运行 `pnpm graphql-codegen`
+3. **使用生成的hooks**：从 `@i-clms/shared` 导入 `useXxxQuery` / `useXxxMutation`
 
 ---
 
@@ -186,6 +245,7 @@ fix(web): Bug修复-前端
 refactor: 重构
 docs: 文档
 test: 测试
+chore: 配置/依赖
 ```
 
 ---
@@ -207,6 +267,7 @@ test: 测试
 4. 不要对不确定的需求做大胆假设而不记录
 5. 不要删除或覆盖不理解的现有代码
 6. 不要忽略测试失败继续前进
+7. 不要手动编辑 `libs/shared/src/generated/` 下的自动生成文件
 
 ---
 
