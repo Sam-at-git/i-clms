@@ -22,14 +22,26 @@ model User {
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
 
+  // 状态与密码管理
+  isActive              Boolean   @default(true)  // 软删除标记
+  mustChangePassword    Boolean   @default(true)  // 首次登录强制改密
+  lastPasswordChangedAt DateTime?                 // 最后改密时间
+
+  // 创建者（由管理员创建）
+  createdById String?
+  createdBy   User?   @relation("UserCreator", fields: [createdById], references: [id])
+  createdUsers User[] @relation("UserCreator")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // 关联
   uploadedContracts Contract[] @relation("ContractUploader")
+  auditLogs         AuditLog[] @relation("AuditOperator")
 
   @@index([departmentId])
   @@index([email])
+  @@index([isActive])
 }
 
 enum UserRole {
@@ -39,9 +51,10 @@ enum UserRole {
 }
 
 model Department {
-  id   String         @id @default(cuid())
-  name String         @unique
-  code DepartmentCode @unique
+  id       String  @id @default(cuid())
+  name     String  @unique
+  code     String  @unique // 部门代码（支持动态新增）
+  isActive Boolean @default(true) // 软删除标记
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -49,15 +62,8 @@ model Department {
   // 关联
   users     User[]
   contracts Contract[] @relation("ContractDepartment")
-}
 
-enum DepartmentCode {
-  FINANCE   // 财务部门
-  DELIVERY  // PMO/交付部门
-  SALES     // 业务/销售部门
-  MARKETING // 市场部门
-  LEGAL     // 法务/风控部门
-  EXECUTIVE // 管理层
+  @@index([isActive])
 }
 
 // ================================
@@ -340,13 +346,18 @@ model ProductLineItem {
 model Tag {
   id       String  @id @default(cuid())
   name     String  @unique
-  category String? // 标签类别
-  color    String? // 显示颜色
+  category String  @default("默认") // 标签类别
+  color    String  @default("#3b82f6") // 显示颜色
+  isActive Boolean @default(true) // 软删除标记
+  isSystem Boolean @default(false) // 系统自动提取的标签
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   contracts ContractTag[]
+
+  @@index([category])
+  @@index([isActive])
 }
 
 model ContractTag {
@@ -361,4 +372,29 @@ model ContractTag {
   @@unique([contractId, tagId])
   @@index([contractId])
   @@index([tagId])
+}
+
+// ================================
+// 审计日志
+// ================================
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // 操作类型：CREATE_USER, UPDATE_USER, DELETE_TAG, etc.
+  entityType String   // 实体类型：USER, DEPARTMENT, TAG
+  entityId   String   // 实体ID
+  entityName String?  // 实体名称（方便展示）
+  oldValue   Json?    // 变更前数据
+  newValue   Json?    // 变更后数据
+  operatorId String   // 操作者ID
+  operator   User     @relation("AuditOperator", fields: [operatorId], references: [id])
+  ipAddress  String?  // 操作者IP
+  userAgent  String?  // 操作者浏览器
+
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([entityType])
+  @@index([operatorId])
+  @@index([createdAt])
 }

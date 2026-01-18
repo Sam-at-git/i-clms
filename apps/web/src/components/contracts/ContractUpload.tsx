@@ -100,7 +100,7 @@ export function ContractUpload({ onClose, onSuccess }: ContractUploadProps) {
       formData.append('file', file);
 
       const apiUrl = import.meta.env.VITE_GRAPHQL_URL?.replace('/graphql', '') || 'http://localhost:3000';
-      const response = await fetch(`${apiUrl}/storage/upload?folder=contracts`, {
+      const response = await fetch(`${apiUrl}/api/storage/upload?folder=contracts`, {
         method: 'POST',
         body: formData,
       });
