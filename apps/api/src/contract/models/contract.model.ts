@@ -1,6 +1,6 @@
 import { ObjectType, Field, ID, Float, Int } from '@nestjs/graphql';
 import { ContractType, ContractStatus, ParseStatus } from './enums';
-import { Customer } from './customer.model';
+import { Customer } from '../../customer/entities/customer.entity';
 import { UserDto } from '../../user/dto/user.dto';
 import { DepartmentDto } from '../../department/dto/department.dto';
 

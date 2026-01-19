@@ -26,6 +26,7 @@ import { DateTimeScalar, DecimalScalar, JSONScalar } from '../common/scalars';
 import { AuditModule } from '../audit';
 import { UserModule } from '../user';
 import { DepartmentModule } from '../department';
+import { CustomerModule } from '../customer/customer.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { DepartmentModule } from '../department';
     AuditModule,
     UserModule,
     DepartmentModule,
+    CustomerModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar, JSONScalar],

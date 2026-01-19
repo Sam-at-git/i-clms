@@ -2,6 +2,11 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AdditionalParty {
+  info: PartyInfo!
+  role: String!
+}
+
 type AnalyticsDimension {
   dimension: String!
   metrics: AnalyticsMetrics!
@@ -53,6 +58,19 @@ type AuthResponse {
   user: User!
 }
 
+type AuthorizedSignatory {
+  name: String
+  signatureDate: String
+  title: String
+}
+
+type BasicExtractedFieldsType {
+  extractionConfidence: Float!
+  identification: ContractIdentificationType!
+  parties: PartiesInfoType!
+  term: ContractTermType!
+}
+
 type BasicInfo {
   contractName: String
   contractNo: String
@@ -86,6 +104,13 @@ type CashFlowForecast {
   month: String!
   pendingAmount: Float!
   receivedAmount: Float!
+}
+
+type CategoryScores {
+  basic: Float!
+  financial: Float!
+  other: Float!
+  temporal: Float!
 }
 
 type CategoryTags {
@@ -125,6 +150,15 @@ type CompanyHealth {
   trend: [MonthlyScore!]!
 }
 
+type CompletenessScore {
+  categoryScores: CategoryScores!
+  details: [FieldScoreDetail!]!
+  maxScore: Float!
+  percentage: Float!
+  strategy: ParseStrategy!
+  totalScore: Float!
+}
+
 type ComplianceOverview {
   avgScore: Float!
   byLevel: [ComplianceStats!]!
@@ -136,6 +170,13 @@ type ComplianceStats {
   count: Float!
   level: String!
   percentage: Float!
+}
+
+type ContactPerson {
+  email: String
+  name: String
+  phone: String
+  title: String
 }
 
 type Contract {
@@ -215,6 +256,15 @@ input ContractFilterInput {
   signedBefore: DateTime
   statuses: [ContractStatus!]
   types: [ContractType!]
+}
+
+type ContractIdentificationType {
+  contractNumber: String
+  contractTitle: String
+  contractType: String
+  effectiveLanguage: String
+  subType: String
+  versionNumber: String
 }
 
 """Field to order contracts by"""
@@ -310,6 +360,15 @@ type ContractSummary {
   type: ContractType!
 }
 
+type ContractTermType {
+  commencementDate: String
+  duration: Duration
+  effectiveDate: String
+  executionDate: String
+  renewal: RenewalTerms
+  terminationDate: String
+}
+
 """Type of contract"""
 enum ContractType {
   """产品购销合同"""
@@ -326,6 +385,14 @@ type CoreKPIs {
   categories: [KPICategory!]!
   highlights: [String!]!
   period: String!
+}
+
+input CreateContactInput {
+  email: String
+  isPrimary: Boolean = false
+  name: String!
+  phone: String
+  title: String
 }
 
 input CreateContractInput {
@@ -358,6 +425,15 @@ input CreateContractInput {
   uploadedById: String!
 }
 
+input CreateCustomerInput {
+  address: String
+  contacts: [CreateContactInput!]
+  creditCode: String
+  fullName: String!
+  industry: String
+  shortName: String
+}
+
 input CreateDepartmentInput {
   code: String!
   name: String!
@@ -381,12 +457,15 @@ type Customer {
   contactEmail: String
   contactPerson: String
   contactPhone: String
+  contacts: [CustomerContact!]!
+  contracts: [Contract!]
   createdAt: DateTime!
   creditCode: String
   id: ID!
   industry: String
   name: String!
   shortName: String
+  status: CustomerStatus!
   updatedAt: DateTime!
 }
 
@@ -400,6 +479,26 @@ type Customer360 {
   lastContractDate: DateTime
   totalContracts: Int!
   totalValue: Float!
+}
+
+type CustomerContact {
+  createdAt: DateTime!
+  customerId: String!
+  email: String
+  id: ID!
+  isPrimary: Boolean!
+  name: String!
+  phone: String
+  title: String
+  updatedAt: DateTime!
+}
+
+input CustomerFilterInput {
+  industry: String
+  search: String
+  skip: Int = 0
+  status: CustomerStatus
+  take: Int = 20
 }
 
 type CustomerOverview {
@@ -422,6 +521,24 @@ type CustomerRevenue {
   contractCount: Int!
   customerId: String!
   customerName: String!
+}
+
+type CustomerStats {
+  activeContracts: Int!
+  averageContractValue: Float!
+  firstContractDate: DateTime
+  isActive: Boolean!
+  lastContractDate: DateTime
+  lifetimeValueScore: Float!
+  totalContracts: Int!
+  totalValue: Float!
+}
+
+"""Customer status"""
+enum CustomerStatus {
+  ACTIVE
+  ARCHIVED
+  INACTIVE
 }
 
 """DateTime custom scalar type"""
@@ -448,6 +565,11 @@ type DuplicateCheckResult {
   existingContract: Contract
   isDuplicate: Boolean!
   message: String
+}
+
+type Duration {
+  unit: String!
+  value: Int!
 }
 
 type Evidence {
@@ -502,6 +624,14 @@ type FieldMatch {
   confidence: Float!
   field: String!
   value: String!
+}
+
+type FieldScoreDetail {
+  actualScore: Float!
+  category: String!
+  field: String!
+  hasValue: Boolean!
+  maxScore: Float!
 }
 
 type FieldValidationResult {
@@ -597,15 +727,21 @@ type KPIMetric {
 }
 
 type LlmParseResult {
+  completenessScore: CompletenessScore
+  confidence: Float
   error: String
   extractedData: ContractExtractedData
+  extractedDataJson: JSONObject
   hybridStrategy: HybridStrategyInfo
   llmModel: String
   llmProvider: String
+  llmTokensUsed: Int
   pageCount: Int
   processingTimeMs: Int
   rawText: String
+  strategyUsed: ParseStrategy
   success: Boolean!
+  warnings: [String!]
 }
 
 type LlmValidationResult {
@@ -674,6 +810,8 @@ type MonthlyUtilization {
 }
 
 type Mutation {
+  addCustomerContact(customerId: ID!, input: CreateContactInput!): CustomerContact!
+
   """Assign a tag to a contract"""
   assignTagToContract(contractId: ID!, tagId: ID!): Boolean!
 
@@ -688,6 +826,7 @@ type Mutation {
 
   """Create a new contract"""
   createContract(input: CreateContractInput!): Contract!
+  createCustomer(input: CreateCustomerInput!): Customer!
 
   """Create a new department (Admin only)"""
   createDepartment(input: CreateDepartmentInput!): Department!
@@ -703,6 +842,7 @@ type Mutation {
 
   """Delete a contract"""
   deleteContract(id: ID!): Boolean!
+  deleteCustomer(id: ID!): Customer!
 
   """Delete a department (Admin only)"""
   deleteDepartment(id: String!): DeleteResult!
@@ -724,10 +864,16 @@ type Mutation {
 
   """Parse a document and extract contract fields"""
   parseAndExtract(objectName: String!): ParseResult!
+
+  """Parse contract from uploaded file with hybrid strategy"""
   parseContractWithLlm(objectName: String!): LlmParseResult!
+
+  """Parse contract text with mixed strategy (programmatic + LLM)"""
+  parseWithLlm(input: ParseWithLlmInput!): LlmParseResult!
 
   """Register a new user"""
   register(input: RegisterInput!): User!
+  removeCustomerContact(contactId: ID!): CustomerContact!
 
   """Remove a tag from a contract"""
   removeTagFromContract(contractId: ID!, tagId: ID!): Boolean!
@@ -740,6 +886,8 @@ type Mutation {
 
   """Update an existing contract"""
   updateContract(id: ID!, input: UpdateContractInput!): Contract!
+  updateCustomer(id: ID!, input: UpdateCustomerInput!): Customer!
+  updateCustomerContact(contactId: ID!, input: UpdateContactInput!): CustomerContact!
 
   """Update a department (Admin only)"""
   updateDepartment(id: String!, input: UpdateDepartmentInput!): Department!
@@ -776,6 +924,12 @@ enum OverdueLevel {
   MEDIUM
 }
 
+type PaginatedCustomers {
+  hasMore: Boolean!
+  items: [Customer!]!
+  total: Int!
+}
+
 type ParseResult {
   error: String
   extractedFields: ExtractedFields
@@ -800,6 +954,36 @@ enum ParseStatus {
 
   """解析中"""
   PROCESSING
+}
+
+"""Strategy for parsing contracts based on completeness score"""
+enum ParseStrategy {
+  DIRECT_USE
+  LLM_FULL_EXTRACTION
+  LLM_VALIDATION
+}
+
+input ParseWithLlmInput {
+  contractId: String
+  forceStrategy: ParseStrategy
+  programmaticResult: JSONObject
+  textContent: String!
+}
+
+type PartiesInfoType {
+  additionalParties: [AdditionalParty!]!
+  firstParty: PartyInfo!
+  secondParty: PartyInfo!
+}
+
+type PartyInfo {
+  authorizedSignatory: AuthorizedSignatory
+  contactPerson: ContactPerson
+  legalEntityType: String
+  name: String
+  operationalAddress: String
+  registeredAddress: String
+  registrationNumber: String
 }
 
 type PresignedUrl {
@@ -830,6 +1014,9 @@ type Query {
 
   """Get paginated audit logs"""
   auditLogs(filter: AuditLogFilterInput, page: Int! = 1, pageSize: Int! = 50): AuditLogConnection!
+
+  """Calculate completeness score for extracted fields"""
+  calculateCompleteness(extractedFields: JSONObject!): CompletenessScore!
 
   """获取案例库概览"""
   caseOverview: CaseOverview!
@@ -863,12 +1050,15 @@ type Query {
 
   """获取核心KPI指标"""
   coreKPIs(period: String = "monthly"): CoreKPIs!
+  customer(id: ID!): Customer!
 
   """获取客户360°视图"""
   customer360(customerId: String!): Customer360
 
   """获取客户概览"""
   customerOverview: CustomerOverview!
+  customerStats(id: ID!): CustomerStats!
+  customers(filter: CustomerFilterInput): PaginatedCustomers!
 
   """Get a single department by ID (Admin only)"""
   department(id: String!): Department
@@ -881,6 +1071,11 @@ type Query {
 
   """获取履约证据链"""
   evidenceChain(contractId: String!): EvidenceChain!
+
+  """
+  Extract basic contract fields (identification, parties, term) from text
+  """
+  extractBasicFields(textContent: String!): BasicExtractedFieldsType!
 
   """Extract contract fields from provided text"""
   extractFieldsFromText(text: String!): ExtractedFields!
@@ -995,6 +1190,12 @@ enum RenewalPriority {
   HIGH
   LOW
   MEDIUM
+}
+
+type RenewalTerms {
+  automaticRenewal: Boolean!
+  noticePeriod: Duration
+  renewalTerm: String
 }
 
 type ResetPasswordResult {
@@ -1208,6 +1409,14 @@ type TypeRevenue {
   type: ContractType!
 }
 
+input UpdateContactInput {
+  email: String
+  isPrimary: Boolean
+  name: String
+  phone: String
+  title: String
+}
+
 input UpdateContractInput {
   amountWithTax: String
   amountWithoutTax: String
@@ -1240,6 +1449,14 @@ input UpdateContractInput {
   taxRate: String
   type: ContractType
   uploadedById: String
+}
+
+input UpdateCustomerInput {
+  address: String
+  fullName: String
+  industry: String
+  shortName: String
+  status: CustomerStatus
 }
 
 input UpdateDepartmentInput {

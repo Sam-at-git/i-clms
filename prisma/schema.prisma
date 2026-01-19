@@ -71,24 +71,50 @@ model Department {
 // ================================
 
 model Customer {
-  id            String  @id @default(cuid())
-  name          String  // 客户公司全称
-  shortName     String? // 简称
-  creditCode    String? @unique // 统一社会信用代码
-  industry      String? // 所属行业
-  address       String? // 地址
-  contactPerson String? // 联系人
-  contactPhone  String? // 联系电话
-  contactEmail  String? // 联系邮箱
+  id            String         @id @default(cuid())
+  name          String         // 客户公司全称
+  shortName     String?        // 简称
+  creditCode    String?        @unique // 统一社会信用代码
+  industry      String?        // 所属行业
+  address       String?        // 地址
+  contactPerson String?        // 主联系人 (legacy)
+  contactPhone  String?        // 联系电话 (legacy)
+  contactEmail  String?        // 联系邮箱 (legacy)
+  status        CustomerStatus @default(ACTIVE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // 关联
   contracts Contract[]
+  contacts  CustomerContact[]
 
   @@index([name])
   @@index([creditCode])
+  @@index([status])
+}
+
+model CustomerContact {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  name      String  // 联系人姓名
+  title     String? // 职务
+  phone     String? // 电话
+  email     String? // 邮箱
+  isPrimary Boolean @default(false) // 是否主联系人
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+enum CustomerStatus {
+  ACTIVE   // 活跃
+  INACTIVE // 不活跃
+  ARCHIVED // 已归档
 }
 
 // ================================

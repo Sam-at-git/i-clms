@@ -29,6 +29,12 @@ export type Scalars = {
   JSONObject: { input: any; output: any; }
 };
 
+export type AdditionalParty = {
+  __typename?: 'AdditionalParty';
+  info: PartyInfo;
+  role: Scalars['String']['output'];
+};
+
 export type AnalyticsDimension = {
   __typename?: 'AnalyticsDimension';
   dimension: Scalars['String']['output'];
@@ -86,6 +92,21 @@ export type AuthResponse = {
   user: User;
 };
 
+export type AuthorizedSignatory = {
+  __typename?: 'AuthorizedSignatory';
+  name?: Maybe<Scalars['String']['output']>;
+  signatureDate?: Maybe<Scalars['String']['output']>;
+  title?: Maybe<Scalars['String']['output']>;
+};
+
+export type BasicExtractedFieldsType = {
+  __typename?: 'BasicExtractedFieldsType';
+  extractionConfidence: Scalars['Float']['output'];
+  identification: ContractIdentificationType;
+  parties: PartiesInfoType;
+  term: ContractTermType;
+};
+
 export type BasicInfo = {
   __typename?: 'BasicInfo';
   contractName?: Maybe<Scalars['String']['output']>;
@@ -123,6 +144,14 @@ export type CashFlowForecast = {
   month: Scalars['String']['output'];
   pendingAmount: Scalars['Float']['output'];
   receivedAmount: Scalars['Float']['output'];
+};
+
+export type CategoryScores = {
+  __typename?: 'CategoryScores';
+  basic: Scalars['Float']['output'];
+  financial: Scalars['Float']['output'];
+  other: Scalars['Float']['output'];
+  temporal: Scalars['Float']['output'];
 };
 
 export type CategoryTags = {
@@ -167,6 +196,16 @@ export type CompanyHealth = {
   trend: Array<MonthlyScore>;
 };
 
+export type CompletenessScore = {
+  __typename?: 'CompletenessScore';
+  categoryScores: CategoryScores;
+  details: Array<FieldScoreDetail>;
+  maxScore: Scalars['Float']['output'];
+  percentage: Scalars['Float']['output'];
+  strategy: ParseStrategy;
+  totalScore: Scalars['Float']['output'];
+};
+
 export type ComplianceOverview = {
   __typename?: 'ComplianceOverview';
   avgScore: Scalars['Float']['output'];
@@ -180,6 +219,14 @@ export type ComplianceStats = {
   count: Scalars['Float']['output'];
   level: Scalars['String']['output'];
   percentage: Scalars['Float']['output'];
+};
+
+export type ContactPerson = {
+  __typename?: 'ContactPerson';
+  email?: Maybe<Scalars['String']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+  phone?: Maybe<Scalars['String']['output']>;
+  title?: Maybe<Scalars['String']['output']>;
 };
 
 export type Contract = {
@@ -263,6 +310,16 @@ export type ContractFilterInput = {
   signedBefore?: InputMaybe<Scalars['DateTime']['input']>;
   statuses?: InputMaybe<Array<ContractStatus>>;
   types?: InputMaybe<Array<ContractType>>;
+};
+
+export type ContractIdentificationType = {
+  __typename?: 'ContractIdentificationType';
+  contractNumber?: Maybe<Scalars['String']['output']>;
+  contractTitle?: Maybe<Scalars['String']['output']>;
+  contractType?: Maybe<Scalars['String']['output']>;
+  effectiveLanguage?: Maybe<Scalars['String']['output']>;
+  subType?: Maybe<Scalars['String']['output']>;
+  versionNumber?: Maybe<Scalars['String']['output']>;
 };
 
 /** Field to order contracts by */
@@ -356,6 +413,16 @@ export type ContractSummary = {
   type: ContractType;
 };
 
+export type ContractTermType = {
+  __typename?: 'ContractTermType';
+  commencementDate?: Maybe<Scalars['String']['output']>;
+  duration?: Maybe<Duration>;
+  effectiveDate?: Maybe<Scalars['String']['output']>;
+  executionDate?: Maybe<Scalars['String']['output']>;
+  renewal?: Maybe<RenewalTerms>;
+  terminationDate?: Maybe<Scalars['String']['output']>;
+};
+
 /** Type of contract */
 export enum ContractType {
   /** 产品购销合同 */
@@ -371,6 +438,14 @@ export type CoreKpIs = {
   categories: Array<KpiCategory>;
   highlights: Array<Scalars['String']['output']>;
   period: Scalars['String']['output'];
+};
+
+export type CreateContactInput = {
+  email?: InputMaybe<Scalars['String']['input']>;
+  isPrimary?: InputMaybe<Scalars['Boolean']['input']>;
+  name: Scalars['String']['input'];
+  phone?: InputMaybe<Scalars['String']['input']>;
+  title?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CreateContractInput = {
@@ -402,6 +477,15 @@ export type CreateContractInput = {
   uploadedById: Scalars['String']['input'];
 };
 
+export type CreateCustomerInput = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  contacts?: InputMaybe<Array<CreateContactInput>>;
+  creditCode?: InputMaybe<Scalars['String']['input']>;
+  fullName: Scalars['String']['input'];
+  industry?: InputMaybe<Scalars['String']['input']>;
+  shortName?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type CreateDepartmentInput = {
   code: Scalars['String']['input'];
   name: Scalars['String']['input'];
@@ -426,12 +510,15 @@ export type Customer = {
   contactEmail?: Maybe<Scalars['String']['output']>;
   contactPerson?: Maybe<Scalars['String']['output']>;
   contactPhone?: Maybe<Scalars['String']['output']>;
+  contacts: Array<CustomerContact>;
+  contracts?: Maybe<Array<Contract>>;
   createdAt: Scalars['DateTime']['output'];
   creditCode?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   industry?: Maybe<Scalars['String']['output']>;
   name: Scalars['String']['output'];
   shortName?: Maybe<Scalars['String']['output']>;
+  status: CustomerStatus;
   updatedAt: Scalars['DateTime']['output'];
 };
 
@@ -446,6 +533,27 @@ export type Customer360 = {
   lastContractDate?: Maybe<Scalars['DateTime']['output']>;
   totalContracts: Scalars['Int']['output'];
   totalValue: Scalars['Float']['output'];
+};
+
+export type CustomerContact = {
+  __typename?: 'CustomerContact';
+  createdAt: Scalars['DateTime']['output'];
+  customerId: Scalars['String']['output'];
+  email?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  isPrimary: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  phone?: Maybe<Scalars['String']['output']>;
+  title?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type CustomerFilterInput = {
+  industry?: InputMaybe<Scalars['String']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  status?: InputMaybe<CustomerStatus>;
+  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type CustomerOverview = {
@@ -473,6 +581,25 @@ export type CustomerRevenue = {
   customerName: Scalars['String']['output'];
 };
 
+export type CustomerStats = {
+  __typename?: 'CustomerStats';
+  activeContracts: Scalars['Int']['output'];
+  averageContractValue: Scalars['Float']['output'];
+  firstContractDate?: Maybe<Scalars['DateTime']['output']>;
+  isActive: Scalars['Boolean']['output'];
+  lastContractDate?: Maybe<Scalars['DateTime']['output']>;
+  lifetimeValueScore: Scalars['Float']['output'];
+  totalContracts: Scalars['Int']['output'];
+  totalValue: Scalars['Float']['output'];
+};
+
+/** Customer status */
+export enum CustomerStatus {
+  Active = 'ACTIVE',
+  Archived = 'ARCHIVED',
+  Inactive = 'INACTIVE'
+}
+
 export type DeleteResult = {
   __typename?: 'DeleteResult';
   message?: Maybe<Scalars['String']['output']>;
@@ -494,6 +621,12 @@ export type DuplicateCheckResult = {
   existingContract?: Maybe<Contract>;
   isDuplicate: Scalars['Boolean']['output'];
   message?: Maybe<Scalars['String']['output']>;
+};
+
+export type Duration = {
+  __typename?: 'Duration';
+  unit: Scalars['String']['output'];
+  value: Scalars['Int']['output'];
 };
 
 export type Evidence = {
@@ -555,6 +688,15 @@ export type FieldMatch = {
   confidence: Scalars['Float']['output'];
   field: Scalars['String']['output'];
   value: Scalars['String']['output'];
+};
+
+export type FieldScoreDetail = {
+  __typename?: 'FieldScoreDetail';
+  actualScore: Scalars['Float']['output'];
+  category: Scalars['String']['output'];
+  field: Scalars['String']['output'];
+  hasValue: Scalars['Boolean']['output'];
+  maxScore: Scalars['Float']['output'];
 };
 
 export type FieldValidationResult = {
@@ -654,15 +796,21 @@ export type KpiMetric = {
 
 export type LlmParseResult = {
   __typename?: 'LlmParseResult';
+  completenessScore?: Maybe<CompletenessScore>;
+  confidence?: Maybe<Scalars['Float']['output']>;
   error?: Maybe<Scalars['String']['output']>;
   extractedData?: Maybe<ContractExtractedData>;
+  extractedDataJson?: Maybe<Scalars['JSONObject']['output']>;
   hybridStrategy?: Maybe<HybridStrategyInfo>;
   llmModel?: Maybe<Scalars['String']['output']>;
   llmProvider?: Maybe<Scalars['String']['output']>;
+  llmTokensUsed?: Maybe<Scalars['Int']['output']>;
   pageCount?: Maybe<Scalars['Int']['output']>;
   processingTimeMs?: Maybe<Scalars['Int']['output']>;
   rawText?: Maybe<Scalars['String']['output']>;
+  strategyUsed?: Maybe<ParseStrategy>;
   success: Scalars['Boolean']['output'];
+  warnings?: Maybe<Array<Scalars['String']['output']>>;
 };
 
 export type LlmValidationResult = {
@@ -739,6 +887,7 @@ export type MonthlyUtilization = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  addCustomerContact: CustomerContact;
   /** Assign a tag to a contract */
   assignTagToContract: Scalars['Boolean']['output'];
   /** Batch assign tags to a contract */
@@ -749,6 +898,7 @@ export type Mutation = {
   changePassword: ChangePasswordResult;
   /** Create a new contract */
   createContract: Contract;
+  createCustomer: Customer;
   /** Create a new department (Admin only) */
   createDepartment: Department;
   /** Create a new contract or update existing one if duplicate */
@@ -759,6 +909,7 @@ export type Mutation = {
   createUser: User;
   /** Delete a contract */
   deleteContract: Scalars['Boolean']['output'];
+  deleteCustomer: Customer;
   /** Delete a department (Admin only) */
   deleteDepartment: DeleteResult;
   /** 删除文件 */
@@ -773,9 +924,13 @@ export type Mutation = {
   login: AuthResponse;
   /** Parse a document and extract contract fields */
   parseAndExtract: ParseResult;
+  /** Parse contract from uploaded file with hybrid strategy */
   parseContractWithLlm: LlmParseResult;
+  /** Parse contract text with mixed strategy (programmatic + LLM) */
+  parseWithLlm: LlmParseResult;
   /** Register a new user */
   register: User;
+  removeCustomerContact: CustomerContact;
   /** Remove a tag from a contract */
   removeTagFromContract: Scalars['Boolean']['output'];
   /** Reset user password (Admin only) */
@@ -784,12 +939,20 @@ export type Mutation = {
   toggleUserStatus: User;
   /** Update an existing contract */
   updateContract: Contract;
+  updateCustomer: Customer;
+  updateCustomerContact: CustomerContact;
   /** Update a department (Admin only) */
   updateDepartment: Department;
   /** Update a tag */
   updateTag: Tag;
   /** Update a user (Admin only) */
   updateUser: User;
+};
+
+
+export type MutationAddCustomerContactArgs = {
+  customerId: Scalars['ID']['input'];
+  input: CreateContactInput;
 };
 
 
@@ -820,6 +983,11 @@ export type MutationCreateContractArgs = {
 };
 
 
+export type MutationCreateCustomerArgs = {
+  input: CreateCustomerInput;
+};
+
+
 export type MutationCreateDepartmentArgs = {
   input: CreateDepartmentInput;
 };
@@ -843,6 +1011,11 @@ export type MutationCreateUserArgs = {
 
 
 export type MutationDeleteContractArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteCustomerArgs = {
   id: Scalars['ID']['input'];
 };
 
@@ -887,8 +1060,18 @@ export type MutationParseContractWithLlmArgs = {
 };
 
 
+export type MutationParseWithLlmArgs = {
+  input: ParseWithLlmInput;
+};
+
+
 export type MutationRegisterArgs = {
   input: RegisterInput;
+};
+
+
+export type MutationRemoveCustomerContactArgs = {
+  contactId: Scalars['ID']['input'];
 };
 
 
@@ -911,6 +1094,18 @@ export type MutationToggleUserStatusArgs = {
 export type MutationUpdateContractArgs = {
   id: Scalars['ID']['input'];
   input: UpdateContractInput;
+};
+
+
+export type MutationUpdateCustomerArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdateCustomerInput;
+};
+
+
+export type MutationUpdateCustomerContactArgs = {
+  contactId: Scalars['ID']['input'];
+  input: UpdateContactInput;
 };
 
 
@@ -958,6 +1153,13 @@ export enum OverdueLevel {
   Medium = 'MEDIUM'
 }
 
+export type PaginatedCustomers = {
+  __typename?: 'PaginatedCustomers';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Customer>;
+  total: Scalars['Int']['output'];
+};
+
 export type ParseResult = {
   __typename?: 'ParseResult';
   error?: Maybe<Scalars['String']['output']>;
@@ -980,6 +1182,38 @@ export enum ParseStatus {
   /** 解析中 */
   Processing = 'PROCESSING'
 }
+
+/** Strategy for parsing contracts based on completeness score */
+export enum ParseStrategy {
+  DirectUse = 'DIRECT_USE',
+  LlmFullExtraction = 'LLM_FULL_EXTRACTION',
+  LlmValidation = 'LLM_VALIDATION'
+}
+
+export type ParseWithLlmInput = {
+  contractId?: InputMaybe<Scalars['String']['input']>;
+  forceStrategy?: InputMaybe<ParseStrategy>;
+  programmaticResult?: InputMaybe<Scalars['JSONObject']['input']>;
+  textContent: Scalars['String']['input'];
+};
+
+export type PartiesInfoType = {
+  __typename?: 'PartiesInfoType';
+  additionalParties: Array<AdditionalParty>;
+  firstParty: PartyInfo;
+  secondParty: PartyInfo;
+};
+
+export type PartyInfo = {
+  __typename?: 'PartyInfo';
+  authorizedSignatory?: Maybe<AuthorizedSignatory>;
+  contactPerson?: Maybe<ContactPerson>;
+  legalEntityType?: Maybe<Scalars['String']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+  operationalAddress?: Maybe<Scalars['String']['output']>;
+  registeredAddress?: Maybe<Scalars['String']['output']>;
+  registrationNumber?: Maybe<Scalars['String']['output']>;
+};
 
 export type PresignedUrl = {
   __typename?: 'PresignedUrl';
@@ -1008,6 +1242,8 @@ export type Query = {
   auditEntityTypes: Array<Scalars['String']['output']>;
   /** Get paginated audit logs */
   auditLogs: AuditLogConnection;
+  /** Calculate completeness score for extracted fields */
+  calculateCompleteness: CompletenessScore;
   /** 获取案例库概览 */
   caseOverview: CaseOverview;
   /** 获取现金流预测 */
@@ -1030,10 +1266,13 @@ export type Query = {
   contracts: ContractConnection;
   /** 获取核心KPI指标 */
   coreKPIs: CoreKpIs;
+  customer: Customer;
   /** 获取客户360°视图 */
   customer360?: Maybe<Customer360>;
   /** 获取客户概览 */
   customerOverview: CustomerOverview;
+  customerStats: CustomerStats;
+  customers: PaginatedCustomers;
   /** Get a single department by ID (Admin only) */
   department?: Maybe<Department>;
   /** Get all departments */
@@ -1042,6 +1281,8 @@ export type Query = {
   detectRiskClauses: Array<RiskClause>;
   /** 获取履约证据链 */
   evidenceChain: EvidenceChain;
+  /** Extract basic contract fields (identification, parties, term) from text */
+  extractBasicFields: BasicExtractedFieldsType;
   /** Extract contract fields from provided text */
   extractFieldsFromText: ExtractedFields;
   /** 检查文件是否存在 */
@@ -1117,6 +1358,11 @@ export type QueryAuditLogsArgs = {
 };
 
 
+export type QueryCalculateCompletenessArgs = {
+  extractedFields: Scalars['JSONObject']['input'];
+};
+
+
 export type QueryCashFlowForecastArgs = {
   months?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -1160,8 +1406,23 @@ export type QueryCoreKpIsArgs = {
 };
 
 
+export type QueryCustomerArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type QueryCustomer360Args = {
   customerId: Scalars['String']['input'];
+};
+
+
+export type QueryCustomerStatsArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryCustomersArgs = {
+  filter?: InputMaybe<CustomerFilterInput>;
 };
 
 
@@ -1182,6 +1443,11 @@ export type QueryDetectRiskClausesArgs = {
 
 export type QueryEvidenceChainArgs = {
   contractId: Scalars['String']['input'];
+};
+
+
+export type QueryExtractBasicFieldsArgs = {
+  textContent: Scalars['String']['input'];
 };
 
 
@@ -1311,6 +1577,13 @@ export enum RenewalPriority {
   Low = 'LOW',
   Medium = 'MEDIUM'
 }
+
+export type RenewalTerms = {
+  __typename?: 'RenewalTerms';
+  automaticRenewal: Scalars['Boolean']['output'];
+  noticePeriod?: Maybe<Duration>;
+  renewalTerm?: Maybe<Scalars['String']['output']>;
+};
 
 export type ResetPasswordResult = {
   __typename?: 'ResetPasswordResult';
@@ -1550,6 +1823,14 @@ export type TypeRevenue = {
   type: ContractType;
 };
 
+export type UpdateContactInput = {
+  email?: InputMaybe<Scalars['String']['input']>;
+  isPrimary?: InputMaybe<Scalars['Boolean']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  phone?: InputMaybe<Scalars['String']['input']>;
+  title?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type UpdateContractInput = {
   amountWithTax?: InputMaybe<Scalars['String']['input']>;
   amountWithoutTax?: InputMaybe<Scalars['String']['input']>;
@@ -1581,6 +1862,14 @@ export type UpdateContractInput = {
   taxRate?: InputMaybe<Scalars['String']['input']>;
   type?: InputMaybe<ContractType>;
   uploadedById?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateCustomerInput = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  fullName?: InputMaybe<Scalars['String']['input']>;
+  industry?: InputMaybe<Scalars['String']['input']>;
+  shortName?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<CustomerStatus>;
 };
 
 export type UpdateDepartmentInput = {
