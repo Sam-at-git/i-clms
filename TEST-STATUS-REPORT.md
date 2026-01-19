@@ -1,21 +1,21 @@
 # 单元测试状态报告
 
 生成日期: 2026-01-19
-**最后更新**: Phase 3 完成
+**最后更新**: Phase 4 完成
 
 ## 执行摘要
 
-已成功为项目配置Jest测试环境，并为核心服务编写了全面的单元测试。由于Prisma TypeScript类型系统的复杂性，采用了`jest-mock-extended`库来解决mock问题。Phase 3新增ContractService完整测试覆盖。
+已成功为项目配置Jest测试环境，并为核心服务编写了全面的单元测试。由于Prisma TypeScript类型系统的复杂性，采用了`jest-mock-extended`库来解决mock问题。Phase 4新增FinanceService完整测试覆盖。
 
 ### 当前测试覆盖率
 
-- **测试套件**: 8个通过
-- **测试用例**: 113个通过
-- **代码覆盖率**: ~19.79%（Phase 3 完成）
-  - Statements: 19.30%
-  - Branches: 20.06%
-  - Functions: 11.53%
-  - Lines: 19.79%
+- **测试套件**: 9个通过
+- **测试用例**: 132个通过
+- **代码覆盖率**: ~23.99%（Phase 4 完成）
+  - Statements: 23.62%
+  - Branches: 23.40%
+  - Functions: 14.65%
+  - Lines: 23.99%
 
 ## 已完成的工作
 
@@ -37,6 +37,7 @@
 | AuditService | `audit.service.spec.ts` | 18 | ✅ 全部通过 | ~70% statements |
 | StorageService | `storage.service.spec.ts` | 25 | ✅ 全部通过 | ~95% statements |
 | ContractService | `contract.service.spec.ts` | 10 | ✅ 全部通过 | ~85% statements |
+| FinanceService | `finance.service.spec.ts` | 19 | ✅ 全部通过 | ~90% statements |
 | AppService | `app.service.spec.ts` | 2 | ✅ 全部通过 | 100% statements |
 | PrismaService | `prisma.service.spec.ts` | 3 | ✅ 全部通过 | 46.66% statements |
 
@@ -233,6 +234,33 @@
 #### delete
 - ✅ should delete contract successfully
 - ✅ should throw NotFoundException when deleting non-existent contract
+
+### FinanceService 测试 (19个用例)
+
+#### getRevenueStats
+- ✅ should return revenue statistics
+- ✅ should calculate monthly revenue correctly
+- ✅ should calculate revenue by contract type
+- ✅ should calculate revenue by customer
+- ✅ should filter by year
+- ✅ should filter by date range
+- ✅ should handle contracts without signed date
+- ✅ should return zero revenue when no contracts
+
+#### getCashFlowForecast
+- ✅ should return cash flow forecast for 6 months by default
+- ✅ should calculate expected income from milestones
+- ✅ should calculate initial payment from contracts
+- ✅ should handle custom months parameter
+
+#### getOverdueAlerts
+- ✅ should return overdue milestone alerts
+- ✅ should return overdue contract alerts
+- ✅ should calculate overdue levels correctly
+- ✅ should sort alerts by days overdue descending
+- ✅ should skip milestones without planned date
+- ✅ should skip contracts without expiry date
+- ✅ should return empty array when no overdue items
 
 ### AppService 测试 (2个用例)
 
