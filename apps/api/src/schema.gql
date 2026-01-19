@@ -14,6 +14,40 @@ type AnalyticsMetrics {
   totalValue: Float!
 }
 
+type AuditLog {
+  action: String!
+  createdAt: DateTime!
+  entityId: String!
+  entityName: String
+  entityType: String!
+  id: ID!
+  ipAddress: String
+  newValue: JSON
+  oldValue: JSON
+  operator: AuditOperator!
+}
+
+type AuditLogConnection {
+  items: [AuditLog!]!
+  page: Int!
+  pageSize: Int!
+  total: Int!
+}
+
+input AuditLogFilterInput {
+  action: String
+  endDate: DateTime
+  entityType: String
+  operatorId: String
+  startDate: DateTime
+}
+
+type AuditOperator {
+  email: String!
+  id: ID!
+  name: String!
+}
+
 type AuthResponse {
   accessToken: String!
   user: User!
@@ -49,6 +83,16 @@ type CashFlowForecast {
 type CategoryTags {
   category: String!
   tags: [TagStats!]!
+}
+
+input ChangePasswordInput {
+  currentPassword: String!
+  newPassword: String!
+}
+
+type ChangePasswordResult {
+  message: String
+  success: Boolean!
 }
 
 type ClassificationResult {
@@ -293,6 +337,24 @@ input CreateContractInput {
   uploadedById: String!
 }
 
+input CreateDepartmentInput {
+  code: String!
+  name: String!
+}
+
+input CreateTagInput {
+  category: String!
+  color: String = "#3b82f6"
+  name: String!
+}
+
+input CreateUserInput {
+  departmentId: String!
+  email: String!
+  name: String!
+  role: UserRole!
+}
+
 type Customer {
   address: String
   contactEmail: String
@@ -347,22 +409,18 @@ scalar DateTime
 """Decimal custom scalar type"""
 scalar Decimal
 
-type Department {
-  code: DepartmentCode!
-  createdAt: DateTime!
-  id: ID!
-  name: String!
-  updatedAt: DateTime!
+type DeleteResult {
+  message: String
+  success: Boolean!
 }
 
-"""Department code"""
-enum DepartmentCode {
-  DELIVERY
-  EXECUTIVE
-  FINANCE
-  LEGAL
-  MARKETING
-  SALES
+type Department {
+  code: String!
+  createdAt: DateTime!
+  id: ID!
+  isActive: Boolean!
+  name: String!
+  updatedAt: DateTime!
 }
 
 type Evidence {
@@ -454,6 +512,9 @@ type IndustryCount {
   totalValue: Float!
 }
 
+"""JSON custom scalar type"""
+scalar JSON
+
 type KPICategory {
   category: String!
   metrics: [KPIMetric!]!
@@ -529,17 +590,41 @@ type MonthlyUtilization {
 }
 
 type Mutation {
+  """Assign a tag to a contract"""
+  assignTagToContract(contractId: ID!, tagId: ID!): Boolean!
+
+  """Batch assign tags to a contract"""
+  assignTagsToContract(contractId: ID!, tagIds: [ID!]!): Boolean!
+
   """自动分类合同"""
   autoClassifyContract(contractId: String!): ClassificationResult!
+
+  """Change your own password"""
+  changePassword(input: ChangePasswordInput!): ChangePasswordResult!
 
   """Create a new contract"""
   createContract(input: CreateContractInput!): Contract!
 
+  """Create a new department (Admin only)"""
+  createDepartment(input: CreateDepartmentInput!): Department!
+
+  """Create a new tag"""
+  createTag(input: CreateTagInput!): Tag!
+
+  """Create a new user (Admin only)"""
+  createUser(input: CreateUserInput!): User!
+
   """Delete a contract"""
   deleteContract(id: ID!): Boolean!
 
+  """Delete a department (Admin only)"""
+  deleteDepartment(id: String!): DeleteResult!
+
   """删除文件"""
   deleteFile(objectName: String!): Boolean!
+
+  """Delete a tag (soft delete)"""
+  deleteTag(id: String!): TagDeleteResult!
 
   """提取标签"""
   extractTags(contractId: String!): [ExtractedTag!]!
@@ -556,8 +641,26 @@ type Mutation {
   """Register a new user"""
   register(input: RegisterInput!): User!
 
+  """Remove a tag from a contract"""
+  removeTagFromContract(contractId: ID!, tagId: ID!): Boolean!
+
+  """Reset user password (Admin only)"""
+  resetUserPassword(id: String!): ResetPasswordResult!
+
+  """Toggle user active status (Admin only)"""
+  toggleUserStatus(id: String!): User!
+
   """Update an existing contract"""
   updateContract(id: ID!, input: UpdateContractInput!): Contract!
+
+  """Update a department (Admin only)"""
+  updateDepartment(id: String!, input: UpdateDepartmentInput!): Department!
+
+  """Update a tag"""
+  updateTag(id: String!, input: UpdateTagInput!): Tag!
+
+  """Update a user (Admin only)"""
+  updateUser(id: String!, input: UpdateUserInput!): User!
 }
 
 type OverdueAlert {
@@ -624,6 +727,15 @@ type Query {
   """评估合同风险"""
   assessContractRisk(contractId: String!): RiskAssessment!
 
+  """Get distinct audit actions for filtering"""
+  auditActions: [String!]!
+
+  """Get distinct entity types for filtering"""
+  auditEntityTypes: [String!]!
+
+  """Get paginated audit logs"""
+  auditLogs(filter: AuditLogFilterInput, page: Int! = 1, pageSize: Int! = 50): AuditLogConnection!
+
   """获取案例库概览"""
   caseOverview: CaseOverview!
 
@@ -659,6 +771,12 @@ type Query {
 
   """获取客户概览"""
   customerOverview: CustomerOverview!
+
+  """Get a single department by ID (Admin only)"""
+  department(id: String!): Department
+
+  """Get all departments"""
+  departments(includeInactive: Boolean! = false): [Department!]!
 
   """检测风险条款"""
   detectRiskClauses(contractId: String!): [RiskClause!]!
@@ -729,8 +847,23 @@ type Query {
   """语义搜索合同"""
   semanticSearch(limit: Int = 10, query: String!): [SemanticSearchResult!]!
 
+  """Get a single tag by ID"""
+  tag(id: String!): Tag
+
+  """Get all tag categories"""
+  tagCategories: [String!]!
+
   """获取智能标签概览"""
   tagOverview: TagOverview!
+
+  """Get all tags"""
+  tags(category: String, includeInactive: Boolean! = false, search: String): [Tag!]!
+
+  """Get a single user by ID (Admin only)"""
+  user(id: String!): User
+
+  """Get paginated users (Admin only)"""
+  users(filter: UserFilterInput, page: Int! = 1, pageSize: Int! = 20): UserConnection!
 }
 
 input RegisterInput {
@@ -764,6 +897,11 @@ enum RenewalPriority {
   HIGH
   LOW
   MEDIUM
+}
+
+type ResetPasswordResult {
+  success: Boolean!
+  temporaryPassword: String!
 }
 
 type ResourceUtilization {
@@ -922,6 +1060,22 @@ type StatusCount {
   status: ContractStatus!
 }
 
+type Tag {
+  category: String!
+  color: String!
+  createdAt: DateTime!
+  id: ID!
+  isActive: Boolean!
+  isSystem: Boolean!
+  name: String!
+  updatedAt: DateTime!
+}
+
+type TagDeleteResult {
+  message: String
+  success: Boolean!
+}
+
 type TagOverview {
   byCategory: [CategoryTags!]!
   topTags: [TagStats!]!
@@ -980,17 +1134,58 @@ input UpdateContractInput {
   uploadedById: String
 }
 
+input UpdateDepartmentInput {
+  code: String
+  name: String
+}
+
+input UpdateTagInput {
+  category: String
+  color: String
+  name: String
+}
+
+input UpdateUserInput {
+  departmentId: String
+  email: String
+  name: String
+  role: UserRole
+}
+
 type User {
   createdAt: DateTime!
-  department: Department!
+  department: UserDepartment!
   email: String!
   id: ID!
+  isActive: Boolean!
+  lastPasswordChangedAt: DateTime
+  mustChangePassword: Boolean!
   name: String!
   role: UserRole!
   updatedAt: DateTime!
 }
 
-"""User role"""
+type UserConnection {
+  items: [User!]!
+  page: Int!
+  pageSize: Int!
+  total: Int!
+}
+
+type UserDepartment {
+  code: String!
+  id: ID!
+  name: String!
+}
+
+input UserFilterInput {
+  departmentId: String
+  isActive: Boolean
+  role: UserRole
+  search: String
+}
+
+"""User roles in the system"""
 enum UserRole {
   ADMIN
   DEPT_ADMIN
