@@ -37,7 +37,8 @@ import { CustomerModule } from '../customer/customer.module';
     PrismaModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'apps/api/src/schema.gql'),
+      // 生成到dist目录避免触发watch重启循环
+      autoSchemaFile: join(process.cwd(), 'dist/apps/api/schema.gql'),
       sortSchema: true,
       playground: process.env.NODE_ENV !== 'production',
       introspection: process.env.NODE_ENV !== 'production',
