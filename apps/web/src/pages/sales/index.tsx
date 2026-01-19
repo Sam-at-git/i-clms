@@ -69,6 +69,63 @@ const SALES_PERFORMANCE_QUERY = gql`
   }
 `;
 
+interface CustomerOverviewResult {
+  customerOverview: {
+    totalCustomers: number;
+    activeCustomers: number;
+    newCustomersThisYear: number;
+    byIndustry: Array<{ industry: string; count: number; totalValue: number }>;
+    topCustomers: Array<{
+      customerId: string;
+      customerName: string;
+      totalContracts: number;
+      totalValue: number;
+      activeContracts: number;
+      industry: string;
+    }>;
+  };
+}
+
+interface RenewalOverviewResult {
+  renewalOverview: {
+    expiringThisMonth: number;
+    expiringThisQuarter: number;
+    totalRenewalValue: number;
+    renewalRate: number;
+    renewalItems: Array<{
+      contractId: string;
+      contractNo: string;
+      customerName: string;
+      amount: number;
+      expiresAt: string;
+      daysUntilExpiry: number;
+      renewalProbability: number;
+      priority: 'LOW' | 'MEDIUM' | 'HIGH';
+    }>;
+  };
+}
+
+interface SalesPerformanceResult {
+  salesPerformance: {
+    totalSalesValue: number;
+    newSignValue: number;
+    renewalValue: number;
+    monthlyTrend: Array<{
+      month: string;
+      newSignValue: number;
+      renewalValue: number;
+      totalValue: number;
+    }>;
+    bySalesPerson: Array<{
+      salesPerson: string;
+      totalContracts: number;
+      totalValue: number;
+      newSignValue: number;
+      renewalValue: number;
+    }>;
+  };
+}
+
 export function SalesPage() {
   const currentYear = new Date().getFullYear();
 
@@ -76,19 +133,19 @@ export function SalesPage() {
     data: customerData,
     loading: customerLoading,
     error: customerError,
-  } = useQuery(CUSTOMER_OVERVIEW_QUERY);
+  } = useQuery<CustomerOverviewResult>(CUSTOMER_OVERVIEW_QUERY);
 
   const {
     data: renewalData,
     loading: renewalLoading,
     error: renewalError,
-  } = useQuery(RENEWAL_OVERVIEW_QUERY);
+  } = useQuery<RenewalOverviewResult>(RENEWAL_OVERVIEW_QUERY);
 
   const {
     data: salesData,
     loading: salesLoading,
     error: salesError,
-  } = useQuery(SALES_PERFORMANCE_QUERY, {
+  } = useQuery<SalesPerformanceResult>(SALES_PERFORMANCE_QUERY, {
     variables: { year: currentYear },
   });
 

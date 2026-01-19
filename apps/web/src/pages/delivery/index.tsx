@@ -72,24 +72,77 @@ const RESOURCE_UTILIZATION_QUERY = gql`
   }
 `;
 
+interface ProjectOverviewResult {
+  projectOverview: {
+    totalProjects: number;
+    byStatus: Array<{ status: string; count: number }>;
+    byCustomer: Array<{
+      customerId: string;
+      customerName: string;
+      projectCount: number;
+      activeCount: number;
+    }>;
+    completionRate: number;
+  };
+}
+
+interface MilestoneOverviewResult {
+  milestoneOverview: {
+    totalMilestones: number;
+    completedCount: number;
+    pendingCount: number;
+    overdueCount: number;
+    upcomingMilestones: Array<{
+      id: string;
+      name: string;
+      contractNo: string;
+      customerName: string;
+      plannedDate: string;
+      actualDate: string | null;
+      status: string;
+      amount: number;
+      daysOverdue: number;
+    }>;
+    overdueMilestones: Array<{
+      id: string;
+      name: string;
+      contractNo: string;
+      customerName: string;
+      plannedDate: string;
+      actualDate: string | null;
+      status: string;
+      amount: number;
+      daysOverdue: number;
+    }>;
+  };
+}
+
+interface ResourceUtilizationResult {
+  resourceUtilization: {
+    totalStaffContracts: number;
+    byRole: Array<{ role: string; count: number; totalValue: number }>;
+    monthlyTrend: Array<{ month: string; hoursAllocated: number; value: number }>;
+  };
+}
+
 export function DeliveryPage() {
   const {
     data: projectData,
     loading: projectLoading,
     error: projectError,
-  } = useQuery(PROJECT_OVERVIEW_QUERY);
+  } = useQuery<ProjectOverviewResult>(PROJECT_OVERVIEW_QUERY);
 
   const {
     data: milestoneData,
     loading: milestoneLoading,
     error: milestoneError,
-  } = useQuery(MILESTONE_OVERVIEW_QUERY);
+  } = useQuery<MilestoneOverviewResult>(MILESTONE_OVERVIEW_QUERY);
 
   const {
     data: resourceData,
     loading: resourceLoading,
     error: resourceError,
-  } = useQuery(RESOURCE_UTILIZATION_QUERY);
+  } = useQuery<ResourceUtilizationResult>(RESOURCE_UTILIZATION_QUERY);
 
   if (projectLoading || milestoneLoading || resourceLoading) {
     return (

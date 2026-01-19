@@ -116,9 +116,9 @@ export class UserService {
       throw new BadRequestException('Department not found');
     }
 
-    // Generate a random temporary password
-    const temporaryPassword = this.generateTemporaryPassword();
-    const hashedPassword = await bcrypt.hash(temporaryPassword, SALT_ROUNDS);
+    // Use a fixed initial password (user must change on first login)
+    const initialPassword = 'password123';
+    const hashedPassword = await bcrypt.hash(initialPassword, SALT_ROUNDS);
 
     const user = await this.prisma.user.create({
       data: {
@@ -150,7 +150,7 @@ export class UserService {
       ipAddress,
     });
 
-    this.logger.log(`User created: ${user.email} (temp password: ${temporaryPassword})`);
+    this.logger.log(`User created: ${user.email} (temp password: ${initialPassword})`);
     return this.toDto(user);
   }
 

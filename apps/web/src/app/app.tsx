@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import ContractsPage from '../pages/contracts';
 import ContractDetailPage from '../pages/contracts/[id]';
@@ -8,6 +9,11 @@ import SalesPage from '../pages/sales';
 import MarketPage from '../pages/market';
 import LegalPage from '../pages/legal';
 import ExecutivePage from '../pages/executive';
+import UsersPage from '../pages/users';
+import DepartmentsPage from '../pages/admin/departments';
+import TagsPage from '../pages/admin/tags';
+import AuditLogsPage from '../pages/admin/audit-logs';
+import PasswordPage from '../pages/settings/password';
 import { ProtectedRoute } from '../components/auth';
 import { useAuthStore } from '../state';
 
@@ -15,10 +21,15 @@ function Layout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleLogout = () => {
     clearAuth();
   };
+
+  const isAdmin = user?.role === 'ADMIN';
+  const isDeptAdmin = user?.role === 'DEPT_ADMIN';
 
   return (
     <div style={styles.layout}>
@@ -49,15 +60,57 @@ function Layout({ children }: { children: React.ReactNode }) {
             <Link to="/executive" style={styles.navLink}>
               管理驾驶舱
             </Link>
+            {(isAdmin || isDeptAdmin) && (
+              <div
+                style={styles.dropdown}
+                onMouseEnter={() => setShowAdminMenu(true)}
+                onMouseLeave={() => setShowAdminMenu(false)}
+              >
+                <span style={styles.navLink}>系统管理 ▾</span>
+                {showAdminMenu && (
+                  <div style={styles.dropdownMenu}>
+                    {isAdmin && (
+                      <>
+                        <Link to="/users" style={styles.dropdownItem}>
+                          用户管理
+                        </Link>
+                        <Link to="/admin/departments" style={styles.dropdownItem}>
+                          部门管理
+                        </Link>
+                      </>
+                    )}
+                    <Link to="/admin/tags" style={styles.dropdownItem}>
+                      标签管理
+                    </Link>
+                    {isAdmin && (
+                      <Link to="/admin/audit-logs" style={styles.dropdownItem}>
+                        审计日志
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div style={styles.userSection}>
             {isAuthenticated && user ? (
-              <>
-                <span style={styles.userName}>{user.name}</span>
-                <button onClick={handleLogout} style={styles.logoutButton}>
-                  退出
-                </button>
-              </>
+              <div
+                style={styles.userDropdown}
+                onMouseEnter={() => setShowUserMenu(true)}
+                onMouseLeave={() => setShowUserMenu(false)}
+              >
+                <span style={styles.userName}>{user.name} ▾</span>
+                {showUserMenu && (
+                  <div style={styles.userDropdownMenu}>
+                    <Link to="/settings/password" style={styles.dropdownItem}>
+                      修改密码
+                    </Link>
+                    <button onClick={handleLogout} style={styles.dropdownButton}>
+                      退出登录
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <Link to="/login" style={styles.loginLink}>
                 登录
@@ -146,6 +199,46 @@ export function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/users"
+                  element={
+                    <ProtectedRoute>
+                      <UsersPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/departments"
+                  element={
+                    <ProtectedRoute>
+                      <DepartmentsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/tags"
+                  element={
+                    <ProtectedRoute>
+                      <TagsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/audit-logs"
+                  element={
+                    <ProtectedRoute>
+                      <AuditLogsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/password"
+                  element={
+                    <ProtectedRoute>
+                      <PasswordPage />
+                    </ProtectedRoute>
+                  }
+                />
               </Routes>
             </Layout>
           }
@@ -190,6 +283,54 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     padding: '8px 12px',
     borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  dropdown: {
+    position: 'relative',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    minWidth: '160px',
+    padding: '8px 0',
+    zIndex: 1000,
+  },
+  dropdownItem: {
+    display: 'block',
+    padding: '10px 16px',
+    color: '#374151',
+    textDecoration: 'none',
+    fontSize: '14px',
+    transition: 'background-color 0.2s',
+  },
+  dropdownButton: {
+    display: 'block',
+    width: '100%',
+    padding: '10px 16px',
+    color: '#374151',
+    backgroundColor: 'transparent',
+    border: 'none',
+    fontSize: '14px',
+    textAlign: 'left',
+    cursor: 'pointer',
+  },
+  userDropdown: {
+    position: 'relative',
+  },
+  userDropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    minWidth: '140px',
+    padding: '8px 0',
+    zIndex: 1000,
   },
   userSection: {
     display: 'flex',

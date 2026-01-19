@@ -51,6 +51,41 @@ const OVERDUE_ALERTS_QUERY = gql`
   }
 `;
 
+interface RevenueStatsResult {
+  revenueStats: {
+    totalRevenue: number;
+    byMonth: Array<{ month: string; amount: number; count: number }>;
+    byContractType: Array<{ type: string; amount: number; percentage: number }>;
+    byCustomer: Array<{
+      customerId: string;
+      customerName: string;
+      amount: number;
+      contractCount: number;
+    }>;
+  };
+}
+
+interface CashFlowForecastResult {
+  cashFlowForecast: Array<{
+    month: string;
+    expectedIncome: number;
+    receivedAmount: number;
+    pendingAmount: number;
+  }>;
+}
+
+interface OverdueAlertsResult {
+  overdueAlerts: Array<{
+    contractId: string;
+    contractNo: string;
+    customerName: string;
+    expectedDate: string;
+    daysOverdue: number;
+    amount: number;
+    level: 'CRITICAL' | 'LOW' | 'MEDIUM' | 'HIGH';
+  }>;
+}
+
 export function FinancePage() {
   const currentYear = new Date().getFullYear();
 
@@ -58,7 +93,7 @@ export function FinancePage() {
     data: revenueData,
     loading: revenueLoading,
     error: revenueError,
-  } = useQuery(REVENUE_STATS_QUERY, {
+  } = useQuery<RevenueStatsResult>(REVENUE_STATS_QUERY, {
     variables: { filter: { year: currentYear } },
   });
 
@@ -66,7 +101,7 @@ export function FinancePage() {
     data: cashFlowData,
     loading: cashFlowLoading,
     error: cashFlowError,
-  } = useQuery(CASH_FLOW_QUERY, {
+  } = useQuery<CashFlowForecastResult>(CASH_FLOW_QUERY, {
     variables: { months: 6 },
   });
 
@@ -74,7 +109,7 @@ export function FinancePage() {
     data: overdueData,
     loading: overdueLoading,
     error: overdueError,
-  } = useQuery(OVERDUE_ALERTS_QUERY);
+  } = useQuery<OverdueAlertsResult>(OVERDUE_ALERTS_QUERY);
 
   if (revenueLoading || cashFlowLoading || overdueLoading) {
     return (

@@ -1,14 +1,15 @@
 import { useState, useRef } from 'react';
 import { gql } from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
+import { useAuthStore } from '../../state/auth.state';
 
 const PARSE_AND_EXTRACT = gql`
   mutation ParseAndExtract($objectName: String!) {
     parseAndExtract(objectName: $objectName) {
       success
-      textContent
+      text
       pageCount
-      fields {
+      extractedFields {
         contractNumber
         contractName
         partyA
@@ -51,7 +52,17 @@ interface ParsedFields {
   validPeriod?: string;
 }
 
+interface ParseAndExtractResult {
+  parseAndExtract: {
+    success: boolean;
+    text: string;
+    pageCount: number;
+    extractedFields: ParsedFields;
+  };
+}
+
 export function ContractUpload({ onClose, onSuccess }: ContractUploadProps) {
+  const { user } = useAuthStore();
   const [step, setStep] = useState<'upload' | 'review' | 'creating'>('upload');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -68,7 +79,7 @@ export function ContractUpload({ onClose, onSuccess }: ContractUploadProps) {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [parseAndExtract] = useMutation(PARSE_AND_EXTRACT);
+  const [parseAndExtract] = useMutation<ParseAndExtractResult>(PARSE_AND_EXTRACT);
   const [createContract] = useMutation(CREATE_CONTRACT);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,7 +129,7 @@ export function ContractUpload({ onClose, onSuccess }: ContractUploadProps) {
       });
 
       if (data?.parseAndExtract?.success) {
-        const fields = data.parseAndExtract.fields || {};
+        const fields = data.parseAndExtract.extractedFields || {};
         setParsedFields(fields);
         setFormData((prev) => ({
           ...prev,
@@ -145,6 +156,12 @@ export function ContractUpload({ onClose, onSuccess }: ContractUploadProps) {
     setStep('creating');
     setError('');
 
+    if (!user) {
+      setError('用户未登录');
+      setStep('review');
+      return;
+    }
+
     try {
       await createContract({
         variables: {
@@ -153,11 +170,14 @@ export function ContractUpload({ onClose, onSuccess }: ContractUploadProps) {
             name: formData.name,
             type: formData.type,
             ourEntity: formData.ourEntity,
-            amountWithTax: parseFloat(formData.amountWithTax) || 0,
+            customerName: formData.customerName,
+            amountWithTax: formData.amountWithTax || '0',
             currency: 'CNY',
             signedAt: formData.signedAt || null,
             status: 'DRAFT',
-            sourceFile: objectName,
+            fileUrl: objectName,
+            departmentId: user.department.id,
+            uploadedById: user.id,
           },
         },
       });
