@@ -128,6 +128,27 @@ export class ContractService {
   }
 
   async create(input: CreateContractInput) {
+    // 处理客户：如果没有customerId但有customerName，则创建或查找客户
+    let customerId = input.customerId;
+    if (!customerId && input.customerName) {
+      // 先尝试按名称查找
+      let customer = await this.prisma.customer.findFirst({
+        where: { name: input.customerName },
+      });
+      // 如果不存在则创建
+      if (!customer) {
+        customer = await this.prisma.customer.create({
+          data: { name: input.customerName },
+        });
+        this.logger.log(`Created new customer: ${customer.name} (${customer.id})`);
+      }
+      customerId = customer.id;
+    }
+
+    if (!customerId) {
+      throw new Error('必须提供customerId或customerName');
+    }
+
     const contract = await this.prisma.contract.create({
       data: {
         contractNo: input.contractNo,
@@ -135,7 +156,7 @@ export class ContractService {
         type: input.type,
         status: input.status || 'DRAFT',
         ourEntity: input.ourEntity,
-        customerId: input.customerId,
+        customerId: customerId,
         amountWithTax: new Prisma.Decimal(input.amountWithTax),
         amountWithoutTax: input.amountWithoutTax
           ? new Prisma.Decimal(input.amountWithoutTax)
@@ -260,6 +281,149 @@ export class ContractService {
 
     await this.prisma.contract.delete({ where: { id } });
     return true;
+  }
+
+  /**
+   * 检查合同编号是否重复
+   */
+  async checkDuplicate(contractNo: string) {
+    const existingContract = await this.prisma.contract.findUnique({
+      where: { contractNo },
+      include: {
+        customer: true,
+        department: true,
+        uploadedBy: {
+          include: {
+            department: true,
+          },
+        },
+      },
+    });
+
+    if (!existingContract) {
+      return {
+        isDuplicate: false,
+        existingContract: undefined,
+        message: undefined,
+      };
+    }
+
+    return {
+      isDuplicate: true,
+      existingContract: this.transformContract(existingContract),
+      message: `合同编号 ${contractNo} 已存在`,
+    };
+  }
+
+  /**
+   * 创建或更新合同（支持强制更新重复合同）
+   */
+  async createOrUpdate(
+    input: CreateContractInput,
+    options: { forceUpdate?: boolean; operatorId?: string } = {}
+  ) {
+    const { forceUpdate = false, operatorId } = options;
+
+    // 1. 检查重复
+    const duplicateCheck = await this.checkDuplicate(input.contractNo);
+
+    if (duplicateCheck.isDuplicate && !forceUpdate) {
+      throw new Error(
+        `合同编号 ${input.contractNo} 已存在。如需更新，请设置 forceUpdate 为 true。`
+      );
+    }
+
+    // 2. 如果是强制更新，记录审计日志并更新
+    if (duplicateCheck.isDuplicate && forceUpdate && duplicateCheck.existingContract) {
+      this.logger.log(
+        `Force updating duplicate contract: ${input.contractNo} (ID: ${duplicateCheck.existingContract.id})`
+      );
+
+      // 记录审计日志（如果提供了operatorId）
+      if (operatorId) {
+        await this.logDuplicateUpdate(
+          duplicateCheck.existingContract,
+          input,
+          operatorId
+        );
+      }
+
+      // 转换input为UpdateContractInput格式
+      const updateInput: UpdateContractInput = {
+        contractNo: input.contractNo,
+        name: input.name,
+        type: input.type,
+        status: input.status,
+        ourEntity: input.ourEntity,
+        customerId: input.customerId,
+        amountWithTax: input.amountWithTax,
+        amountWithoutTax: input.amountWithoutTax,
+        currency: input.currency,
+        taxRate: input.taxRate,
+        taxAmount: input.taxAmount,
+        paymentMethod: input.paymentMethod,
+        paymentTerms: input.paymentTerms,
+        signedAt: input.signedAt,
+        effectiveAt: input.effectiveAt,
+        expiresAt: input.expiresAt,
+        duration: input.duration,
+        fileUrl: input.fileUrl,
+        fileType: input.fileType,
+        departmentId: input.departmentId,
+        salesPerson: input.salesPerson,
+        industry: input.industry,
+      };
+
+      return this.update(duplicateCheck.existingContract.id, updateInput);
+    }
+
+    // 3. 创建新合同
+    return this.create(input);
+  }
+
+  /**
+   * 记录重复合同更新的审计日志
+   */
+  private async logDuplicateUpdate(
+    existingContract: any,
+    newInput: CreateContractInput,
+    operatorId: string
+  ) {
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'UPDATE_DUPLICATE_CONTRACT',
+          entityType: 'CONTRACT',
+          entityId: existingContract.id,
+          entityName: existingContract.contractNo,
+          oldValue: {
+            contractNo: existingContract.contractNo,
+            name: existingContract.name,
+            amountWithTax: existingContract.amountWithTax?.toString(),
+            signedAt: existingContract.signedAt?.toISOString(),
+            customer: existingContract.customer?.name,
+          },
+          newValue: {
+            contractNo: newInput.contractNo,
+            name: newInput.name,
+            amountWithTax: newInput.amountWithTax,
+            signedAt: newInput.signedAt?.toISOString(),
+            customerName: newInput.customerName,
+          },
+          operatorId,
+        },
+      });
+      this.logger.log(
+        `Audit log created for duplicate contract update: ${existingContract.contractNo}`
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        `Failed to create audit log for duplicate contract: ${errorMessage}`,
+        errorStack
+      );
+    }
   }
 
   private buildWhereClause(

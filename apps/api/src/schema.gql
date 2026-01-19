@@ -53,6 +53,14 @@ type AuthResponse {
   user: User!
 }
 
+type BasicInfo {
+  contractName: String
+  contractNo: String
+  customerName: String
+  ourEntity: String
+  status: String
+}
+
 type CaseOverview {
   byIndustry: [IndustryCases!]!
   featured: [CaseStudy!]!
@@ -185,6 +193,16 @@ type ContractConnection {
   totalCount: Int!
 }
 
+type ContractExtractedData {
+  basicInfo: BasicInfo!
+  contractType: ContractType!
+  financialInfo: FinancialInfo
+  metadata: ExtractionMetadata
+  otherInfo: OtherInfo
+  timeInfo: TimeInfo
+  typeSpecificDetails: JSON
+}
+
 input ContractFilterInput {
   customerId: String
   departmentId: String
@@ -315,7 +333,10 @@ input CreateContractInput {
   amountWithoutTax: String
   contractNo: String!
   currency: String = "CNY"
-  customerId: String!
+  customerId: String
+
+  """客户名称，当customerId不提供时用于创建新客户"""
+  customerName: String
   departmentId: String!
   duration: String
   effectiveAt: DateTime
@@ -423,6 +444,12 @@ type Department {
   updatedAt: DateTime!
 }
 
+type DuplicateCheckResult {
+  existingContract: Contract
+  isDuplicate: Boolean!
+  message: String
+}
+
 type Evidence {
   createdAt: DateTime!
   description: String!
@@ -461,6 +488,11 @@ type ExtractedTag {
   source: String!
 }
 
+type ExtractionMetadata {
+  fieldConfidences: JSON
+  overallConfidence: Float
+}
+
 type FeatureScore {
   feature: String!
   score: Float!
@@ -470,6 +502,15 @@ type FieldMatch {
   confidence: Float!
   field: String!
   value: String!
+}
+
+type FinancialInfo {
+  amountWithTax: String
+  amountWithoutTax: String
+  currency: String
+  paymentMethod: String
+  paymentTerms: String
+  taxRate: String
 }
 
 type ForecastResult {
@@ -528,6 +569,17 @@ type KPIMetric {
   trend: String!
   unit: String!
   value: Float!
+}
+
+type LlmParseResult {
+  error: String
+  extractedData: ContractExtractedData
+  llmModel: String
+  llmProvider: String
+  pageCount: Int
+  processingTimeMs: Int
+  rawText: String
+  success: Boolean!
 }
 
 input LoginInput {
@@ -608,6 +660,9 @@ type Mutation {
   """Create a new department (Admin only)"""
   createDepartment(input: CreateDepartmentInput!): Department!
 
+  """Create a new contract or update existing one if duplicate"""
+  createOrUpdateContract(forceUpdate: Boolean = false, input: CreateContractInput!, operatorId: ID): Contract!
+
   """Create a new tag"""
   createTag(input: CreateTagInput!): Tag!
 
@@ -637,6 +692,7 @@ type Mutation {
 
   """Parse a document and extract contract fields"""
   parseAndExtract(objectName: String!): ParseResult!
+  parseContractWithLlm(objectName: String!): LlmParseResult!
 
   """Register a new user"""
   register(input: RegisterInput!): User!
@@ -661,6 +717,13 @@ type Mutation {
 
   """Update a user (Admin only)"""
   updateUser(id: String!, input: UpdateUserInput!): User!
+}
+
+type OtherInfo {
+  copies: Float
+  industry: String
+  salesPerson: String
+  signLocation: String
 }
 
 type OverdueAlert {
@@ -741,6 +804,9 @@ type Query {
 
   """获取现金流预测"""
   cashFlowForecast(months: Int = 6): [CashFlowForecast!]!
+
+  """Check if a contract number already exists"""
+  checkContractDuplicate(contractNo: String!): DuplicateCheckResult!
 
   """获取公司健康度"""
   companyHealth: CompanyHealth!
@@ -1091,6 +1157,13 @@ type TagStats {
   totalValue: Float!
 }
 
+type TimeInfo {
+  duration: String
+  effectiveAt: String
+  expiresAt: String
+  signedAt: String
+}
+
 type TrendPoint {
   growth: Float
   period: String!
@@ -1109,6 +1182,9 @@ input UpdateContractInput {
   contractNo: String
   currency: String = "CNY"
   customerId: String
+
+  """客户名称，当customerId不提供时用于创建新客户"""
+  customerName: String
   departmentId: String
   duration: String
   effectiveAt: DateTime

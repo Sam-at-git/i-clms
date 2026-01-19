@@ -9,6 +9,7 @@ import { PrismaModule } from '../prisma';
 import { HealthModule } from '../health';
 import { StorageModule } from '../storage';
 import { ParserModule } from '../parser';
+import { LlmParserModule } from '../llm-parser/llm-parser.module';
 import { ContractModule } from '../contract';
 import { AuthModule } from '../auth';
 import { FinanceModule } from '../finance';
@@ -44,6 +45,7 @@ import { DepartmentModule } from '../department';
     HealthModule,
     StorageModule,
     ParserModule,
+    LlmParserModule,
     ContractModule,
     AuthModule,
     FinanceModule,

@@ -6,6 +6,7 @@ import {
   UpdateContractInput,
   ContractFilterInput,
   ContractOrderInput,
+  DuplicateCheckResult,
 } from './dto';
 
 @Resolver(() => Contract)
@@ -46,11 +47,33 @@ export class ContractResolver {
     return this.contractService.findByContractNo(contractNo);
   }
 
+  @Query(() => DuplicateCheckResult, {
+    description: 'Check if a contract number already exists',
+  })
+  async checkContractDuplicate(
+    @Args('contractNo') contractNo: string
+  ): Promise<DuplicateCheckResult> {
+    return this.contractService.checkDuplicate(contractNo);
+  }
+
   @Mutation(() => Contract, { description: 'Create a new contract' })
   async createContract(
     @Args('input') input: CreateContractInput
   ): Promise<Contract> {
     return this.contractService.create(input);
+  }
+
+  @Mutation(() => Contract, {
+    description: 'Create a new contract or update existing one if duplicate',
+  })
+  async createOrUpdateContract(
+    @Args('input') input: CreateContractInput,
+    @Args('forceUpdate', { type: () => Boolean, nullable: true, defaultValue: false })
+    forceUpdate?: boolean,
+    @Args('operatorId', { type: () => ID, nullable: true })
+    operatorId?: string
+  ): Promise<Contract> {
+    return this.contractService.createOrUpdate(input, { forceUpdate, operatorId });
   }
 
   @Mutation(() => Contract, { description: 'Update an existing contract' })

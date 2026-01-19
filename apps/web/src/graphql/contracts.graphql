@@ -1,4 +1,4 @@
-query GetContracts($filter: ContractFilterInput, $skip: Int, $take: Int, $orderBy: ContractOrderInput) {
+query GetContractsWithFilter($filter: ContractFilterInput, $skip: Int, $take: Int, $orderBy: ContractOrderInput) {
   contracts(filter: $filter, skip: $skip, take: $take, orderBy: $orderBy) {
     nodes {
       id
@@ -91,7 +91,7 @@ mutation CreateContract($input: CreateContractInput!) {
   }
 }
 
-mutation UpdateContract($id: ID!, $input: UpdateContractInput!) {
+mutation UpdateContractById($id: ID!, $input: UpdateContractInput!) {
   updateContract(id: $id, input: $input) {
     id
     contractNo
@@ -102,4 +102,93 @@ mutation UpdateContract($id: ID!, $input: UpdateContractInput!) {
 
 mutation DeleteContract($id: ID!) {
   deleteContract(id: $id)
+}
+
+mutation ParseContractWithLlm($objectName: String!) {
+  parseContractWithLlm(objectName: $objectName) {
+    success
+    extractedData {
+      contractType
+      basicInfo {
+        contractNo
+        contractName
+        ourEntity
+        customerName
+        status
+      }
+      financialInfo {
+        amountWithTax
+        amountWithoutTax
+        taxRate
+        currency
+        paymentMethod
+        paymentTerms
+      }
+      timeInfo {
+        signedAt
+        effectiveAt
+        expiresAt
+        duration
+      }
+      otherInfo {
+        salesPerson
+        industry
+        signLocation
+        copies
+      }
+    }
+    rawText
+    pageCount
+    llmModel
+    llmProvider
+    processingTimeMs
+    error
+  }
+}
+
+query CheckContractDuplicate($contractNo: String!) {
+  checkContractDuplicate(contractNo: $contractNo) {
+    isDuplicate
+    existingContract {
+      id
+      contractNo
+      name
+      type
+      status
+      ourEntity
+      amountWithTax
+      amountWithoutTax
+      currency
+      signedAt
+      effectiveAt
+      expiresAt
+      paymentMethod
+      paymentTerms
+      customer {
+        id
+        name
+      }
+      department {
+        id
+        name
+      }
+    }
+    message
+  }
+}
+
+mutation CreateOrUpdateContract($input: CreateContractInput!, $forceUpdate: Boolean, $operatorId: ID) {
+  createOrUpdateContract(input: $input, forceUpdate: $forceUpdate, operatorId: $operatorId) {
+    id
+    contractNo
+    name
+    type
+    status
+    amountWithTax
+    signedAt
+    customer {
+      id
+      name
+    }
+  }
 }
