@@ -18,8 +18,11 @@ export class CreateContractInput {
   @Field()
   ourEntity!: string;
 
-  @Field()
-  customerId!: string;
+  @Field(() => String, { nullable: true })
+  customerId?: string;
+
+  @Field(() => String, { nullable: true, description: '客户名称，当customerId不提供时用于创建新客户' })
+  customerName?: string;
 
   @Field()
   amountWithTax!: string; // Decimal as string

@@ -25,6 +25,8 @@ export type Scalars = {
   Decimal: { input: string; output: string; }
   /** JSON custom scalar type */
   JSON: { input: any; output: any; }
+  /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
+  JSONObject: { input: any; output: any; }
 };
 
 export type AnalyticsDimension = {
@@ -555,6 +557,16 @@ export type FieldMatch = {
   value: Scalars['String']['output'];
 };
 
+export type FieldValidationResult = {
+  __typename?: 'FieldValidationResult';
+  confidence: Scalars['Float']['output'];
+  correctedValue?: Maybe<Scalars['String']['output']>;
+  field: Scalars['String']['output'];
+  isCorrect: Scalars['Boolean']['output'];
+  issue?: Maybe<Scalars['String']['output']>;
+  programValue?: Maybe<Scalars['String']['output']>;
+};
+
 export type FinancialInfo = {
   __typename?: 'FinancialInfo';
   amountWithTax?: Maybe<Scalars['String']['output']>;
@@ -597,6 +609,18 @@ export type HealthDimension = {
   trend: Scalars['String']['output'];
 };
 
+export type HybridStrategyInfo = {
+  __typename?: 'HybridStrategyInfo';
+  correctedFieldsCount?: Maybe<Scalars['Int']['output']>;
+  enhancedFields?: Maybe<Array<Scalars['String']['output']>>;
+  llmChunks?: Maybe<Scalars['Int']['output']>;
+  programParseScore: Scalars['Int']['output'];
+  reason: Scalars['String']['output'];
+  usedLlm: Scalars['Boolean']['output'];
+  usedValidation?: Maybe<Scalars['Boolean']['output']>;
+  validationResult?: Maybe<LlmValidationResult>;
+};
+
 export type IndustryCases = {
   __typename?: 'IndustryCases';
   count: Scalars['Int']['output'];
@@ -632,12 +656,20 @@ export type LlmParseResult = {
   __typename?: 'LlmParseResult';
   error?: Maybe<Scalars['String']['output']>;
   extractedData?: Maybe<ContractExtractedData>;
+  hybridStrategy?: Maybe<HybridStrategyInfo>;
   llmModel?: Maybe<Scalars['String']['output']>;
   llmProvider?: Maybe<Scalars['String']['output']>;
   pageCount?: Maybe<Scalars['Int']['output']>;
   processingTimeMs?: Maybe<Scalars['Int']['output']>;
   rawText?: Maybe<Scalars['String']['output']>;
   success: Scalars['Boolean']['output'];
+};
+
+export type LlmValidationResult = {
+  __typename?: 'LlmValidationResult';
+  additionalFields?: Maybe<Scalars['JSONObject']['output']>;
+  overallAssessment?: Maybe<Scalars['String']['output']>;
+  validationResults: Array<FieldValidationResult>;
 };
 
 export type LoginInput = {
