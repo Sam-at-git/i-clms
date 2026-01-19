@@ -11,9 +11,9 @@ import {
   USER_PROMPT_TEMPLATE,
   CONTRACT_JSON_SCHEMA,
   VALIDATION_PROMPT_TEMPLATE,
-  VALIDATION_RESULT_SCHEMA,
 } from './prompts/contract-extraction.prompt';
 import { LlmValidationResult } from './dto/validation-result.dto';
+import { ParseStrategy } from './entities/completeness-score.entity';
 
 @Injectable()
 export class LlmParserService {
@@ -75,7 +75,7 @@ export class LlmParserService {
         rawMatches: [],
       };
 
-      const completenessResult = this.completenessChecker.checkCompleteness(fields);
+      const completenessResult = this.completenessChecker.checkCompleteness(fields as Record<string, unknown>);
 
       this.logger.log(
         `[Completeness Check] Score=${completenessResult.score}/100, ` +
@@ -234,6 +234,287 @@ export class LlmParserService {
         processingTimeMs,
       };
     }
+  }
+
+  /**
+   * Parse contract with mixed strategy (programmatic + LLM)
+   * This is the new API conforming to Spec 18
+   */
+  async parseWithMixedStrategy(
+    textContent: string,
+    programmaticResult?: Record<string, unknown>,
+    forceStrategy?: ParseStrategy,
+  ): Promise<LlmParseResult> {
+    const startTime = Date.now();
+    const warnings: string[] = [];
+    let llmTokensUsed = 0;
+
+    try {
+      // 1. Calculate completeness score
+      const extractedFields = programmaticResult || {};
+      const completenessScore = this.completenessChecker.calculateScore(extractedFields);
+
+      // Determine strategy (allow override)
+      const strategy = forceStrategy || completenessScore.strategy;
+
+      this.logger.log(
+        `[Mixed Strategy] Score=${completenessScore.totalScore}, ` +
+          `auto-strategy=${completenessScore.strategy}, using=${strategy}`,
+      );
+
+      // 2. Execute based on strategy
+      if (strategy === ParseStrategy.DIRECT_USE) {
+        // High score: use programmatic result directly
+        const processingTimeMs = Date.now() - startTime;
+        this.logger.log('[Mixed Strategy] Using DIRECT_USE - no LLM call');
+
+        return {
+          success: true,
+          extractedDataJson: extractedFields,
+          completenessScore,
+          strategyUsed: ParseStrategy.DIRECT_USE,
+          confidence: completenessScore.percentage / 100,
+          processingTimeMs,
+          llmTokensUsed: 0,
+          warnings: warnings.length > 0 ? warnings : undefined,
+          hybridStrategy: {
+            usedLlm: false,
+            usedValidation: false,
+            reason: this.completenessChecker.getStrategyReason(
+              completenessScore.totalScore,
+              ParseStrategy.DIRECT_USE,
+            ),
+            programParseScore: completenessScore.totalScore,
+          },
+        };
+      }
+
+      if (strategy === ParseStrategy.LLM_VALIDATION) {
+        // Medium score: validate with LLM
+        this.logger.log('[Mixed Strategy] Using LLM_VALIDATION mode');
+
+        try {
+          const validationResult = await this.callLlmForTextValidation(
+            textContent,
+            extractedFields,
+          );
+
+          // Apply corrections
+          const correctedFields = this.applyTextValidationCorrections(
+            extractedFields,
+            validationResult,
+          );
+
+          const correctedCount =
+            validationResult.validationResults?.filter((r) => !r.isCorrect).length || 0;
+
+          const processingTimeMs = Date.now() - startTime;
+
+          return {
+            success: true,
+            extractedDataJson: correctedFields,
+            completenessScore,
+            strategyUsed: ParseStrategy.LLM_VALIDATION,
+            confidence: (completenessScore.percentage + 10) / 100, // Boost confidence after validation
+            processingTimeMs,
+            llmTokensUsed,
+            llmModel: this.configService.getActiveConfig().model,
+            llmProvider: this.configService.getProviderName(),
+            warnings: warnings.length > 0 ? warnings : undefined,
+            hybridStrategy: {
+              usedLlm: true,
+              usedValidation: true,
+              reason: this.completenessChecker.getStrategyReason(
+                completenessScore.totalScore,
+                ParseStrategy.LLM_VALIDATION,
+              ),
+              programParseScore: completenessScore.totalScore,
+              validationResult,
+              correctedFieldsCount: correctedCount,
+            },
+          };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          warnings.push(`Validation failed, falling back: ${errorMsg}`);
+          this.logger.warn('[Mixed Strategy] Validation failed, falling back to full extraction');
+          // Continue to full extraction below
+        }
+      }
+
+      // LLM_FULL_EXTRACTION or fallback from failed validation
+      this.logger.log('[Mixed Strategy] Using LLM_FULL_EXTRACTION mode');
+
+      const missingFields = this.completenessChecker.getMissingFields(extractedFields);
+      const priorityFields = this.completenessChecker.identifyPriorityFields(missingFields);
+
+      // Call LLM for extraction
+      const llmResult = await this.callLlmForTextExtraction(textContent, priorityFields);
+      llmTokensUsed = llmResult.tokensUsed || 0;
+
+      // Merge results
+      const mergedFields = this.mergeExtractedFields(
+        extractedFields,
+        llmResult.data,
+        missingFields,
+      );
+
+      const processingTimeMs = Date.now() - startTime;
+
+      return {
+        success: true,
+        extractedDataJson: mergedFields,
+        completenessScore,
+        strategyUsed: ParseStrategy.LLM_FULL_EXTRACTION,
+        confidence: 0.85, // Moderate confidence for LLM extraction
+        processingTimeMs,
+        llmTokensUsed,
+        llmModel: this.configService.getActiveConfig().model,
+        llmProvider: this.configService.getProviderName(),
+        warnings: warnings.length > 0 ? warnings : undefined,
+        hybridStrategy: {
+          usedLlm: true,
+          usedValidation: false,
+          reason: this.completenessChecker.getStrategyReason(
+            completenessScore.totalScore,
+            ParseStrategy.LLM_FULL_EXTRACTION,
+          ),
+          programParseScore: completenessScore.totalScore,
+          enhancedFields: priorityFields,
+        },
+      };
+    } catch (error) {
+      const processingTimeMs = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      this.logger.error(`[Mixed Strategy] Failed: ${errorMessage}`);
+
+      return {
+        success: false,
+        error: errorMessage,
+        processingTimeMs,
+        warnings:
+          warnings.length > 0
+            ? warnings
+            : undefined,
+      };
+    }
+  }
+
+  /**
+   * Call LLM for text validation (new method for parseWithMixedStrategy)
+   */
+  private async callLlmForTextValidation(
+    text: string,
+    fields: Record<string, unknown>,
+  ): Promise<LlmValidationResult> {
+    const config = this.configService.getActiveConfig();
+
+    const extractedFieldsDisplay = JSON.stringify(fields, null, 2);
+    const userPrompt = VALIDATION_PROMPT_TEMPLATE.replace(
+      '{{contractText}}',
+      text.substring(0, 15000),
+    ).replace('{{extractedFields}}', extractedFieldsDisplay);
+
+    const completion = await this.openai.chat.completions.create({
+      model: config.model,
+      temperature: 0.1,
+      max_tokens: config.maxTokens,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('Empty validation response from LLM');
+    }
+
+    return JSON.parse(content);
+  }
+
+  /**
+   * Apply validation corrections to fields
+   */
+  private applyTextValidationCorrections(
+    fields: Record<string, unknown>,
+    validationResult: LlmValidationResult,
+  ): Record<string, unknown> {
+    const corrected = { ...fields };
+
+    for (const fieldResult of validationResult.validationResults || []) {
+      if (!fieldResult.isCorrect && fieldResult.correctedValue) {
+        corrected[fieldResult.field] = fieldResult.correctedValue;
+      }
+    }
+
+    if (validationResult.additionalFields) {
+      Object.assign(corrected, validationResult.additionalFields);
+    }
+
+    return corrected;
+  }
+
+  /**
+   * Call LLM for text extraction (new method for parseWithMixedStrategy)
+   */
+  private async callLlmForTextExtraction(
+    text: string,
+    priorityFields: string[],
+  ): Promise<{ data: Record<string, unknown>; tokensUsed: number }> {
+    const config = this.configService.getActiveConfig();
+
+    const userPrompt = USER_PROMPT_TEMPLATE.replace('{{contractText}}', text.substring(0, 20000))
+      .replace('{{jsonSchema}}', JSON.stringify(CONTRACT_JSON_SCHEMA, null, 2))
+      .replace('{{priorityFields}}', priorityFields.join(', '));
+
+    const completion = await this.openai.chat.completions.create({
+      model: config.model,
+      temperature: config.temperature,
+      max_tokens: config.maxTokens,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('Empty response from LLM');
+    }
+
+    const tokensUsed =
+      (completion.usage?.prompt_tokens || 0) + (completion.usage?.completion_tokens || 0);
+
+    return {
+      data: JSON.parse(content),
+      tokensUsed,
+    };
+  }
+
+  /**
+   * Merge programmatic and LLM extracted fields
+   */
+  private mergeExtractedFields(
+    programFields: Record<string, unknown>,
+    llmFields: Record<string, unknown>,
+    missingFields: string[],
+  ): Record<string, unknown> {
+    const merged = { ...programFields };
+    const missingSet = new Set(missingFields);
+
+    // Fill missing fields from LLM result
+    for (const [key, value] of Object.entries(llmFields)) {
+      if (missingSet.has(key) || merged[key] === undefined || merged[key] === null) {
+        if (value !== undefined && value !== null) {
+          merged[key] = value;
+        }
+      }
+    }
+
+    return merged;
   }
 
   private validateAndTransform(data: any): ContractExtractedData {

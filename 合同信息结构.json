@@ -1,0 +1,446 @@
+{
+  "contractExtraction": {
+    "metadata": {
+      "extractionId": "string",
+      "extractionDate": "datetime",
+      "extractionMethod": "manual|ai|hybrid",
+      "extractor": "string",
+      "confidenceScore": "number",
+      "version": "string"
+    },
+    
+    "contractIdentification": {
+      "contractNumber": "string",
+      "contractTitle": "string",
+      "contractType": "人力外包|项目外包|软硬件买卖|混合",
+      "subType": "string",
+      "versionNumber": "string",
+      "effectiveLanguage": "中文|英文|双语"
+    },
+    
+    "parties": {
+      "firstParty": {
+        "name": "string",
+        "legalEntityType": "有限责任公司|股份有限公司|个人独资",
+        "registrationNumber": "string",
+        "address": {
+          "registered": "string",
+          "operational": "string"
+        },
+        "contactPerson": {
+          "name": "string",
+          "title": "string",
+          "phone": "string",
+          "email": "string"
+        },
+        "authorizedSignatory": {
+          "name": "string",
+          "title": "string",
+          "signatureDate": "date"
+        }
+      },
+      "secondParty": {
+        // 同firstParty结构
+      },
+      "additionalParties": [
+        {
+          "role": "担保方|见证方|第三方服务商",
+          // 同firstParty结构
+        }
+      ]
+    },
+    
+    "contractTerm": {
+      "executionDate": "date",
+      "effectiveDate": "date",
+      "commencementDate": "date",
+      "terminationDate": "date",
+      "duration": {
+        "value": "number",
+        "unit": "月|年|天",
+        "renewal": {
+          "automaticRenewal": "boolean",
+          "renewalTerm": "string",
+          "noticePeriod": {
+            "value": "number",
+            "unit": "天|月"
+          }
+        }
+      }
+    },
+    
+    "scopeOfWork": {
+      "description": "string",
+      "deliverables": [
+        {
+          "id": "string",
+          "name": "string",
+          "description": "string",
+          "specifications": "string",
+          "quantity": "number",
+          "qualityStandards": "string",
+          "acceptanceCriteria": "string"
+        }
+      ],
+      "exclusions": "string",
+      "assumptions": "string",
+      "constraints": "string"
+    },
+    
+    "serviceLevels": {
+      "serviceLevelAgreements": [
+        {
+          "metric": "string",
+          "target": "string",
+          "measurementMethod": "string",
+          "reportingFrequency": "string",
+          "penalties": {
+            "threshold": "string",
+            "penaltyAmount": "number",
+            "penaltyType": "金额|服务抵扣|合同终止"
+          },
+          "bonuses": {
+            "threshold": "string",
+            "bonusAmount": "number"
+          }
+        }
+      ],
+      "responseTimes": [
+        {
+          "incidentLevel": "P1|P2|P3|P4",
+          "responseTime": "string",
+          "resolutionTime": "string"
+        }
+      ],
+      "availability": {
+        "target": "percentage",
+        "maintenanceWindows": "string"
+      }
+    },
+    
+    "commercialTerms": {
+      "pricingStructure": {
+        "type": "固定总价|时间材料|成本加成|混合",
+        "currency": "string",
+        "totalContractValue": "number",
+        "breakdown": [
+          {
+            "item": "string",
+            "description": "string",
+            "quantity": "number",
+            "unitPrice": "number",
+            "amount": "number",
+            "taxRate": "number",
+            "taxAmount": "number"
+          }
+        ]
+      },
+      "paymentTerms": {
+        "paymentSchedule": [
+          {
+            "milestone": "string",
+            "description": "string",
+            "percentage": "number",
+            "amount": "number",
+            "dueDate": "date|string",
+            "condition": "string",
+            "invoiceRequirements": "string"
+          }
+        ],
+        "paymentMethod": "电汇|支票|信用证",
+        "paymentDays": "number",
+        "latePayment": {
+          "interestRate": "percentage",
+          "calculationMethod": "string"
+        },
+        "advancePayment": {
+          "amount": "number",
+          "percentage": "number",
+          "security": "保函|保证金"
+        },
+        "retention": {
+          "percentage": "number",
+          "amount": "number",
+          "releaseConditions": "string"
+        }
+      },
+      "priceAdjustment": {
+        "escalationClause": "boolean",
+        "adjustmentFormula": "string",
+        "frequency": "string"
+      }
+    },
+    
+    "intellectualProperty": {
+      "backgroundIP": {
+        "firstParty": "string",
+        "secondParty": "string"
+      },
+      "foregroundIP": {
+        "ownership": "firstParty|secondParty|joint",
+        "licenseGrant": {
+          "type": "独占|非独占|排他",
+          "territory": "string",
+          "term": "string",
+          "fieldOfUse": "string",
+          "royalties": "string",
+          "sublicenseRights": "boolean"
+        }
+      },
+      "thirdPartyIP": {
+        "licensesRequired": "string",
+        "responsibility": "string"
+      },
+      "confidentialInformation": {
+        "definition": "string",
+        "obligations": "string",
+        "exceptions": "string",
+        "duration": "string"
+      }
+    },
+    
+    "warranties": [
+      {
+        "warrantor": "firstParty|secondParty",
+        "warrantyType": "服务保证|产品保证|合规保证",
+        "description": "string",
+        "duration": "string",
+        "remedies": "string"
+      }
+    ],
+    
+    "liabilities": {
+      "limitationOfLiability": {
+        "capType": "合同总额|实际损失|固定金额",
+        "capAmount": "number",
+        "exclusions": [
+          "故意违约",
+          "重大过失",
+          "人身伤害",
+          "知识产权侵权",
+          "保密义务违反"
+        ]
+      },
+      "indemnities": [
+        {
+          "indemnitor": "firstParty|secondParty",
+          "indemnitee": "firstParty|secondParty",
+          "scope": "string",
+          "procedures": "string"
+        }
+      ],
+      "insurance": {
+        "requirements": [
+          {
+            "type": "职业责任险|一般责任险|产品责任险",
+            "minimumCoverage": "number",
+            "insuredParties": "string",
+            "certificateRequired": "boolean"
+          }
+        ]
+      }
+    },
+    
+    "termination": {
+      "terminationForConvenience": {
+        "allowed": "boolean",
+        "noticePeriod": "string",
+        "terminationFees": "string"
+      },
+      "terminationForCause": {
+        "materialBreach": {
+          "definition": "string",
+          "curePeriod": "string"
+        },
+        "insolvencyEvents": "string",
+        "changeOfControl": "string"
+      },
+      "postTerminationObligations": {
+        "transitionServices": "string",
+        "dataReturn": "string",
+        "survivalClauses": [
+          {
+            "clause": "string",
+            "duration": "string"
+          }
+        ]
+      }
+    },
+    
+    "disputeResolution": {
+      "governingLaw": "string",
+      "jurisdiction": "string",
+      "disputeProcess": {
+        "escalation": "string",
+        "mediation": {
+          "required": "boolean",
+          "mediatorSelection": "string"
+        },
+        "arbitration": {
+          "institution": "string",
+          "rules": "string",
+          "seat": "string",
+          "language": "string",
+          "arbitrators": "number"
+        },
+        "litigation": {
+          "court": "string"
+        }
+      }
+    },
+    
+    "forceMajeure": {
+      "definition": "string",
+      "noticeRequirements": "string",
+      "consequences": "string",
+      "durationLimits": "string"
+    },
+    
+    "assignmentAndSubcontracting": {
+      "assignmentRights": "string",
+      "subcontracting": {
+        "allowed": "boolean",
+        "conditions": "string",
+        "liability": "string"
+      }
+    },
+    
+    "notices": {
+      "contactPoints": [
+        {
+          "party": "firstParty|secondParty",
+          "address": "string",
+          "email": "string",
+          "phone": "string",
+          "effectiveHours": "string"
+        }
+      ],
+      "deemedReceipt": "string"
+    },
+    
+    "miscellaneous": {
+      "entireAgreement": "boolean",
+      "amendments": "string",
+      "severability": "boolean",
+      "waiver": "string",
+      "counterparts": "boolean",
+      "electronicSignatures": "boolean",
+      "headings": "string"
+    },
+    
+    "schedulesAndAnnexes": [
+      {
+        "reference": "string",
+        "title": "string",
+        "type": "服务范围|服务级别|价格清单|人员名单",
+        "contentSummary": "string",
+        "attachmentReference": "string"
+      }
+    ],
+    
+    "signatures": [
+      {
+        "party": "firstParty|secondParty",
+        "signatoryName": "string",
+        "signatoryTitle": "string",
+        "signatureDate": "date",
+        "signatureMethod": "wet|digital",
+        "witness": {
+          "name": "string",
+          "relationship": "string"
+        }
+      }
+    ],
+    
+    "specialClauses": {
+      "dataProtection": {
+        "gdprCompliance": "boolean",
+        "dataProcessingAgreement": "boolean",
+        "dataBreachNotification": "string"
+      },
+      "exportControl": {
+        "complianceRequired": "boolean",
+        "classification": "string"
+      },
+      "antiCorruption": {
+        "representations": "string",
+        "complianceCertifications": "string"
+      },
+      "businessContinuity": {
+        "planRequirements": "string",
+        "recoveryTimeObjectives": "string"
+      }
+    },
+    
+    "performanceMetrics": {
+      "keyPerformanceIndicators": [
+        {
+          "kpiId": "string",
+          "description": "string",
+          "measurement": "string",
+          "target": "string",
+          "frequency": "string",
+          "reportingFormat": "string"
+        }
+      ],
+      "reviewMeetings": {
+        "frequency": "string",
+        "attendees": "string",
+        "agenda": "string"
+      }
+    },
+    
+    "changeControl": {
+      "changeRequestProcess": "string",
+      "pricingForChanges": "string",
+      "approvalAuthority": "string"
+    },
+    
+    "personnel": {
+      "keyPersonnel": [
+        {
+          "name": "string",
+          "role": "string",
+          "qualifications": "string",
+          "replacementProcess": "string"
+        }
+      ],
+      "staffingRequirements": "string",
+      "training": "string"
+    },
+    
+    "implementation": {
+      "implementationPlan": "string",
+      "milestones": [
+        {
+          "name": "string",
+          "date": "date",
+          "dependencies": "string"
+        }
+      ],
+      "acceptanceTesting": {
+        "criteria": "string",
+        "process": "string",
+        "remedies": "string"
+      }
+    },
+    
+    "extractedTextReferences": {
+      "clauseLocations": [
+        {
+          "clauseName": "string",
+          "pageNumber": "number",
+          "paragraphNumber": "string",
+          "textSnippet": "string"
+        }
+      ],
+      "ambiguousClauses": [
+        {
+          "clauseReference": "string",
+          "issue": "string",
+          "recommendation": "string"
+        }
+      ]
+    }
+  }
+}

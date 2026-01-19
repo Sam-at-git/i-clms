@@ -5,6 +5,10 @@ import { ParserResolver } from './parser.resolver';
 import { PdfExtractor } from './extractors/pdf.extractor';
 import { WordExtractor } from './extractors/word.extractor';
 import { FieldExtractor } from './extractors/field.extractor';
+import { FieldExtractorService } from './extractors/field-extractor.service';
+import { IdentificationExtractor } from './extractors/basic/identification.extractor';
+import { PartiesExtractor } from './extractors/basic/parties.extractor';
+import { TermExtractor } from './extractors/basic/term.extractor';
 
 @Module({
   imports: [StorageModule],
@@ -14,7 +18,12 @@ import { FieldExtractor } from './extractors/field.extractor';
     PdfExtractor,
     WordExtractor,
     FieldExtractor,
+    // Basic extractors (Spec 19)
+    IdentificationExtractor,
+    PartiesExtractor,
+    TermExtractor,
+    FieldExtractorService,
   ],
-  exports: [ParserService],
+  exports: [ParserService, FieldExtractorService],
 })
 export class ParserModule {}

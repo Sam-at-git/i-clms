@@ -1,102 +1,236 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ExtractedFields } from '../parser/dto';
+import {
+  CompletenessScore,
+  CategoryScores,
+  FieldScoreDetail,
+  ParseStrategy,
+} from './entities/completeness-score.entity';
 
-export interface CompletenessResult {
-  score: number; // 0-100
-  missingFields: string[];
-  needsLlm: boolean;
-  reason: string;
+export interface FieldWeight {
+  field: string;
+  weight: number;
+  category: 'basic' | 'financial' | 'temporal' | 'other';
 }
 
+// Field weights configuration following Spec 18 (total = 100)
+export const FIELD_WEIGHTS: FieldWeight[] = [
+  // Basic information - 40 points
+  { field: 'contractNumber', weight: 8, category: 'basic' },
+  { field: 'title', weight: 6, category: 'basic' },
+  { field: 'contractType', weight: 8, category: 'basic' },
+  { field: 'firstPartyName', weight: 10, category: 'basic' },
+  { field: 'secondPartyName', weight: 8, category: 'basic' },
+
+  // Financial information - 30 points
+  { field: 'totalAmount', weight: 12, category: 'financial' },
+  { field: 'currency', weight: 4, category: 'financial' },
+  { field: 'taxRate', weight: 4, category: 'financial' },
+  { field: 'paymentTerms', weight: 10, category: 'financial' },
+
+  // Temporal information - 20 points
+  { field: 'signDate', weight: 6, category: 'temporal' },
+  { field: 'startDate', weight: 5, category: 'temporal' },
+  { field: 'endDate', weight: 5, category: 'temporal' },
+  { field: 'duration', weight: 4, category: 'temporal' },
+
+  // Other information - 10 points
+  { field: 'industry', weight: 3, category: 'other' },
+  { field: 'governingLaw', weight: 3, category: 'other' },
+  { field: 'signLocation', weight: 2, category: 'other' },
+  { field: 'salesPerson', weight: 2, category: 'other' },
+];
+
+// Field mapping from legacy format to new format
+export const FIELD_MAPPING: Record<string, string> = {
+  contractNo: 'contractNumber',
+  name: 'title',
+  type: 'contractType',
+  customerName: 'firstPartyName',
+  ourEntity: 'secondPartyName',
+  amountWithTax: 'totalAmount',
+  signedAt: 'signDate',
+  effectiveAt: 'startDate',
+  expiresAt: 'endDate',
+};
+
+// Strategy thresholds
+const DIRECT_USE_THRESHOLD = 70;
+const LLM_VALIDATION_THRESHOLD = 50;
+
 /**
- * 信息完整性检查器
- * 评估程序解析的结果是否足够完整，决定是否需要LLM增强
+ * Completeness Checker Service
+ * Evaluates the completeness of programmatic extraction results
+ * and determines the appropriate parsing strategy
  */
 @Injectable()
 export class CompletenessCheckerService {
   private readonly logger = new Logger(CompletenessCheckerService.name);
 
-  // 核心字段权重配置（总计100）
-  private readonly FIELD_WEIGHTS = {
-    // 基本信息 (40分)
-    contractNo: 15,
-    name: 10,
-    customerName: 10,
-    ourEntity: 5,
-
-    // 财务信息 (30分)
-    amountWithTax: 15,
-    amountWithoutTax: 5,
-    taxRate: 5,
-    paymentTerms: 5,
-
-    // 时间信息 (20分)
-    signedAt: 8,
-    effectiveAt: 6,
-    expiresAt: 6,
-
-    // 其他关键信息 (10分)
-    type: 5,
-    status: 3,
-    salesPerson: 2,
-  };
-
-  // 完整性阈值
-  private readonly COMPLETENESS_THRESHOLD = 70; // 低于70分需要LLM
-
   /**
-   * 检查信息完整性
+   * Calculate completeness score from extracted fields
    */
-  checkCompleteness(extractedFields: ExtractedFields): CompletenessResult {
-    let score = 0;
-    const missingFields: string[] = [];
+  calculateScore(extractedFields: Record<string, unknown>): CompletenessScore {
+    // Normalize field names using mapping
+    const normalizedFields = this.normalizeFields(extractedFields);
 
-    // 计算完整性得分
-    for (const [field, weight] of Object.entries(this.FIELD_WEIGHTS)) {
-      const value = (extractedFields as any)[field];
+    let totalScore = 0;
+    const details: FieldScoreDetail[] = [];
 
-      if (this.isFieldValid(value)) {
-        score += weight;
-      } else {
-        missingFields.push(field);
-      }
+    for (const fw of FIELD_WEIGHTS) {
+      const hasValue = this.hasValidValue(normalizedFields[fw.field]);
+      const actualScore = hasValue ? fw.weight : 0;
+      totalScore += actualScore;
+
+      details.push({
+        field: fw.field,
+        category: fw.category,
+        maxScore: fw.weight,
+        actualScore,
+        hasValue,
+      });
     }
 
-    const needsLlm = score < this.COMPLETENESS_THRESHOLD;
-
-    const reason = needsLlm
-      ? `完整性得分 ${score}/100，低于阈值 ${this.COMPLETENESS_THRESHOLD}。` +
-        `缺失关键字段: ${missingFields.slice(0, 5).join(', ')}${missingFields.length > 5 ? '...' : ''}`
-      : `完整性得分 ${score}/100，信息充足，无需LLM增强。`;
+    const maxScore = 100;
+    const percentage = totalScore;
+    const categoryScores = this.calculateCategoryScores(details);
+    const strategy = this.determineStrategy(totalScore);
 
     this.logger.log(
-      `Completeness check: score=${score}, needsLlm=${needsLlm}, ` +
-      `missingFields=${missingFields.length}`
+      `Completeness: ${totalScore}/100, strategy: ${strategy}, ` +
+        `categories: basic=${categoryScores.basic}, financial=${categoryScores.financial}, ` +
+        `temporal=${categoryScores.temporal}, other=${categoryScores.other}`,
     );
 
     return {
-      score,
-      missingFields,
-      needsLlm,
-      reason,
+      totalScore,
+      maxScore,
+      percentage,
+      strategy,
+      categoryScores,
+      details,
     };
   }
 
   /**
-   * 判断字段值是否有效
+   * Get category score from details
    */
-  private isFieldValid(value: any): boolean {
+  getCategoryScore(
+    category: 'basic' | 'financial' | 'temporal' | 'other',
+    details: FieldScoreDetail[],
+  ): number {
+    return details
+      .filter((d) => d.category === category)
+      .reduce((sum, d) => sum + d.actualScore, 0);
+  }
+
+  /**
+   * Determine parsing strategy based on score
+   */
+  determineStrategy(score: number): ParseStrategy {
+    if (score >= DIRECT_USE_THRESHOLD) {
+      return ParseStrategy.DIRECT_USE;
+    }
+    if (score >= LLM_VALIDATION_THRESHOLD) {
+      return ParseStrategy.LLM_VALIDATION;
+    }
+    return ParseStrategy.LLM_FULL_EXTRACTION;
+  }
+
+  /**
+   * Identify missing fields that need to be extracted
+   */
+  getMissingFields(extractedFields: Record<string, unknown>): string[] {
+    const normalizedFields = this.normalizeFields(extractedFields);
+    return FIELD_WEIGHTS.filter((fw) => !this.hasValidValue(normalizedFields[fw.field])).map(
+      (fw) => fw.field,
+    );
+  }
+
+  /**
+   * Identify priority fields for LLM extraction (sorted by weight)
+   */
+  identifyPriorityFields(missingFields: string[]): string[] {
+    const missingSet = new Set(missingFields);
+    const priorityFields = FIELD_WEIGHTS.filter((fw) => missingSet.has(fw.field)).sort(
+      (a, b) => b.weight - a.weight,
+    );
+
+    // Return top 10 priority fields
+    return priorityFields.slice(0, 10).map((fw) => fw.field);
+  }
+
+  /**
+   * Check if strategy needs LLM
+   */
+  needsLlm(score: number): boolean {
+    return score < DIRECT_USE_THRESHOLD;
+  }
+
+  /**
+   * Get explanation for the chosen strategy
+   */
+  getStrategyReason(score: number, strategy: ParseStrategy): string {
+    switch (strategy) {
+      case ParseStrategy.DIRECT_USE:
+        return `Completeness score ${score}/100 >= ${DIRECT_USE_THRESHOLD}, using programmatic result directly`;
+      case ParseStrategy.LLM_VALIDATION:
+        return `Completeness score ${score}/100 between ${LLM_VALIDATION_THRESHOLD}-${DIRECT_USE_THRESHOLD - 1}, using LLM validation mode`;
+      case ParseStrategy.LLM_FULL_EXTRACTION:
+        return `Completeness score ${score}/100 < ${LLM_VALIDATION_THRESHOLD}, using LLM full extraction mode`;
+    }
+  }
+
+  // Legacy method for backward compatibility
+  checkCompleteness(extractedFields: Record<string, unknown>): {
+    score: number;
+    missingFields: string[];
+    needsLlm: boolean;
+    reason: string;
+  } {
+    const result = this.calculateScore(extractedFields);
+    const missingFields = this.getMissingFields(extractedFields);
+
+    return {
+      score: result.totalScore,
+      missingFields,
+      needsLlm: this.needsLlm(result.totalScore),
+      reason: this.getStrategyReason(result.totalScore, result.strategy),
+    };
+  }
+
+  private calculateCategoryScores(details: FieldScoreDetail[]): CategoryScores {
+    return {
+      basic: this.getCategoryScore('basic', details),
+      financial: this.getCategoryScore('financial', details),
+      temporal: this.getCategoryScore('temporal', details),
+      other: this.getCategoryScore('other', details),
+    };
+  }
+
+  private normalizeFields(fields: Record<string, unknown>): Record<string, unknown> {
+    const normalized: Record<string, unknown> = { ...fields };
+
+    // Apply field mapping
+    for (const [oldKey, newKey] of Object.entries(FIELD_MAPPING)) {
+      if (fields[oldKey] !== undefined && normalized[newKey] === undefined) {
+        normalized[newKey] = fields[oldKey];
+      }
+    }
+
+    return normalized;
+  }
+
+  private hasValidValue(value: unknown): boolean {
     if (value === null || value === undefined) {
       return false;
     }
 
     if (typeof value === 'string') {
-      // 字符串需要非空且有意义（不是占位符）
       const trimmed = value.trim();
       if (trimmed.length === 0) return false;
-      if (trimmed === 'N/A' || trimmed === 'null' || trimmed === 'undefined') {
-        return false;
-      }
+      // Check for placeholder values
+      const placeholders = ['N/A', 'n/a', 'null', 'undefined', '-', '无', '未知'];
+      if (placeholders.includes(trimmed)) return false;
       return true;
     }
 
@@ -104,22 +238,16 @@ export class CompletenessCheckerService {
       return !isNaN(value);
     }
 
-    // 其他类型视为有效
+    // Arrays need at least one element
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    // Objects need at least one property
+    if (typeof value === 'object') {
+      return Object.keys(value as object).length > 0;
+    }
+
     return true;
-  }
-
-  /**
-   * 识别需要LLM重点提取的字段
-   */
-  identifyPriorityFields(missingFields: string[]): string[] {
-    // 按权重排序缺失字段
-    const sortedMissing = missingFields.sort((a, b) => {
-      const weightA = this.FIELD_WEIGHTS[a as keyof typeof this.FIELD_WEIGHTS] || 0;
-      const weightB = this.FIELD_WEIGHTS[b as keyof typeof this.FIELD_WEIGHTS] || 0;
-      return weightB - weightA;
-    });
-
-    // 返回前10个高优先级字段
-    return sortedMissing.slice(0, 10);
   }
 }
