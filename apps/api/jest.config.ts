@@ -20,6 +20,9 @@ export default {
     '!src/**/*.type.ts',
     '!src/common/scalars/**',
   ],
+  transformIgnorePatterns: [
+    'node_modules/(?!(uuid)/)',
+  ],
   // Commented out to allow tests to pass while building up coverage
   // coverageThreshold: {
   //   global: {

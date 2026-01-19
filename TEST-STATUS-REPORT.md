@@ -1,21 +1,21 @@
 # 单元测试状态报告
 
 生成日期: 2026-01-19
-**最后更新**: Phase 1 完成
+**最后更新**: Phase 2 完成
 
 ## 执行摘要
 
-已成功为项目配置Jest测试环境，并为核心服务编写了全面的单元测试。由于Prisma TypeScript类型系统的复杂性，采用了`jest-mock-extended`库来解决mock问题。
+已成功为项目配置Jest测试环境，并为核心服务编写了全面的单元测试。由于Prisma TypeScript类型系统的复杂性，采用了`jest-mock-extended`库来解决mock问题。Phase 2新增StorageService完整测试覆盖。
 
 ### 当前测试覆盖率
 
-- **测试套件**: 6个通过
-- **测试用例**: 78个通过
-- **代码覆盖率**: ~9.83%（Phase 1 完成）
-  - Statements: 9.61%
-  - Branches: 10.76%
-  - Functions: 6.59%
-  - Lines: 9.83%
+- **测试套件**: 7个通过
+- **测试用例**: 103个通过
+- **代码覆盖率**: ~11.75%（Phase 2 完成）
+  - Statements: 11.52%
+  - Branches: 12.33%
+  - Functions: 8.79%
+  - Lines: 11.75%
 
 ## 已完成的工作
 
@@ -35,6 +35,7 @@
 | UserService | `user.service.spec.ts` | 20 | ✅ 全部通过 | 76.92% statements |
 | DepartmentService | `department.service.spec.ts` | 20 | ✅ 全部通过 | 100% statements |
 | AuditService | `audit.service.spec.ts` | 18 | ✅ 全部通过 | ~70% statements |
+| StorageService | `storage.service.spec.ts` | 25 | ✅ 全部通过 | ~95% statements |
 | AppService | `app.service.spec.ts` | 2 | ✅ 全部通过 | 100% statements |
 | PrismaService | `prisma.service.spec.ts` | 3 | ✅ 全部通过 | 46.66% statements |
 
@@ -168,6 +169,47 @@
 #### getDistinctEntityTypes
 - ✅ should return list of distinct entity types
 - ✅ should return empty array when no entity types exist
+
+### StorageService 测试 (25个用例)
+
+#### onModuleInit
+- ✅ should create bucket if it does not exist
+- ✅ should not create bucket if it already exists
+- ✅ should throw error if bucket creation fails
+- ✅ should throw error if bucket check fails
+
+#### uploadFile
+- ✅ should upload file successfully
+- ✅ should upload file with folder prefix
+- ✅ should upload file without folder prefix
+- ✅ should preserve file extension
+- ✅ should handle file without extension
+- ✅ should upload file with correct metadata
+- ✅ should throw error if upload fails
+
+#### getFileUrl
+- ✅ should return presigned URL with default expiry
+- ✅ should return presigned URL with custom expiry
+- ✅ should throw error if presigning fails
+
+#### downloadFile
+- ✅ should download file successfully
+- ✅ should handle large files
+- ✅ should handle stream errors
+- ✅ should throw error if file does not exist
+
+#### deleteFile
+- ✅ should delete file successfully
+- ✅ should throw error if deletion fails
+
+#### fileExists
+- ✅ should return true if file exists
+- ✅ should return false if file does not exist
+- ✅ should return false for any stat error
+
+#### configuration
+- ✅ should use default bucket name if not configured
+- ✅ should initialize with configuration values
 
 ### AppService 测试 (2个用例)
 
