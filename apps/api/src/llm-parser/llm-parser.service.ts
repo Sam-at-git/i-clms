@@ -2,13 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 import { LlmConfigService } from './config/llm-config.service';
 import { ParserService } from '../parser/parser.service';
+import { CompletenessCheckerService } from './completeness-checker.service';
+import { ChunkingStrategyService, TextChunk } from './chunking-strategy.service';
 import { LlmParseResult } from './dto/llm-parse-result.dto';
 import { ContractExtractedData } from './dto/contract-extracted-data.dto';
 import {
   SYSTEM_PROMPT,
   USER_PROMPT_TEMPLATE,
   CONTRACT_JSON_SCHEMA,
+  VALIDATION_PROMPT_TEMPLATE,
+  VALIDATION_RESULT_SCHEMA,
 } from './prompts/contract-extraction.prompt';
+import { LlmValidationResult } from './dto/validation-result.dto';
 
 @Injectable()
 export class LlmParserService {
@@ -18,6 +23,8 @@ export class LlmParserService {
   constructor(
     private configService: LlmConfigService,
     private parserService: ParserService,
+    private completenessChecker: CompletenessCheckerService,
+    private chunkingStrategy: ChunkingStrategyService,
   ) {
     const config = this.configService.getActiveConfig();
     this.openai = new OpenAI({
@@ -32,71 +39,194 @@ export class LlmParserService {
     const startTime = Date.now();
 
     try {
-      // 1. 下载文件并提取文本（复用现有ParserService）
-      this.logger.log(`Starting to parse document: ${objectName}`);
+      // ========== 阶段1: 程序解析 ==========
+      this.logger.log(`[Hybrid Strategy] Starting document parse: ${objectName}`);
       const parseResult = await this.parserService.parseDocument(objectName);
 
       if (!parseResult.success || !parseResult.text) {
         throw new Error(parseResult.error || 'Failed to extract text from document');
       }
 
-      this.logger.log(`Extracted ${parseResult.text.length} characters from document`);
+      this.logger.log(`[Program Parse] Extracted ${parseResult.text.length} chars, ` +
+        `fields found: ${Object.keys(parseResult.extractedFields || {}).length}`);
 
-      // 2. 限制文本长度以避免token超限
-      const textLimit = 15000;
-      const contractText = parseResult.text.substring(0, textLimit);
+      // ========== 阶段2: 完整性检查 ==========
+      const fields = parseResult.extractedFields || {
+        contractNo: undefined,
+        name: undefined,
+        customerName: undefined,
+        ourEntity: undefined,
+        type: undefined,
+        status: undefined,
+        amountWithTax: undefined,
+        amountWithoutTax: undefined,
+        taxRate: undefined,
+        paymentTerms: undefined,
+        paymentMethod: undefined,
+        signedAt: undefined,
+        effectiveAt: undefined,
+        expiresAt: undefined,
+        duration: undefined,
+        salesPerson: undefined,
+        industry: undefined,
+        signLocation: undefined,
+        copies: undefined,
+        currency: undefined,
+        rawMatches: [],
+      };
 
-      // 3. 构建Prompt
-      const config = this.configService.getActiveConfig();
-      const userPrompt = USER_PROMPT_TEMPLATE
-        .replace('{{contractText}}', contractText)
-        .replace('{{jsonSchema}}', JSON.stringify(CONTRACT_JSON_SCHEMA, null, 2));
+      const completenessResult = this.completenessChecker.checkCompleteness(fields);
 
-      this.logger.log(`Calling LLM API (${config.model})...`);
+      this.logger.log(
+        `[Completeness Check] Score=${completenessResult.score}/100, ` +
+        `needsLlm=${completenessResult.needsLlm}, ` +
+        `missing=${completenessResult.missingFields.length} fields`
+      );
 
-      // 4. 调用LLM（使用JSON模式）
-      const completion = await this.openai.chat.completions.create({
-        model: config.model,
-        temperature: config.temperature,
-        max_tokens: config.maxTokens,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
-      });
-
-      // 5. 解析JSON
-      const content = completion.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('Empty response from LLM');
+      // 如果信息已经足够完整，直接返回程序解析结果
+      if (!completenessResult.needsLlm) {
+        this.logger.log('[Hybrid Strategy] Program parse sufficient, skipping LLM');
+        return {
+          success: true,
+          extractedData: this.convertToContractData(parseResult.extractedFields!),
+          rawText: parseResult.text,
+          pageCount: parseResult.pageCount,
+          llmModel: undefined,
+          llmProvider: undefined,
+          processingTimeMs: Date.now() - startTime,
+          hybridStrategy: {
+            usedLlm: false,
+            usedValidation: false,
+            reason: completenessResult.reason,
+            programParseScore: completenessResult.score,
+          },
+        };
       }
 
-      this.logger.log(`Received response from LLM (${content.length} chars)`);
+      // ========== 阶段3: 智能分支 - 验证模式 vs 完整提取 ==========
 
-      const extractedData = JSON.parse(content);
+      // 如果得分在50-69之间，使用验证模式（更省成本）
+      if (completenessResult.score >= 50 && completenessResult.score < 70) {
+        this.logger.log('[Hybrid Strategy] Using LLM validation mode (score 50-69)');
 
-      // 6. 验证和转换
-      const validated = this.validateAndTransform(extractedData);
+        try {
+          // 调用LLM验证程序解析结果
+          const validationResult = await this.callLlmForValidation(
+            parseResult.text,
+            parseResult.extractedFields!
+          );
+
+          // 应用修正
+          const correctedFields = this.applyValidationCorrections(
+            parseResult.extractedFields!,
+            validationResult
+          );
+
+          const correctedCount = validationResult.validationResults?.filter(r => !r.isCorrect).length || 0;
+
+          const processingTimeMs = Date.now() - startTime;
+          this.logger.log(
+            `[Hybrid Strategy] Validation completed in ${processingTimeMs}ms, ` +
+            `corrected ${correctedCount} field(s)`
+          );
+
+          return {
+            success: true,
+            extractedData: this.convertToContractData(correctedFields),
+            rawText: parseResult.text,
+            pageCount: parseResult.pageCount,
+            llmModel: this.configService.getActiveConfig().model,
+            llmProvider: this.configService.getProviderName(),
+            processingTimeMs,
+            hybridStrategy: {
+              usedLlm: true,
+              usedValidation: true,
+              reason: `程序解析得分${completenessResult.score}分（中等），使用LLM验证模式检查并修正`,
+              programParseScore: completenessResult.score,
+              validationResult,
+              correctedFieldsCount: correctedCount,
+            },
+          };
+        } catch (error) {
+          this.logger.warn('[Hybrid Strategy] Validation failed, falling back to full extraction', error);
+          // 验证失败，继续使用完整提取模式
+        }
+      }
+
+      // ========== 阶段4: LLM完整提取（得分<50或验证失败） ==========
+      this.logger.log('[Hybrid Strategy] Using LLM full extraction mode (score < 50 or validation failed)');
+
+      // 确定优先提取的字段
+      const priorityFields = this.completenessChecker.identifyPriorityFields(
+        completenessResult.missingFields
+      );
+
+      this.logger.log(`[LLM Enhancement] Priority fields: ${priorityFields.join(', ')}`);
+
+      // 确定分段策略
+      const chunkingResult = this.chunkingStrategy.determineStrategy(
+        parseResult.text,
+        priorityFields
+      );
+
+      this.logger.log(
+        `[Chunking Strategy] ${chunkingResult.strategy}, ` +
+        `${chunkingResult.chunks.length} chunks, reason: ${chunkingResult.reason}`
+      );
+
+      // 调用LLM提取
+      let llmExtractedData: Partial<ContractExtractedData>;
+
+      if (chunkingResult.strategy === 'single') {
+        // 单次LLM调用
+        llmExtractedData = await this.callLlmForFullExtraction(
+          chunkingResult.chunks[0].text,
+          priorityFields
+        );
+      } else {
+        // 多段LLM调用并合并
+        llmExtractedData = await this.callLlmForSegmentedExtraction(
+          chunkingResult.chunks,
+          priorityFields
+        );
+      }
+
+      // ========== 阶段4: 合并结果 ==========
+      const mergedData = this.mergeResults(
+        parseResult.extractedFields!,
+        llmExtractedData,
+        completenessResult.missingFields
+      );
 
       const processingTimeMs = Date.now() - startTime;
-      this.logger.log(`Parsing completed in ${processingTimeMs}ms`);
+      this.logger.log(
+        `[Hybrid Strategy] Completed in ${processingTimeMs}ms, ` +
+        `used ${chunkingResult.chunks.length} LLM call(s)`
+      );
 
       return {
         success: true,
-        extractedData: validated,
+        extractedData: mergedData,
         rawText: parseResult.text,
         pageCount: parseResult.pageCount,
-        llmModel: config.model,
+        llmModel: this.configService.getActiveConfig().model,
         llmProvider: this.configService.getProviderName(),
         processingTimeMs,
+        hybridStrategy: {
+          usedLlm: true,
+          usedValidation: false,
+          reason: completenessResult.reason,
+          programParseScore: completenessResult.score,
+          llmChunks: chunkingResult.chunks.length,
+          enhancedFields: priorityFields,
+        },
       };
     } catch (error) {
       const processingTimeMs = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
 
-      this.logger.error(`Parsing failed: ${errorMessage}`, errorStack);
+      this.logger.error(`[Hybrid Strategy] Parsing failed: ${errorMessage}`, errorStack);
 
       return {
         success: false,
@@ -203,5 +333,371 @@ export class LlmParserService {
     }
 
     return value;
+  }
+
+  // ========== 混合策略辅助方法 ==========
+
+  /**
+   * 单次完整LLM提取
+   */
+  private async callLlmForFullExtraction(
+    text: string,
+    priorityFields: string[]
+  ): Promise<Partial<ContractExtractedData>> {
+    const config = this.configService.getActiveConfig();
+    const userPrompt = USER_PROMPT_TEMPLATE
+      .replace('{{contractText}}', text)
+      .replace('{{jsonSchema}}', JSON.stringify(CONTRACT_JSON_SCHEMA, null, 2));
+
+    this.logger.log(`[LLM] Calling API for full extraction (${config.model})`);
+
+    const completion = await this.openai.chat.completions.create({
+      model: config.model,
+      temperature: config.temperature,
+      max_tokens: config.maxTokens,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('Empty response from LLM');
+    }
+
+    const extracted = JSON.parse(content);
+    return this.validateAndTransform(extracted);
+  }
+
+  /**
+   * 多段LLM提取并合并
+   */
+  private async callLlmForSegmentedExtraction(
+    chunks: TextChunk[],
+    priorityFields: string[]
+  ): Promise<Partial<ContractExtractedData>> {
+    this.logger.log(`[LLM] Processing ${chunks.length} chunks in sequence`);
+
+    const config = this.configService.getActiveConfig();
+    const partialResults: Partial<ContractExtractedData>[] = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      this.logger.log(
+        `[LLM] Processing chunk ${i + 1}/${chunks.length}: ${chunk.purpose} ` +
+        `(${chunk.text.length} chars, targeting: ${chunk.targetFields.join(', ')})`
+      );
+
+      // 为每个chunk构建针对性的prompt
+      const targetedPrompt = this.buildTargetedPrompt(chunk, priorityFields);
+
+      const completion = await this.openai.chat.completions.create({
+        model: config.model,
+        temperature: config.temperature,
+        max_tokens: config.maxTokens,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: targetedPrompt },
+        ],
+        response_format: { type: 'json_object' },
+      });
+
+      const content = completion.choices[0]?.message?.content;
+      if (content) {
+        try {
+          const extracted = JSON.parse(content);
+          partialResults.push(extracted);
+          this.logger.log(`[LLM] Chunk ${i + 1} extracted successfully`);
+        } catch (error) {
+          this.logger.warn(`[LLM] Failed to parse chunk ${i + 1} response`, error);
+        }
+      }
+    }
+
+    // 合并所有分段结果
+    return this.mergePartialResults(partialResults);
+  }
+
+  /**
+   * LLM验证模式：检查程序解析结果的正确性
+   * 用于程序解析得分处于中等水平（50-69分）的情况
+   */
+  private async callLlmForValidation(
+    text: string,
+    programFields: any
+  ): Promise<LlmValidationResult> {
+    const config = this.configService.getActiveConfig();
+
+    // 构建程序提取字段的展示
+    const extractedFieldsDisplay = JSON.stringify({
+      合同编号: programFields.contractNo || null,
+      合同名称: programFields.name || null,
+      客户名称: programFields.customerName || null,
+      我方主体: programFields.ourEntity || null,
+      合同类型: programFields.type || null,
+      含税金额: programFields.amountWithTax || null,
+      不含税金额: programFields.amountWithoutTax || null,
+      税率: programFields.taxRate || null,
+      付款方式: programFields.paymentMethod || null,
+      付款条件: programFields.paymentTerms || null,
+      签订日期: programFields.signedAt || null,
+      生效日期: programFields.effectiveAt || null,
+      到期日期: programFields.expiresAt || null,
+      合同期限: programFields.duration || null,
+      销售负责人: programFields.salesPerson || null,
+      所属行业: programFields.industry || null,
+      签订地点: programFields.signLocation || null,
+      合同份数: programFields.copies || null,
+    }, null, 2);
+
+    const userPrompt = VALIDATION_PROMPT_TEMPLATE
+      .replace('{{contractText}}', text.substring(0, 15000))  // 限制长度
+      .replace('{{extractedFields}}', extractedFieldsDisplay);
+
+    this.logger.log(`[LLM Validation] Calling API to validate program-parsed fields (${config.model})`);
+
+    const completion = await this.openai.chat.completions.create({
+      model: config.model,
+      temperature: 0.1,  // 低温度，提高确定性
+      max_tokens: config.maxTokens,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('Empty validation response from LLM');
+    }
+
+    const validationResult = JSON.parse(content);
+    this.logger.log(
+      `[LLM Validation] Completed. ` +
+      `Checked ${validationResult.validationResults?.length || 0} fields, ` +
+      `found ${validationResult.validationResults?.filter((r: any) => !r.isCorrect).length || 0} incorrect`
+    );
+
+    return validationResult;
+  }
+
+  /**
+   * 应用LLM验证结果，修正错误字段
+   */
+  private applyValidationCorrections(
+    programFields: any,
+    validationResult: LlmValidationResult
+  ): any {
+    const corrected = { ...programFields };
+    let correctedCount = 0;
+
+    for (const fieldResult of validationResult.validationResults || []) {
+      if (!fieldResult.isCorrect && fieldResult.correctedValue) {
+        // 字段名映射：中文 -> 英文
+        const fieldMap: Record<string, string> = {
+          '合同编号': 'contractNo',
+          '合同名称': 'name',
+          '客户名称': 'customerName',
+          '我方主体': 'ourEntity',
+          '合同类型': 'type',
+          '含税金额': 'amountWithTax',
+          '不含税金额': 'amountWithoutTax',
+          '税率': 'taxRate',
+          '付款方式': 'paymentMethod',
+          '付款条件': 'paymentTerms',
+          '签订日期': 'signedAt',
+          '生效日期': 'effectiveAt',
+          '到期日期': 'expiresAt',
+          '合同期限': 'duration',
+          '销售负责人': 'salesPerson',
+          '所属行业': 'industry',
+          '签订地点': 'signLocation',
+          '合同份数': 'copies',
+        };
+
+        const englishField = fieldMap[fieldResult.field] || fieldResult.field;
+        corrected[englishField] = fieldResult.correctedValue;
+        correctedCount++;
+
+        this.logger.log(
+          `[Validation] Corrected ${fieldResult.field} (${englishField}): ` +
+          `"${fieldResult.programValue}" -> "${fieldResult.correctedValue}"`
+        );
+      }
+    }
+
+    // 补充额外发现的字段
+    if (validationResult.additionalFields) {
+      Object.assign(corrected, validationResult.additionalFields);
+    }
+
+    return corrected;
+  }
+
+  /**
+   * 构建针对性提取prompt
+   */
+  private buildTargetedPrompt(chunk: TextChunk, priorityFields: string[]): string {
+    const relevantFields = chunk.targetFields.filter(f => priorityFields.includes(f));
+
+    return `请从以下合同片段中提取信息：
+
+【文档片段】
+${chunk.text}
+
+【提取重点】
+本片段为：${chunk.purpose}
+请重点提取以下字段：${relevantFields.join(', ')}
+
+【输出格式】
+请以JSON格式输出，遵循以下schema：
+${JSON.stringify(CONTRACT_JSON_SCHEMA, null, 2)}
+
+如果某个字段在本片段中未找到，设为null。只提取你有把握的信息。`;
+  }
+
+  /**
+   * 合并多个分段的LLM提取结果
+   */
+  private mergePartialResults(
+    partialResults: Partial<ContractExtractedData>[]
+  ): Partial<ContractExtractedData> {
+    const merged: Partial<ContractExtractedData> = {
+      basicInfo: {},
+      financialInfo: {},
+      timeInfo: {},
+      otherInfo: {},
+    };
+
+    for (const partial of partialResults) {
+      // 合并基本信息
+      if (partial.basicInfo) {
+        merged.basicInfo = { ...merged.basicInfo, ...partial.basicInfo };
+      }
+
+      // 合并财务信息
+      if (partial.financialInfo) {
+        merged.financialInfo = { ...merged.financialInfo, ...partial.financialInfo };
+      }
+
+      // 合并时间信息
+      if (partial.timeInfo) {
+        merged.timeInfo = { ...merged.timeInfo, ...partial.timeInfo };
+      }
+
+      // 合并其他信息
+      if (partial.otherInfo) {
+        merged.otherInfo = { ...merged.otherInfo, ...partial.otherInfo };
+      }
+
+      // 类型和详情（取第一个有效值）
+      if (!merged.contractType && partial.contractType) {
+        merged.contractType = partial.contractType;
+      }
+
+      if (!merged.typeSpecificDetails && partial.typeSpecificDetails) {
+        merged.typeSpecificDetails = partial.typeSpecificDetails;
+      }
+    }
+
+    return merged;
+  }
+
+  /**
+   * 合并程序解析和LLM结果
+   * 策略：优先使用程序解析的高置信度字段，LLM填补缺失
+   */
+  private mergeResults(
+    programFields: any,
+    llmFields: Partial<ContractExtractedData>,
+    missingFields: string[]
+  ): ContractExtractedData {
+    this.logger.log(`[Merge] Combining program and LLM results for ${missingFields.length} missing fields`);
+
+    // 从程序解析结果构建基础数据
+    const base = this.convertToContractData(programFields);
+
+    // 用LLM结果补充缺失字段
+    for (const fieldPath of missingFields) {
+      const value = this.getNestedValue(llmFields, fieldPath);
+      if (value !== undefined && value !== null) {
+        this.setNestedValue(base, fieldPath, value);
+        this.logger.debug(`[Merge] Filled field ${fieldPath} from LLM`);
+      }
+    }
+
+    return base;
+  }
+
+  /**
+   * 将ExtractedFields转换为ContractExtractedData
+   */
+  private convertToContractData(fields: any): ContractExtractedData {
+    return {
+      contractType: fields.type || 'PROJECT_OUTSOURCING',
+      basicInfo: {
+        contractNo: fields.contractNo,
+        contractName: fields.name,
+        ourEntity: fields.ourEntity,
+        customerName: fields.customerName,
+        status: fields.status || 'DRAFT',
+      },
+      financialInfo: {
+        amountWithTax: fields.amountWithTax,
+        amountWithoutTax: fields.amountWithoutTax,
+        taxRate: fields.taxRate,
+        currency: fields.currency || 'CNY',
+        paymentMethod: fields.paymentMethod,
+        paymentTerms: fields.paymentTerms,
+      },
+      timeInfo: {
+        signedAt: fields.signedAt,
+        effectiveAt: fields.effectiveAt,
+        expiresAt: fields.expiresAt,
+        duration: fields.duration,
+      },
+      otherInfo: {
+        salesPerson: fields.salesPerson,
+        industry: fields.industry,
+        signLocation: fields.signLocation,
+        copies: fields.copies,
+      },
+    };
+  }
+
+  /**
+   * 获取嵌套对象的值
+   */
+  private getNestedValue(obj: any, path: string): any {
+    const parts = path.split('.');
+    let current = obj;
+
+    for (const part of parts) {
+      if (current === undefined || current === null) return undefined;
+      current = current[part];
+    }
+
+    return current;
+  }
+
+  /**
+   * 设置嵌套对象的值
+   */
+  private setNestedValue(obj: any, path: string, value: any): void {
+    const parts = path.split('.');
+    let current = obj;
+
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (!(part in current) || current[part] === null) {
+        current[part] = {};
+      }
+      current = current[part];
+    }
+
+    current[parts[parts.length - 1]] = value;
   }
 }

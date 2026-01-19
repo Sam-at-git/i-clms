@@ -21,6 +21,78 @@ export const USER_PROMPT_TEMPLATE = `请从以下合同文本中提取信息：
 请严格按照以下JSON Schema输出：
 {{jsonSchema}}`;
 
+// ========== 新增：验证模式的Prompt ==========
+export const VALIDATION_PROMPT_TEMPLATE = `你是一个专业的合同信息验证助手。
+
+我已经通过程序（正则表达式）从合同中提取了一些字段，但程序解析可能存在错误。
+请你阅读完整的合同文本，检查每个已提取字段是否正确，并提供修正建议。
+
+**合同文本：**
+{{contractText}}
+
+**程序已提取的字段：**
+{{extractedFields}}
+
+**你的任务：**
+1. 逐字段检查：每个字段的值是否与合同文本内容一致
+2. 识别错误：
+   - 值过长（包含了不该包含的内容，如章节标题、描述文字等）
+   - 值过短（只提取了部分内容）
+   - 值错误（完全提取错了）
+   - 格式错误（日期、金额格式不对）
+3. 提供修正：对于错误的字段，从合同文本中重新提取正确的值
+4. 补充缺失：如果程序未提取到某些重要字段，请补充提取
+
+**输出格式（JSON）：**
+{
+  "validationResults": [
+    {
+      "field": "字段名",
+      "programValue": "程序提取的值",
+      "isCorrect": true/false,
+      "issue": "问题描述（如果有）",
+      "correctedValue": "修正后的值（如果需要修正）",
+      "confidence": 0.95
+    }
+  ],
+  "additionalFields": {
+    // 程序未提取到但你发现的重要字段
+  },
+  "overallAssessment": "整体评估：程序提取准确率如何，有哪些系统性问题"
+}
+
+请严格按照JSON格式输出，不要包含任何解释文字。`;
+
+export const VALIDATION_RESULT_SCHEMA = {
+  type: 'object',
+  required: ['validationResults'],
+  properties: {
+    validationResults: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          field: { type: 'string', description: '字段名' },
+          programValue: { type: ['string', 'null'], description: '程序提取的值' },
+          isCorrect: { type: 'boolean', description: '是否正确' },
+          issue: { type: 'string', description: '问题描述' },
+          correctedValue: { type: ['string', 'null'], description: '修正后的值' },
+          confidence: { type: 'number', minimum: 0, maximum: 1 },
+        },
+        required: ['field', 'isCorrect'],
+      },
+    },
+    additionalFields: {
+      type: 'object',
+      description: '程序未提取到的补充字段',
+    },
+    overallAssessment: {
+      type: 'string',
+      description: '整体评估',
+    },
+  },
+};
+
 export const CONTRACT_JSON_SCHEMA = {
   type: 'object',
   required: ['contractType', 'basicInfo'],
