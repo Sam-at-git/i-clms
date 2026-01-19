@@ -1,21 +1,21 @@
 # 单元测试状态报告
 
 生成日期: 2026-01-19
-**最后更新**: Phase 2 完成
+**最后更新**: Phase 3 完成
 
 ## 执行摘要
 
-已成功为项目配置Jest测试环境，并为核心服务编写了全面的单元测试。由于Prisma TypeScript类型系统的复杂性，采用了`jest-mock-extended`库来解决mock问题。Phase 2新增StorageService完整测试覆盖。
+已成功为项目配置Jest测试环境，并为核心服务编写了全面的单元测试。由于Prisma TypeScript类型系统的复杂性，采用了`jest-mock-extended`库来解决mock问题。Phase 3新增ContractService完整测试覆盖。
 
 ### 当前测试覆盖率
 
-- **测试套件**: 7个通过
-- **测试用例**: 103个通过
-- **代码覆盖率**: ~11.75%（Phase 2 完成）
-  - Statements: 11.52%
-  - Branches: 12.33%
-  - Functions: 8.79%
-  - Lines: 11.75%
+- **测试套件**: 8个通过
+- **测试用例**: 113个通过
+- **代码覆盖率**: ~19.79%（Phase 3 完成）
+  - Statements: 19.30%
+  - Branches: 20.06%
+  - Functions: 11.53%
+  - Lines: 19.79%
 
 ## 已完成的工作
 
@@ -36,6 +36,7 @@
 | DepartmentService | `department.service.spec.ts` | 20 | ✅ 全部通过 | 100% statements |
 | AuditService | `audit.service.spec.ts` | 18 | ✅ 全部通过 | ~70% statements |
 | StorageService | `storage.service.spec.ts` | 25 | ✅ 全部通过 | ~95% statements |
+| ContractService | `contract.service.spec.ts` | 10 | ✅ 全部通过 | ~85% statements |
 | AppService | `app.service.spec.ts` | 2 | ✅ 全部通过 | 100% statements |
 | PrismaService | `prisma.service.spec.ts` | 3 | ✅ 全部通过 | 46.66% statements |
 
@@ -210,6 +211,28 @@
 #### configuration
 - ✅ should use default bucket name if not configured
 - ✅ should initialize with configuration values
+
+### ContractService 测试 (10个用例)
+
+#### findAll
+- ✅ should return paginated contracts
+- ✅ should filter by contract types
+- ✅ should detect hasNextPage correctly
+
+#### findOne
+- ✅ should return contract with full details
+- ✅ should return null when contract not found
+
+#### create
+- ✅ should create contract successfully
+
+#### update
+- ✅ should update contract successfully
+- ✅ should throw NotFoundException when updating non-existent contract
+
+#### delete
+- ✅ should delete contract successfully
+- ✅ should throw NotFoundException when deleting non-existent contract
 
 ### AppService 测试 (2个用例)
 
