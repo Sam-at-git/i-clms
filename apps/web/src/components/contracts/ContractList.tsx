@@ -3,6 +3,7 @@ import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { Link } from 'react-router-dom';
 import { ContractUpload } from './ContractUpload';
+import { ContractDelete } from './ContractDelete';
 
 const GET_CONTRACTS = gql`
   query GetContracts($skip: Int, $take: Int) {
@@ -94,6 +95,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function ContractList() {
   const [showUpload, setShowUpload] = useState(false);
+  const [deleteContract, setDeleteContract] = useState<Contract | null>(null);
   const { loading, error, data, fetchMore, refetch } = useQuery<ContractsData>(
     GET_CONTRACTS,
     {
@@ -191,9 +193,18 @@ export function ContractList() {
                   </span>
                 </td>
                 <td style={styles.td}>
-                  <Link to={`/contracts/${contract.id}`} style={styles.actionLink}>
-                    查看
-                  </Link>
+                  <div style={styles.actions}>
+                    <Link to={`/contracts/${contract.id}`} style={styles.actionLink}>
+                      查看
+                    </Link>
+                    <button
+                      onClick={() => setDeleteContract(contract)}
+                      style={styles.deleteButton}
+                      title="删除合同"
+                    >
+                      删除
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -216,6 +227,16 @@ export function ContractList() {
             setShowUpload(false);
             refetch();
           }}
+        />
+      )}
+
+      {deleteContract && (
+        <ContractDelete
+          contractId={deleteContract.id}
+          contractNo={deleteContract.contractNo}
+          contractName={deleteContract.name}
+          onClose={() => setDeleteContract(null)}
+          onSuccess={() => refetch()}
         />
       )}
     </div>
@@ -328,10 +349,24 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     color: '#fff',
   },
+  actions: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'center',
+  },
   actionLink: {
     color: '#3b82f6',
     textDecoration: 'none',
     fontSize: '14px',
+  },
+  deleteButton: {
+    background: 'none',
+    border: 'none',
+    color: '#ef4444',
+    fontSize: '14px',
+    cursor: 'pointer',
+    padding: '0',
+    textDecoration: 'none',
   },
   loadMore: {
     textAlign: 'center',

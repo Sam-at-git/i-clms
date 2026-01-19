@@ -14,6 +14,7 @@ interface ContractDeleteProps {
   contractNo: string;
   contractName: string;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 export function ContractDelete({
@@ -21,13 +22,19 @@ export function ContractDelete({
   contractNo,
   contractName,
   onClose,
+  onSuccess,
 }: ContractDeleteProps) {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const [deleteContract, { loading }] = useMutation(DELETE_CONTRACT, {
     onCompleted: () => {
-      navigate('/contracts');
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/contracts');
+      }
+      onClose();
     },
     onError: (err) => {
       setError(err.message || '删除失败');
