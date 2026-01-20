@@ -40,6 +40,11 @@ const GET_CONTRACT = gql`
       needsManualReview
       createdAt
       updatedAt
+      tags {
+        id
+        name
+        color
+      }
       customer {
         id
         name
