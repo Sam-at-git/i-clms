@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import ContractsPage from '../pages/contracts';
 import ContractDetailPage from '../pages/contracts/[id]';
 import LoginPage from '../pages/login';
+import ForgotPasswordPage from '../pages/forgot-password';
 import FinancePage from '../pages/finance';
 import DeliveryPage from '../pages/delivery';
 import SalesPage from '../pages/sales';
@@ -14,7 +15,9 @@ import DepartmentsPage from '../pages/admin/departments';
 import TagsPage from '../pages/admin/tags';
 import AuditLogsPage from '../pages/admin/audit-logs';
 import PasswordPage from '../pages/settings/password';
+import ProfilePage from '../pages/settings/profile';
 import { ProtectedRoute } from '../components/auth';
+import { ForbiddenPage, RoleGuard } from '../components/errors';
 import { useAuthStore } from '../state';
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -102,6 +105,9 @@ function Layout({ children }: { children: React.ReactNode }) {
                 <span style={styles.userName}>{user.name} ▾</span>
                 {showUserMenu && (
                   <div style={styles.userDropdownMenu}>
+                    <Link to="/settings/profile" style={styles.dropdownItem}>
+                      个人设置
+                    </Link>
                     <Link to="/settings/password" style={styles.dropdownItem}>
                       修改密码
                     </Link>
@@ -129,6 +135,8 @@ export function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/403" element={<ForbiddenPage />} />
         <Route
           path="/*"
           element={
@@ -203,7 +211,9 @@ export function App() {
                   path="/users"
                   element={
                     <ProtectedRoute>
-                      <UsersPage />
+                      <RoleGuard requireAdmin>
+                        <UsersPage />
+                      </RoleGuard>
                     </ProtectedRoute>
                   }
                 />
@@ -211,7 +221,9 @@ export function App() {
                   path="/admin/departments"
                   element={
                     <ProtectedRoute>
-                      <DepartmentsPage />
+                      <RoleGuard requireAdmin>
+                        <DepartmentsPage />
+                      </RoleGuard>
                     </ProtectedRoute>
                   }
                 />
@@ -227,7 +239,9 @@ export function App() {
                   path="/admin/audit-logs"
                   element={
                     <ProtectedRoute>
-                      <AuditLogsPage />
+                      <RoleGuard requireAdmin>
+                        <AuditLogsPage />
+                      </RoleGuard>
                     </ProtectedRoute>
                   }
                 />
@@ -236,6 +250,14 @@ export function App() {
                   element={
                     <ProtectedRoute>
                       <PasswordPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/profile"
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
                     </ProtectedRoute>
                   }
                 />

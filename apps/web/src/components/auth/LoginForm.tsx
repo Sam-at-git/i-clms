@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { gql } from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, User } from '../../state';
+import { PasswordStrengthIndicator, RememberMeCheckbox, ForgotPasswordLink } from './index';
+import { parseLoginError } from '../../lib/auth-helpers';
 
 const LOGIN_MUTATION = gql`
   mutation Login($input: LoginInput!) {
@@ -34,18 +36,45 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
 
   const setAuth = useAuthStore((state) => state.setAuth);
+  const setRememberEmail = useAuthStore((state) => state.setRememberEmail);
+  const rememberEmail = useAuthStore((state) => state.rememberEmail);
   const navigate = useNavigate();
+
+  // Load remembered email on mount
+  useEffect(() => {
+    if (rememberEmail) {
+      setEmail(rememberEmail);
+      setRememberMe(true);
+    }
+  }, [rememberEmail]);
 
   const [login, { loading }] = useMutation<LoginResponse>(LOGIN_MUTATION, {
     onCompleted: (data) => {
       const { accessToken, user } = data.login;
+
+      // Save or remove remembered email
+      if (rememberMe) {
+        setRememberEmail(email);
+      } else {
+        setRememberEmail('');
+      }
+
       setAuth(accessToken, user);
-      navigate('/contracts');
+
+      // Check if user must change password
+      if ((user as any).mustChangePassword) {
+        navigate('/settings/password', {
+          state: { forceChange: true },
+        });
+      } else {
+        navigate('/contracts');
+      }
     },
     onError: (err) => {
-      setError(err.message || '登录失败，请检查邮箱和密码');
+      setError(parseLoginError(err));
     },
   });
 
@@ -58,11 +87,24 @@ export function LoginForm() {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('请输入有效的邮箱地址');
+      return;
+    }
+
     login({
       variables: {
         input: { email, password },
       },
     });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading) {
+      handleSubmit(e as any);
+    }
   };
 
   return (
@@ -74,7 +116,12 @@ export function LoginForm() {
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          {error && <div style={styles.error}>{error}</div>}
+          {error && (
+            <div style={styles.error}>
+              <span style={styles.errorIcon}>⚠️</span>
+              {error}
+            </div>
+          )}
 
           <div style={styles.field}>
             <label style={styles.label}>邮箱</label>
@@ -85,6 +132,8 @@ export function LoginForm() {
               style={styles.input}
               placeholder="请输入邮箱"
               disabled={loading}
+              autoComplete="email"
+              onKeyDown={handleKeyDown}
             />
           </div>
 
@@ -97,11 +146,33 @@ export function LoginForm() {
               style={styles.input}
               placeholder="请输入密码"
               disabled={loading}
+              autoComplete="current-password"
+              onKeyDown={handleKeyDown}
             />
+            <PasswordStrengthIndicator password={password} />
           </div>
 
-          <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? '登录中...' : '登录'}
+          <div style={styles.options}>
+            <RememberMeCheckbox checked={rememberMe} onChange={setRememberMe} />
+            <ForgotPasswordLink />
+          </div>
+
+          <button
+            type="submit"
+            style={{
+              ...styles.button,
+              ...(loading ? styles.buttonDisabled : {}),
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <span style={styles.buttonContent}>
+                <span style={styles.spinner}>⟳</span>
+                登录中...
+              </span>
+            ) : (
+              '登录'
+            )}
           </button>
         </form>
       </div>
@@ -144,7 +215,7 @@ const styles: Record<string, React.CSSProperties> = {
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: '16px',
   },
   field: {
     display: 'flex',
@@ -164,6 +235,17 @@ const styles: Record<string, React.CSSProperties> = {
     outline: 'none',
     transition: 'border-color 0.2s',
   },
+  inputFocus: {
+    borderColor: '#1e3a5f',
+    boxShadow: '0 0 0 3px rgba(30, 58, 95, 0.1)',
+  },
+  options: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '8px',
+  },
   button: {
     padding: '12px 16px',
     fontSize: '16px',
@@ -176,6 +258,20 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: '8px',
     transition: 'background-color 0.2s',
   },
+  buttonDisabled: {
+    opacity: 0.7,
+    cursor: 'not-allowed',
+  },
+  buttonContent: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+  },
+  spinner: {
+    display: 'inline-block',
+    animation: 'spin 1s linear infinite',
+  },
   error: {
     padding: '12px',
     backgroundColor: '#fef2f2',
@@ -183,7 +279,27 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '8px',
     fontSize: '14px',
     textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+  },
+  errorIcon: {
+    fontSize: '16px',
   },
 };
+
+// Add keyframes for spinner
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+if (!document.head.querySelector('style[data-auth-form]')) {
+  styleSheet.setAttribute('data-auth-form', 'true');
+  document.head.appendChild(styleSheet);
+}
 
 export default LoginForm;
