@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CustomerStatus } from './entities/customer.entity';
@@ -71,6 +71,7 @@ const mockPrismaService = {
   customerContact: {
     create: jest.fn(),
     findUnique: jest.fn(),
+    findMany: jest.fn(),
     update: jest.fn(),
     updateMany: jest.fn(),
     delete: jest.fn(),
@@ -445,6 +446,7 @@ describe('CustomerService', () => {
     it('should remove contact successfully', async () => {
       const contact = mockCustomer.contacts[0];
       prisma.customerContact.findUnique.mockResolvedValue(contact);
+      prisma.customerContact.findMany.mockResolvedValue([]); // No other contacts
       prisma.customerContact.delete.mockResolvedValue(contact);
 
       const result = await service.removeContact('contact-1');
@@ -458,6 +460,216 @@ describe('CustomerService', () => {
       await expect(service.removeContact('non-existing')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // SPEC-51 New Tests
+  describe('getCustomerContacts', () => {
+    it('should return all contacts for a customer', async () => {
+      const contacts = [
+        mockCustomer.contacts[0],
+        {
+          id: 'contact-2',
+          customerId: 'customer-1',
+          name: '李四',
+          title: '技术总监',
+          phone: '13900139000',
+          email: 'lisi@example.com',
+          isPrimary: false,
+          createdAt: new Date('2025-02-01'),
+          updatedAt: new Date('2025-02-01'),
+        },
+      ];
+      prisma.customer.findUnique.mockResolvedValue(mockCustomer);
+      prisma.customerContact.findMany.mockResolvedValue(contacts);
+
+      const result = await service.getCustomerContacts('customer-1');
+
+      expect(result).toHaveLength(2);
+      expect(prisma.customerContact.findMany).toHaveBeenCalledWith({
+        where: { customerId: 'customer-1' },
+        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      });
+    });
+
+    it('should return empty array for customer with no contacts', async () => {
+      prisma.customer.findUnique.mockResolvedValue(mockCustomer);
+      prisma.customerContact.findMany.mockResolvedValue([]);
+
+      const result = await service.getCustomerContacts('customer-1');
+
+      expect(result).toHaveLength(0);
+    });
+
+    it('should throw NotFoundException for non-existing customer', async () => {
+      prisma.customer.findUnique.mockResolvedValue(null);
+
+      await expect(service.getCustomerContacts('non-existing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('setPrimaryContact', () => {
+    it('should set contact as primary and reset others', async () => {
+      const contact = mockCustomer.contacts[0];
+      prisma.customerContact.findUnique.mockResolvedValue({
+        ...contact,
+        isPrimary: false,
+      });
+      prisma.customerContact.updateMany.mockResolvedValue({ count: 1 });
+      prisma.customerContact.update.mockResolvedValue({
+        ...contact,
+        isPrimary: true,
+      });
+
+      const result = await service.setPrimaryContact('contact-1');
+
+      expect(result.isPrimary).toBe(true);
+      expect(prisma.customerContact.updateMany).toHaveBeenCalledWith({
+        where: {
+          customerId: 'customer-1',
+          NOT: { id: 'contact-1' },
+        },
+        data: { isPrimary: false },
+      });
+    });
+
+    it('should throw NotFoundException for non-existing contact', async () => {
+      prisma.customerContact.findUnique.mockResolvedValue(null);
+
+      await expect(service.setPrimaryContact('non-existing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('email validation', () => {
+    it('should reject invalid email in addContact', async () => {
+      prisma.customer.findUnique.mockResolvedValue(mockCustomer);
+
+      await expect(
+        service.addContact('customer-1', {
+          name: '张三',
+          email: 'invalid-email',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.addContact('customer-1', {
+          name: '张三',
+          email: 'invalid-email',
+        }),
+      ).rejects.toThrow('Invalid email format');
+    });
+
+    it('should accept valid email in addContact', async () => {
+      prisma.customer.findUnique.mockResolvedValue(mockCustomer);
+      prisma.customerContact.create.mockResolvedValue(mockCustomer.contacts[0]);
+
+      const result = await service.addContact('customer-1', {
+        name: '张三',
+        email: 'valid@example.com',
+      });
+
+      expect(result).toBeDefined();
+      expect(prisma.customerContact.create).toHaveBeenCalled();
+    });
+
+    it('should accept empty email in addContact', async () => {
+      prisma.customer.findUnique.mockResolvedValue(mockCustomer);
+      prisma.customerContact.create.mockResolvedValue(mockCustomer.contacts[0]);
+
+      const result = await service.addContact('customer-1', {
+        name: '张三',
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should reject invalid email in updateContact', async () => {
+      const contact = mockCustomer.contacts[0];
+      prisma.customerContact.findUnique.mockResolvedValue(contact);
+
+      await expect(
+        service.updateContact('contact-1', {
+          email: 'not-an-email',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should accept valid email in updateContact', async () => {
+      const contact = mockCustomer.contacts[0];
+      prisma.customerContact.findUnique.mockResolvedValue(contact);
+      prisma.customerContact.update.mockResolvedValue(contact);
+
+      const result = await service.updateContact('contact-1', {
+        email: 'newemail@example.com',
+      });
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('removeContact auto-promote primary', () => {
+    it('should auto-promote another contact when deleting primary', async () => {
+      const primaryContact = mockCustomer.contacts[0];
+      const secondaryContact = {
+        id: 'contact-2',
+        customerId: 'customer-1',
+        name: '李四',
+        title: '技术总监',
+        phone: '13900139000',
+        email: 'lisi@example.com',
+        isPrimary: false,
+        createdAt: new Date('2025-02-01'),
+        updatedAt: new Date('2025-02-01'),
+      };
+
+      prisma.customerContact.findUnique.mockResolvedValue(primaryContact);
+      prisma.customerContact.findMany.mockResolvedValue([secondaryContact]);
+      prisma.customerContact.update.mockResolvedValue({
+        ...secondaryContact,
+        isPrimary: true,
+      });
+      prisma.customerContact.delete.mockResolvedValue(primaryContact);
+
+      const result = await service.removeContact('contact-1');
+
+      expect(result.id).toBe('contact-1');
+      expect(prisma.customerContact.update).toHaveBeenCalledWith({
+        where: { id: 'contact-2' },
+        data: { isPrimary: true },
+      });
+    });
+
+    it('should not auto-promote when deleting non-primary contact', async () => {
+      const nonPrimaryContact = {
+        ...mockCustomer.contacts[0],
+        id: 'contact-2',
+        isPrimary: false,
+      };
+
+      prisma.customerContact.findUnique.mockResolvedValue(nonPrimaryContact);
+      prisma.customerContact.findMany.mockResolvedValue([]);
+      prisma.customerContact.delete.mockResolvedValue(nonPrimaryContact);
+
+      const result = await service.removeContact('contact-2');
+
+      expect(result.id).toBe('contact-2');
+      expect(prisma.customerContact.update).not.toHaveBeenCalled();
+    });
+
+    it('should handle deleting primary when no other contacts exist', async () => {
+      const primaryContact = mockCustomer.contacts[0];
+
+      prisma.customerContact.findUnique.mockResolvedValue(primaryContact);
+      prisma.customerContact.findMany.mockResolvedValue([]);
+      prisma.customerContact.delete.mockResolvedValue(primaryContact);
+
+      const result = await service.removeContact('contact-1');
+
+      expect(result.id).toBe('contact-1');
+      expect(prisma.customerContact.update).not.toHaveBeenCalled();
     });
   });
 });

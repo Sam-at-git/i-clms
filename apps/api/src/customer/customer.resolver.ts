@@ -45,6 +45,13 @@ export class CustomerResolver {
     return this.customerService.getCustomerStats(id);
   }
 
+  @Query(() => [CustomerContact], { name: 'customerContacts' })
+  async getCustomerContacts(
+    @Args('customerId', { type: () => ID }) customerId: string,
+  ): Promise<CustomerContact[]> {
+    return this.customerService.getCustomerContacts(customerId);
+  }
+
   @Mutation(() => Customer)
   async createCustomer(
     @Args('input') input: CreateCustomerInput,
@@ -89,5 +96,12 @@ export class CustomerResolver {
     @Args('contactId', { type: () => ID }) contactId: string,
   ): Promise<CustomerContact> {
     return this.customerService.removeContact(contactId);
+  }
+
+  @Mutation(() => CustomerContact)
+  async setPrimaryContact(
+    @Args('contactId', { type: () => ID }) contactId: string,
+  ): Promise<CustomerContact> {
+    return this.customerService.setPrimaryContact(contactId);
   }
 }

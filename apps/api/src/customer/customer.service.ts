@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, CustomerStatus, ContractStatus } from '@prisma/client';
@@ -18,6 +19,9 @@ import {
   CustomerStats,
   PaginatedCustomers,
 } from './entities/customer.entity';
+
+// Simple email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 @Injectable()
 export class CustomerService {
@@ -225,6 +229,18 @@ export class CustomerService {
     };
   }
 
+  // Get all contacts for a customer
+  async getCustomerContacts(customerId: string): Promise<CustomerContact[]> {
+    await this.findOne(customerId); // Ensure customer exists
+
+    const contacts = await this.prisma.customerContact.findMany({
+      where: { customerId },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    return contacts.map(this.mapToContact);
+  }
+
   private calculateLifetimeValue(
     contracts: Array<{
       amountWithTax: { toNumber(): number } | null;
@@ -253,6 +269,11 @@ export class CustomerService {
     input: CreateContactInput,
   ): Promise<CustomerContact> {
     await this.findOne(customerId);
+
+    // Validate email format if provided
+    if (input.email && !EMAIL_REGEX.test(input.email)) {
+      throw new BadRequestException('Invalid email format');
+    }
 
     if (input.isPrimary) {
       // Reset other primary contacts
@@ -291,6 +312,11 @@ export class CustomerService {
       throw new NotFoundException(`Contact with ID ${contactId} not found`);
     }
 
+    // Validate email format if provided
+    if (input.email && !EMAIL_REGEX.test(input.email)) {
+      throw new BadRequestException('Invalid email format');
+    }
+
     if (input.isPrimary) {
       await this.prisma.customerContact.updateMany({
         where: {
@@ -317,6 +343,34 @@ export class CustomerService {
     return this.mapToContact(updated);
   }
 
+  async setPrimaryContact(contactId: string): Promise<CustomerContact> {
+    const contact = await this.prisma.customerContact.findUnique({
+      where: { id: contactId },
+    });
+
+    if (!contact) {
+      throw new NotFoundException(`Contact with ID ${contactId} not found`);
+    }
+
+    // Reset all other contacts for this customer
+    await this.prisma.customerContact.updateMany({
+      where: {
+        customerId: contact.customerId,
+        NOT: { id: contactId },
+      },
+      data: { isPrimary: false },
+    });
+
+    // Set this contact as primary
+    const updated = await this.prisma.customerContact.update({
+      where: { id: contactId },
+      data: { isPrimary: true },
+    });
+
+    this.logger.log(`Set contact ${contactId} as primary for customer ${contact.customerId}`);
+    return this.mapToContact(updated);
+  }
+
   async removeContact(contactId: string): Promise<CustomerContact> {
     const contact = await this.prisma.customerContact.findUnique({
       where: { id: contactId },
@@ -324,6 +378,27 @@ export class CustomerService {
 
     if (!contact) {
       throw new NotFoundException(`Contact with ID ${contactId} not found`);
+    }
+
+    // If deleting primary contact, check if there are other contacts to promote
+    if (contact.isPrimary) {
+      const otherContacts = await this.prisma.customerContact.findMany({
+        where: {
+          customerId: contact.customerId,
+          NOT: { id: contactId },
+        },
+        orderBy: { createdAt: 'asc' },
+        take: 1,
+      });
+
+      // Promote the oldest contact to primary if exists
+      if (otherContacts.length > 0) {
+        await this.prisma.customerContact.update({
+          where: { id: otherContacts[0].id },
+          data: { isPrimary: true },
+        });
+        this.logger.log(`Auto-promoted contact ${otherContacts[0].id} to primary`);
+      }
     }
 
     const deleted = await this.prisma.customerContact.delete({
