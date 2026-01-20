@@ -3,6 +3,9 @@ import { ContractType, ContractStatus, ParseStatus } from './enums';
 import { Customer } from '../../customer/entities/customer.entity';
 import { UserDto } from '../../user/dto/user.dto';
 import { DepartmentDto } from '../../department/dto/department.dto';
+import { StaffAugmentationDetail } from '../entities/staff-augmentation-detail.entity';
+import { ProjectOutsourcingDetail } from '../entities/project-outsourcing-detail.entity';
+import { ProductSalesDetail } from '../entities/product-sales-detail.entity';
 
 @ObjectType()
 export class Contract {
@@ -107,4 +110,14 @@ export class Contract {
 
   @Field()
   updatedAt!: Date;
+
+  // Contract type-specific details
+  @Field(() => StaffAugmentationDetail, { nullable: true })
+  staffAugmentationDetail?: StaffAugmentationDetail | null;
+
+  @Field(() => ProjectOutsourcingDetail, { nullable: true })
+  projectOutsourcingDetail?: ProjectOutsourcingDetail | null;
+
+  @Field(() => ProductSalesDetail, { nullable: true })
+  productSalesDetail?: ProductSalesDetail | null;
 }

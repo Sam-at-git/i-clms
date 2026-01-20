@@ -43,6 +43,21 @@ export class ContractService {
           },
           parentContract: true,
           supplements: true,
+          staffAugmentation: {
+            include: {
+              rateItems: true,
+            },
+          },
+          projectOutsourcing: {
+            include: {
+              milestones: true,
+            },
+          },
+          productSales: {
+            include: {
+              lineItems: true,
+            },
+          },
         },
       }),
       this.prisma.contract.count({ where }),
@@ -117,6 +132,21 @@ export class ContractService {
         },
         parentContract: true,
         supplements: true,
+        staffAugmentation: {
+          include: {
+            rateItems: true,
+          },
+        },
+        projectOutsourcing: {
+          include: {
+            milestones: true,
+          },
+        },
+        productSales: {
+          include: {
+            lineItems: true,
+          },
+        },
       },
     });
 
@@ -188,6 +218,21 @@ export class ContractService {
         },
         parentContract: true,
         supplements: true,
+        staffAugmentation: {
+          include: {
+            rateItems: true,
+          },
+        },
+        projectOutsourcing: {
+          include: {
+            milestones: true,
+          },
+        },
+        productSales: {
+          include: {
+            lineItems: true,
+          },
+        },
       },
     });
 
@@ -267,6 +312,21 @@ export class ContractService {
         },
         parentContract: true,
         supplements: true,
+        staffAugmentation: {
+          include: {
+            rateItems: true,
+          },
+        },
+        projectOutsourcing: {
+          include: {
+            milestones: true,
+          },
+        },
+        productSales: {
+          include: {
+            lineItems: true,
+          },
+        },
       },
     });
 

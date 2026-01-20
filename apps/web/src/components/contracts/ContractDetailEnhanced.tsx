@@ -8,6 +8,7 @@ import { ContractDelete } from './ContractDelete';
 import { ContractHistory } from './ContractHistory';
 import { ContractRelated } from './ContractRelated';
 import { ContractPrint } from './ContractPrint';
+import { ContractTypeSpecificDetails } from './ContractTypeSpecificDetails';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 
 const GET_CONTRACT = gql`
@@ -40,6 +41,63 @@ const GET_CONTRACT = gql`
       needsManualReview
       createdAt
       updatedAt
+      staffAugmentationDetail {
+        id
+        estimatedTotalHours
+        monthlyHoursCap
+        yearlyHoursCap
+        settlementCycle
+        timesheetApprovalFlow
+        adjustmentMechanism
+        rateItems {
+          id
+          role
+          rateType
+          rate
+          rateEffectiveFrom
+          rateEffectiveTo
+        }
+      }
+      projectOutsourcingDetail {
+        id
+        sowSummary
+        deliverables
+        acceptanceCriteria
+        acceptanceFlow
+        changeManagementFlow
+        milestones {
+          id
+          sequence
+          name
+          deliverables
+          amount
+          paymentPercentage
+          plannedDate
+          actualDate
+          acceptanceCriteria
+          status
+        }
+      }
+      productSalesDetail {
+        id
+        deliveryContent
+        deliveryDate
+        deliveryLocation
+        shippingResponsibility
+        ipOwnership
+        warrantyPeriod
+        afterSalesTerms
+        lineItems {
+          id
+          productName
+          specification
+          quantity
+          unit
+          unitPriceWithTax
+          unitPriceWithoutTax
+          subtotal
+        }
+      }
       customer {
         id
         name
@@ -243,6 +301,18 @@ export function ContractDetailEnhanced() {
               <Field label="所属行业" value={contract.industry} />
             </div>
           </div>
+
+          {/* Contract Type-Specific Details */}
+          {(contract.staffAugmentationDetail || contract.projectOutsourcingDetail || contract.productSalesDetail) && (
+            <ContractTypeSpecificDetails
+              contractType={contract.type}
+              data={
+                contract.staffAugmentationDetail ||
+                contract.projectOutsourcingDetail ||
+                contract.productSalesDetail
+              }
+            />
+          )}
 
           {/* Customer Info */}
           <div style={styles.card}>
