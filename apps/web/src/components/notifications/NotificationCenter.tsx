@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, gql } from '@apollo/client/react';
+import { gql } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client/react';
 
 export type NotificationCategory = 'all' | 'system' | 'contract' | 'finance' | 'delivery' | 'customer';
 export type NotificationStatus = 'all' | 'unread' | 'read';
@@ -12,6 +13,7 @@ export interface Notification {
   type: 'info' | 'success' | 'warning' | 'error';
   isRead: boolean;
   createdAt: string;
+  readAt?: string;
   actionUrl?: string;
   actionLabel?: string;
   entity?: {
@@ -74,6 +76,10 @@ interface NotificationCenterProps {
   autoCloseDelay?: number;
 }
 
+interface GetNotificationsResponse {
+  notifications?: Notification[];
+}
+
 export function NotificationCenter({
   position = 'top-right',
   maxVisible = 5,
@@ -85,7 +91,7 @@ export function NotificationCenter({
   const [statusFilter, setStatusFilter] = useState<NotificationStatus>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const { data, loading, refetch } = useQuery(GET_NOTIFICATIONS, {
+  const { data, loading, refetch } = useQuery<GetNotificationsResponse>(GET_NOTIFICATIONS, {
     variables: {
       filter: {
         category: selectedCategory === 'all' ? undefined : selectedCategory,
@@ -96,17 +102,11 @@ export function NotificationCenter({
     pollInterval: 30000, // Poll every 30 seconds
   });
 
-  const [markAsReadMutation] = useMutation(MARK_AS_READ, {
-    onCompleted: () => refetch(),
-  });
+  const [markAsReadMutation] = useMutation(MARK_AS_READ);
 
-  const [markAllAsReadMutation] = useMutation(MARK_ALL_AS_READ, {
-    onCompleted: () => refetch(),
-  });
+  const [markAllAsReadMutation] = useMutation(MARK_ALL_AS_READ);
 
-  const [deleteNotificationMutation] = useMutation(DELETE_NOTIFICATION, {
-    onCompleted: () => refetch(),
-  });
+  const [deleteNotificationMutation] = useMutation(DELETE_NOTIFICATION);
 
   const notifications = useMemo(() => {
     return (data?.notifications || []) as Notification[];
@@ -119,6 +119,7 @@ export function NotificationCenter({
   const handleMarkAsRead = async (id: string) => {
     try {
       await markAsReadMutation({ variables: { id } });
+      refetch();
     } catch (err) {
       console.error('Failed to mark as read:', err);
     }
@@ -127,6 +128,7 @@ export function NotificationCenter({
   const handleMarkAllAsRead = async () => {
     try {
       await markAllAsReadMutation();
+      refetch();
     } catch (err) {
       console.error('Failed to mark all as read:', err);
     }
@@ -135,6 +137,7 @@ export function NotificationCenter({
   const handleDelete = async (id: string) => {
     try {
       await deleteNotificationMutation({ variables: { id } });
+      refetch();
     } catch (err) {
       console.error('Failed to delete notification:', err);
     }

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, gql } from '@apollo/client/react';
+import { gql } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client/react';
 
 export type ReminderType = 'contract_expiry' | 'milestone_due' | 'payment_overdue' | 'renewal' | 'task';
 export type ReminderFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
@@ -85,12 +86,16 @@ interface ReminderManagerProps {
   entityId?: string;
 }
 
+interface GetRemindersResponse {
+  reminders?: Reminder[];
+}
+
 export function ReminderManager({ entityType, entityId }: ReminderManagerProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [filterType, setFilterType] = useState<ReminderType | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed' | 'overdue'>('all');
 
-  const { data, loading, refetch } = useQuery(GET_REMINDERS, {
+  const { data, loading, refetch } = useQuery<GetRemindersResponse>(GET_REMINDERS, {
     variables: {
       filter: {
         entityType,
@@ -102,20 +107,11 @@ export function ReminderManager({ entityType, entityId }: ReminderManagerProps) 
     fetchPolicy: 'cache-and-network',
   });
 
-  const [createReminderMutation] = useMutation(CREATE_REMINDER, {
-    onCompleted: () => {
-      refetch();
-      setShowCreateForm(false);
-    },
-  });
+  const [createReminderMutation] = useMutation(CREATE_REMINDER);
 
-  const [completeReminderMutation] = useMutation(COMPLETE_REMINDER, {
-    onCompleted: () => refetch(),
-  });
+  const [completeReminderMutation] = useMutation(COMPLETE_REMINDER);
 
-  const [deleteReminderMutation] = useMutation(DELETE_REMINDER, {
-    onCompleted: () => refetch(),
-  });
+  const [deleteReminderMutation] = useMutation(DELETE_REMINDER);
 
   const reminders = useMemo(() => {
     return (data?.reminders || []) as Reminder[];
@@ -129,6 +125,7 @@ export function ReminderManager({ entityType, entityId }: ReminderManagerProps) 
   const handleComplete = async (id: string) => {
     try {
       await completeReminderMutation({ variables: { id } });
+      refetch();
     } catch (err) {
       console.error('Failed to complete reminder:', err);
     }
@@ -138,6 +135,7 @@ export function ReminderManager({ entityType, entityId }: ReminderManagerProps) 
     if (!confirm('确定要删除这个提醒吗？')) return;
     try {
       await deleteReminderMutation({ variables: { id } });
+      refetch();
     } catch (err) {
       console.error('Failed to delete reminder:', err);
     }
@@ -216,7 +214,11 @@ export function ReminderManager({ entityType, entityId }: ReminderManagerProps) 
         <ReminderCreateForm
           entityType={entityType}
           entityId={entityId}
-          onSubmit={(input) => createReminderMutation({ variables: { input } })}
+          onSubmit={async (input) => {
+            await createReminderMutation({ variables: { input } });
+            refetch();
+            setShowCreateForm(false);
+          }}
           onCancel={() => setShowCreateForm(false)}
         />
       )}

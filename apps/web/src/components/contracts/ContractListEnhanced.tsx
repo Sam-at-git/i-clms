@@ -12,7 +12,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { useContractFilters } from '../../lib/filter-hooks';
 
 const GET_CONTRACTS = gql`
-  query GetContractsWithFilter(
+  query GetContractsWithFilterAdvanced(
     $filter: ContractFilterInput
     $skip: Int
     $take: Int

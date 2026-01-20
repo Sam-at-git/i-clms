@@ -1,6 +1,11 @@
 import { useState, useMemo } from 'react';
-import { useQuery, gql } from '@apollo/client/react';
+import { gql } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client/react';
 import { Notification } from './NotificationCenter';
+
+interface GetNotificationsResponse {
+  notifications?: Notification[];
+}
 
 const GET_NOTIFICATION_HISTORY = gql`
   query GetNotificationHistory($filter: NotificationFilterInput) {
@@ -27,7 +32,7 @@ export function NotificationHistory({ timeRange = 'all', maxItems }: Notificatio
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
 
-  const { data, loading } = useQuery(GET_NOTIFICATION_HISTORY, {
+  const { data, loading } = useQuery<GetNotificationsResponse>(GET_NOTIFICATION_HISTORY, {
     variables: {
       filter: {
         category: selectedCategory === 'all' ? undefined : selectedCategory,

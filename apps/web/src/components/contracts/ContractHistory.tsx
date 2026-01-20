@@ -5,7 +5,7 @@ import { Timeline } from '../ui/Timeline';
 const GET_AUDIT_LOGS = gql`
   query GetContractAuditLogs($contractId: String!, $page: Int, $pageSize: Int) {
     auditLogs(
-      filter: { entityType: "Contract", entityId: $contractId }
+      filter: { entityType: "Contract", entityName: $contractId }
       page: $page
       pageSize: $pageSize
     ) {
@@ -21,7 +21,7 @@ const GET_AUDIT_LOGS = gql`
         newValue
         oldValue
       }
-      totalCount
+      total
     }
   }
 `;
@@ -60,9 +60,9 @@ export function ContractHistory({ contractId, limit = 10 }: ContractHistoryProps
     <div style={styles.container}>
       <h3 style={styles.title}>变更历史</h3>
       <Timeline items={timelineItems} />
-      {auditData.auditLogs.totalCount > limit && (
+      {auditData.auditLogs.total > limit && (
         <div style={styles.moreInfo}>
-          共 {auditData.auditLogs.totalCount} 条记录，仅显示最近 {limit} 条
+          共 {auditData.auditLogs.total} 条记录，仅显示最近 {limit} 条
         </div>
       )}
     </div>

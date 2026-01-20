@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useMutation, useQuery, gql } from '@apollo/client/react';
+import { useState, useEffect } from 'react';
+import { gql } from '@apollo/client';
+import { useMutation, useQuery } from '@apollo/client/react';
 
 export interface NotificationPreference {
   category: string;
@@ -44,6 +45,10 @@ const UPDATE_PREFERENCES = gql`
   }
 `;
 
+interface GetPreferencesResponse {
+  notificationPreferences?: NotificationPreference[];
+}
+
 interface NotificationSettingsProps {
   onSave?: () => void;
 }
@@ -66,28 +71,23 @@ export function NotificationSettings({ onSave }: NotificationSettingsProps) {
   });
   const [saving, setSaving] = useState(false);
 
-  const { data, loading } = useQuery(GET_PREFERENCES, {
-    onCompleted: (data) => {
+  const { data, loading } = useQuery<GetPreferencesResponse>(GET_PREFERENCES);
+
+  const [updatePreferences] = useMutation(UPDATE_PREFERENCES);
+
+  // Load preferences when data is available
+  useEffect(() => {
+    if (data?.notificationPreferences) {
       const prefs: Record<string, NotificationPreference> = {};
-      (data.notificationPreferences || []).forEach((pref: NotificationPreference) => {
+      data.notificationPreferences.forEach((pref: NotificationPreference) => {
         prefs[pref.category] = pref;
         if (pref.quietHours) {
           setQuietHours(pref.quietHours);
         }
       });
       setPreferences(prefs);
-    },
-  });
-
-  const [updatePreferences] = useMutation(UPDATE_PREFERENCES, {
-    onCompleted: () => {
-      setSaving(false);
-      onSave?.();
-    },
-    onError: () => {
-      setSaving(false);
-    },
-  });
+    }
+  }, [data]);
 
   const handleToggleCategory = (category: string) => {
     setPreferences((prev) => ({
@@ -125,6 +125,8 @@ export function NotificationSettings({ onSave }: NotificationSettingsProps) {
           },
         },
       });
+      setSaving(false);
+      onSave?.();
     } catch (err) {
       console.error('Failed to save preferences:', err);
       setSaving(false);

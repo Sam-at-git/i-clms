@@ -4,11 +4,13 @@ import { gql } from '@apollo/client';
 import { useContractFilters } from '../../lib/filter-hooks';
 
 const GET_CUSTOMERS = gql`
-  query GetCustomers {
+  query GetCustomersBasic {
     customers {
-      id
-      name
-      shortName
+      items {
+        id
+        name
+        shortName
+      }
     }
   }
 `;
@@ -164,7 +166,7 @@ export function ContractFilter({ onFilterChange }: ContractFilterProps) {
               style={styles.select}
             >
               <option value="">全部客户</option>
-              {customers.map((customer: any) => (
+              {Array.isArray(customers) && customers.map((customer: any) => (
                 <option key={customer.id} value={customer.id}>
                   {customer.shortName || customer.name}
                 </option>
