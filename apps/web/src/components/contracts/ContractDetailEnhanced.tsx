@@ -40,11 +40,6 @@ const GET_CONTRACT = gql`
       needsManualReview
       createdAt
       updatedAt
-      tags {
-        id
-        name
-        color
-      }
       customer {
         id
         name
@@ -98,11 +93,6 @@ interface Contract {
   needsManualReview: boolean;
   createdAt: string;
   updatedAt: string;
-  tags: Array<{
-    id: string;
-    name: string;
-    color: string;
-  }>;
   customer: {
     id: string;
     name: string;
