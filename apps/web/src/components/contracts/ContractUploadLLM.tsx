@@ -14,36 +14,36 @@ interface ContractUploadProps {
 interface ExtractedData {
   contractType: string;
   basicInfo: {
-    contractNo?: string;
-    contractName?: string;
-    ourEntity?: string;
-    customerName?: string;
-    status?: string;
-  };
+    contractNo?: string | null;
+    contractName?: string | null;
+    ourEntity?: string | null;
+    customerName?: string | null;
+    status?: string | null;
+  } | null;
   financialInfo?: {
-    amountWithTax?: string;
-    amountWithoutTax?: string;
-    taxRate?: string;
-    currency?: string;
-    paymentMethod?: string;
-    paymentTerms?: string;
-  };
+    amountWithTax?: string | null;
+    amountWithoutTax?: string | null;
+    taxRate?: string | null;
+    currency?: string | null;
+    paymentMethod?: string | null;
+    paymentTerms?: string | null;
+  } | null;
   timeInfo?: {
-    signedAt?: string;
-    effectiveAt?: string;
-    expiresAt?: string;
-    duration?: string;
-  };
+    signedAt?: string | null;
+    effectiveAt?: string | null;
+    expiresAt?: string | null;
+    duration?: string | null;
+  } | null;
   otherInfo?: {
-    salesPerson?: string;
-    industry?: string;
-    signLocation?: string;
-    copies?: number;
-  };
+    salesPerson?: string | null;
+    industry?: string | null;
+    signLocation?: string | null;
+    copies?: number | null;
+  } | null;
   typeSpecificDetails?: any;
   metadata?: {
     overallConfidence?: number;
-  };
+  } | null;
 }
 
 interface DuplicateContract {
@@ -73,7 +73,7 @@ export function ContractUploadLLM({ onClose, onSuccess }: ContractUploadProps) {
   const [formData, setFormData] = useState({
     contractNo: '',
     name: '',
-    type: 'PROJECT_OUTSOURCING',
+    type: 'PROJECT_OUTSOURCING' as any,
     ourEntity: '',
     customerName: '',
     amountWithTax: '',
@@ -141,14 +141,21 @@ export function ContractUploadLLM({ onClose, onSuccess }: ContractUploadProps) {
 
       if (data?.parseContractWithLlm?.success) {
         const extracted = data.parseContractWithLlm.extractedData;
+        if (!extracted) {
+          setError('解析数据为空');
+          setStep('upload');
+          setUploading(false);
+          return;
+        }
+
         setExtractedData(extracted);
-        setParseConfidence(extracted.metadata?.overallConfidence || 0);
+        setParseConfidence((extracted as any).metadata?.overallConfidence || 0);
 
         // 3. 填充表单
         setFormData({
           contractNo: extracted.basicInfo?.contractNo || '',
           name: extracted.basicInfo?.contractName || '',
-          type: extracted.contractType || 'PROJECT_OUTSOURCING',
+          type: (extracted.contractType as any) || 'PROJECT_OUTSOURCING',
           ourEntity: extracted.basicInfo?.ourEntity || '',
           customerName: extracted.basicInfo?.customerName || '',
           amountWithTax: extracted.financialInfo?.amountWithTax || '',
@@ -189,9 +196,25 @@ export function ContractUploadLLM({ onClose, onSuccess }: ContractUploadProps) {
       });
 
       if (data?.checkContractDuplicate?.isDuplicate) {
+        const existing = data.checkContractDuplicate.existingContract;
+        if (!existing) {
+          setError('重复合同信息缺失');
+          return;
+        }
+
         setDuplicateInfo({
-          existingContract: data.checkContractDuplicate.existingContract,
-          message: data.checkContractDuplicate.message,
+          existingContract: {
+            id: existing.id,
+            contractNo: existing.contractNo || '',
+            name: existing.name || '',
+            amountWithTax: existing.amountWithTax || '',
+            signedAt: existing.signedAt || '',
+            status: existing.status || 'DRAFT',
+            customer: {
+              name: existing.customer?.name || '',
+            },
+          },
+          message: data.checkContractDuplicate.message || '发现重复合同',
         });
         setStep('duplicate_check');
       } else {
@@ -230,7 +253,7 @@ export function ContractUploadLLM({ onClose, onSuccess }: ContractUploadProps) {
             paymentTerms: formData.paymentTerms || null,
             salesPerson: formData.salesPerson || null,
             industry: formData.industry || null,
-            status: 'DRAFT',
+            status: 'DRAFT' as any,
             fileUrl: objectName,
             departmentId: user.department.id,
             uploadedById: user.id,
