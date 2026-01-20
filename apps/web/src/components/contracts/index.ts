@@ -8,7 +8,7 @@ export * from './ContractEdit';
 export * from './ContractDelete';
 export * from './ContractFilter';
 export * from './ContractSearch';
-export * from './ContractTags';
+// export * from './ContractTags'; // Temporarily disabled
 export * from './ContractHistory';
 export * from './ContractRelated';
 export * from './ContractPrint';

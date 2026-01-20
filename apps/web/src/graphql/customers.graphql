@@ -1,0 +1,124 @@
+query GetCustomerList($filter: CustomerFilterInput) {
+  customers(filter: $filter) {
+    items {
+      id
+      name
+      shortName
+      creditCode
+      industry
+      status
+      contactPerson
+      contactPhone
+      contactEmail
+      address
+      createdAt
+      updatedAt
+    }
+    total
+    hasMore
+  }
+}
+
+query GetCustomerById($id: ID!) {
+  customer(id: $id) {
+    id
+    name
+    shortName
+    creditCode
+    industry
+    status
+    contactPerson
+    contactPhone
+    contactEmail
+    address
+    createdAt
+    updatedAt
+    contacts {
+      id
+      name
+      title
+      phone
+      email
+      isPrimary
+      createdAt
+      updatedAt
+    }
+    contracts {
+      id
+      contractNo
+      name
+      type
+      status
+      amountWithTax
+      currency
+      signedAt
+    }
+  }
+}
+
+query GetCustomerStatsById($id: ID!) {
+  customerStats(id: $id) {
+    totalContracts
+    activeContracts
+    totalValue
+    averageContractValue
+    firstContractDate
+    lastContractDate
+    lifetimeValueScore
+    isActive
+  }
+}
+
+mutation CreateCustomer($input: CreateCustomerInput!) {
+  createCustomer(input: $input) {
+    id
+    name
+    shortName
+    status
+  }
+}
+
+mutation UpdateCustomer($id: ID!, $input: UpdateCustomerInput!) {
+  updateCustomer(id: $id, input: $input) {
+    id
+    name
+    shortName
+    status
+  }
+}
+
+mutation DeleteCustomer($id: ID!) {
+  deleteCustomer(id: $id) {
+    id
+    name
+  }
+}
+
+mutation AddCustomerContact($customerId: ID!, $input: CreateContactInput!) {
+  addCustomerContact(customerId: $customerId, input: $input) {
+    id
+    name
+    title
+    phone
+    email
+    isPrimary
+  }
+}
+
+mutation UpdateCustomerContact($contactId: ID!, $input: UpdateContactInput!) {
+  updateCustomerContact(contactId: $contactId, input: $input) {
+    id
+    name
+    title
+    phone
+    email
+    isPrimary
+  }
+}
+
+mutation RemoveCustomerContact($contactId: ID!) {
+  removeCustomerContact(contactId: $contactId) {
+    id
+    name
+  }
+}

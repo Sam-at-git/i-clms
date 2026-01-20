@@ -4,14 +4,14 @@ import { useQuery } from '@apollo/client/react';
 import { useParams, Link } from 'react-router-dom';
 import { ContractEdit } from './ContractEdit';
 import { ContractDelete } from './ContractDelete';
-import { ContractTags } from './ContractTags';
+// import { ContractTags } from './ContractTags'; // Temporarily disabled
 import { ContractHistory } from './ContractHistory';
 import { ContractRelated } from './ContractRelated';
 import { ContractPrint } from './ContractPrint';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 
 const GET_CONTRACT = gql`
-  query GetContract($id: ID!) {
+  query GetContractWithTags($id: ID!) {
     contract(id: $id) {
       id
       contractNo
@@ -40,11 +40,6 @@ const GET_CONTRACT = gql`
       needsManualReview
       createdAt
       updatedAt
-      tags {
-        id
-        name
-        color
-      }
       customer {
         id
         name
@@ -235,13 +230,13 @@ export function ContractDetailEnhanced() {
         {/* Left Column - Main Info */}
         <div style={styles.leftColumn}>
           {/* Tags */}
-          <div style={styles.card}>
+          {/* <div style={styles.card}>
             <ContractTags
               contractId={contract.id}
               tags={contract.tags}
               onUpdate={() => refetch()}
             />
-          </div>
+          </div> */}
 
           {/* Basic Info */}
           <div style={styles.card}>
