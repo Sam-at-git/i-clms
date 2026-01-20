@@ -1,7 +1,7 @@
-import { ContractDetail } from '../../components/contracts';
+import { ContractDetailEnhanced } from '../../components/contracts';
 
 export function ContractDetailPage() {
-  return <ContractDetail />;
+  return <ContractDetailEnhanced />;
 }
 
 export default ContractDetailPage;

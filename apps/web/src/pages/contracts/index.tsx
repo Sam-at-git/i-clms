@@ -1,7 +1,7 @@
-import { ContractList } from '../../components/contracts';
+import { ContractListEnhanced } from '../../components/contracts';
 
 export function ContractsPage() {
-  return <ContractList />;
+  return <ContractListEnhanced />;
 }
 
 export default ContractsPage;
