@@ -3,7 +3,7 @@ import { useQuery } from '@apollo/client/react';
 import { Link } from 'react-router-dom';
 
 const GET_RELATED_CONTRACTS = gql`
-  query GetRelatedContracts($customerId: String, $departmentId: String, $excludeId: String) {
+  query GetRelatedContracts($customerId: String, $departmentId: String) {
     contracts(
       filter: { customerId: $customerId, departmentId: $departmentId }
       take: 10
@@ -42,7 +42,6 @@ export function ContractRelated({
     variables: {
       customerId,
       departmentId,
-      excludeId: currentContractId,
     },
     fetchPolicy: 'cache-and-network',
     skip: !customerId && !departmentId,

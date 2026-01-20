@@ -5,7 +5,7 @@ import { Timeline } from '../ui/Timeline';
 const GET_AUDIT_LOGS = gql`
   query GetContractAuditLogs($contractId: String!, $page: Int, $pageSize: Int) {
     auditLogs(
-      filter: { entityType: "Contract", entityName: $contractId }
+      filter: { entityType: "Contract", entityId: $contractId }
       page: $page
       pageSize: $pageSize
     ) {
