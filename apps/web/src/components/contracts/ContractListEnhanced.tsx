@@ -6,6 +6,13 @@ import { ContractUpload } from './ContractUpload';
 import { ContractDelete } from './ContractDelete';
 import { ContractFilter } from './ContractFilter';
 import { ContractSearch } from './ContractSearch';
+import { AdvancedSearchPanel } from './AdvancedSearchPanel';
+import { SemanticSearch } from './SemanticSearch';
+import {
+  HighlightedContractName,
+  HighlightedContractNo,
+  HighlightedCustomerName,
+} from './SearchHighlight';
 import { ViewToggle, ViewMode } from './ViewToggle';
 import { BatchActions } from './BatchActions';
 import { EmptyState } from '../ui/EmptyState';
@@ -110,6 +117,7 @@ export function ContractListEnhanced() {
   const [deleteContract, setDeleteContract] = useState<Contract | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
+  const [searchMode, setSearchMode] = useState<'simple' | 'advanced' | 'semantic'>('simple');
 
   const { filters } = useContractFilters();
 
@@ -122,6 +130,8 @@ export function ContractListEnhanced() {
     signedAfter: filters.signedAfter ? new Date(filters.signedAfter) : undefined,
     signedBefore: filters.signedBefore ? new Date(filters.signedBefore) : undefined,
     search: filters.search,
+    minAmount: filters.minAmount,
+    maxAmount: filters.maxAmount,
   };
 
   const { loading, error, data, fetchMore, refetch } = useQuery<ContractsData>(
@@ -237,11 +247,57 @@ export function ContractListEnhanced() {
         </div>
       </div>
 
-      {/* Search */}
-      <ContractSearch />
+      {/* Search Mode Toggle */}
+      <div style={searchModeStyles.container}>
+        <button
+          onClick={() => setSearchMode('simple')}
+          style={{
+            ...searchModeStyles.button,
+            ...(searchMode === 'simple' ? searchModeStyles.activeButton : {}),
+          }}
+          type="button"
+        >
+          简单搜索
+        </button>
+        <button
+          onClick={() => setSearchMode('advanced')}
+          style={{
+            ...searchModeStyles.button,
+            ...(searchMode === 'advanced' ? searchModeStyles.activeButton : {}),
+          }}
+          type="button"
+        >
+          高级搜索
+        </button>
+        <button
+          onClick={() => setSearchMode('semantic')}
+          style={{
+            ...searchModeStyles.button,
+            ...(searchMode === 'semantic' ? searchModeStyles.activeButton : {}),
+          }}
+          type="button"
+        >
+          语义搜索
+        </button>
+      </div>
 
-      {/* Filter */}
-      <ContractFilter onFilterChange={() => refetch()} />
+      {/* Search and Filter - Simple Mode */}
+      {searchMode === 'simple' && (
+        <>
+          <ContractSearch />
+          <ContractFilter onFilterChange={() => refetch()} />
+        </>
+      )}
+
+      {/* Advanced Search Panel */}
+      {searchMode === 'advanced' && (
+        <AdvancedSearchPanel onSearch={() => refetch()} />
+      )}
+
+      {/* Semantic Search */}
+      {searchMode === 'semantic' && (
+        <SemanticSearch onResultClick={() => refetch()} />
+      )}
 
       {/* Batch Actions */}
       <BatchActions
@@ -262,9 +318,9 @@ export function ContractListEnhanced() {
           description="请调整筛选条件或清除所有筛选"
         />
       ) : viewMode === 'list' ? (
-        renderListView()
+        renderListView(filters.search)
       ) : (
-        renderCardView()
+        renderCardView(filters.search)
       )}
 
       {/* Load More */}
@@ -299,7 +355,7 @@ export function ContractListEnhanced() {
     </div>
   );
 
-  function renderListView() {
+  function renderListView(searchQuery?: string) {
     return (
       <div style={styles.tableContainer}>
         <table style={styles.table}>
@@ -336,17 +392,28 @@ export function ContractListEnhanced() {
                 </td>
                 <td style={styles.td}>
                   <Link to={`/contracts/${contract.id}`} style={styles.link}>
-                    {contract.contractNo}
+                    <HighlightedContractNo
+                      contractNo={contract.contractNo}
+                      query={searchQuery || ''}
+                    />
                   </Link>
                 </td>
-                <td style={styles.td}>{contract.name}</td>
+                <td style={styles.td}>
+                  <HighlightedContractName
+                    name={contract.name}
+                    query={searchQuery || ''}
+                  />
+                </td>
                 <td style={styles.td}>
                   <span style={styles.badge}>
                     {CONTRACT_TYPE_LABELS[contract.type] || contract.type}
                   </span>
                 </td>
                 <td style={styles.td}>
-                  {contract.customer.shortName || contract.customer.name}
+                  <HighlightedCustomerName
+                    customerName={contract.customer.shortName || contract.customer.name}
+                    query={searchQuery || ''}
+                  />
                 </td>
                 <td style={styles.tdRight}>
                   {formatAmount(contract.amountWithTax, contract.currency)}
@@ -384,7 +451,7 @@ export function ContractListEnhanced() {
     );
   }
 
-  function renderCardView() {
+  function renderCardView(searchQuery?: string) {
     return (
       <div style={styles.cardGrid}>
         {nodes.map((contract) => (
@@ -409,12 +476,20 @@ export function ContractListEnhanced() {
               to={`/contracts/${contract.id}`}
               style={styles.cardTitle}
             >
-              {contract.name}
+              <HighlightedContractName
+                name={contract.name}
+                query={searchQuery || ''}
+              />
             </Link>
             <div style={styles.cardInfo}>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>编号：</span>
-                <span style={styles.cardValue}>{contract.contractNo}</span>
+                <span style={styles.cardValue}>
+                  <HighlightedContractNo
+                    contractNo={contract.contractNo}
+                    query={searchQuery || ''}
+                  />
+                </span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>类型：</span>
@@ -425,7 +500,10 @@ export function ContractListEnhanced() {
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>客户：</span>
                 <span style={styles.cardValue}>
-                  {contract.customer.shortName || contract.customer.name}
+                  <HighlightedCustomerName
+                    customerName={contract.customer.shortName || contract.customer.name}
+                    query={searchQuery || ''}
+                  />
                 </span>
               </div>
               <div style={styles.cardRow}>
@@ -666,6 +744,31 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '6px',
     fontSize: '14px',
     cursor: 'pointer',
+  },
+};
+
+// Search mode toggle styles
+const searchModeStyles: Record<string, React.CSSProperties> = {
+  container: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '16px',
+  },
+  button: {
+    padding: '8px 16px',
+    fontSize: '13px',
+    color: '#6b7280',
+    backgroundColor: '#f3f4f6',
+    border: '1px solid #e5e7eb',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  activeButton: {
+    color: '#3b82f6',
+    backgroundColor: '#eff6ff',
+    borderColor: '#3b82f6',
+    fontWeight: 500,
   },
 };
 

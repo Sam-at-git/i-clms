@@ -60,6 +60,12 @@ export class ContractFilterInput {
 
   @Field(() => Boolean, { nullable: true })
   needsManualReview?: boolean;
+
+  @Field(() => Number, { nullable: true })
+  minAmount?: number;
+
+  @Field(() => Number, { nullable: true })
+  maxAmount?: number;
 }
 
 @InputType()

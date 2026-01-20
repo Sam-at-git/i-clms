@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 interface RenewalItem {
   contractId: string;
   contractNo: string;
@@ -90,51 +92,57 @@ export function RenewalBoard({
         {renewalItems.slice(0, 10).map((item) => {
           const config = priorityConfig[item.priority];
           return (
-            <div key={item.contractId} style={styles.listItem}>
-              <div style={styles.listCell}>{item.contractNo}</div>
-              <div style={styles.listCell}>{item.customerName}</div>
-              <div style={styles.listCell}>{formatCurrency(item.amount)}</div>
-              <div style={styles.listCell}>{formatDate(item.expiresAt)}</div>
-              <div
-                style={{
-                  ...styles.listCell,
-                  color: item.daysUntilExpiry <= 30 ? '#ef4444' : '#374151',
-                  fontWeight: item.daysUntilExpiry <= 30 ? 600 : 400,
-                }}
-              >
-                {item.daysUntilExpiry} 天
-              </div>
-              <div style={styles.listCell}>
-                <div style={styles.probability}>
-                  <div
-                    style={{
-                      ...styles.probabilityBar,
-                      width: `${item.renewalProbability}%`,
-                      backgroundColor:
-                        item.renewalProbability >= 80
-                          ? '#10b981'
-                          : item.renewalProbability >= 60
-                          ? '#f59e0b'
-                          : '#ef4444',
-                    }}
-                  />
-                </div>
-                <span style={styles.probabilityText}>
-                  {item.renewalProbability.toFixed(0)}%
-                </span>
-              </div>
-              <div style={styles.listCell}>
-                <span
+            <Link
+              key={item.contractId}
+              to={`/contracts/${item.contractId}`}
+              style={styles.listItemLink}
+            >
+              <div style={styles.listItem}>
+                <div style={styles.listCell}>{item.contractNo}</div>
+                <div style={styles.listCell}>{item.customerName}</div>
+                <div style={styles.listCell}>{formatCurrency(item.amount)}</div>
+                <div style={styles.listCell}>{formatDate(item.expiresAt)}</div>
+                <div
                   style={{
-                    ...styles.priorityTag,
-                    color: config.color,
-                    backgroundColor: config.bgColor,
+                    ...styles.listCell,
+                    color: item.daysUntilExpiry <= 30 ? '#ef4444' : '#374151',
+                    fontWeight: item.daysUntilExpiry <= 30 ? 600 : 400,
                   }}
                 >
-                  {config.label}
-                </span>
+                  {item.daysUntilExpiry} 天
+                </div>
+                <div style={styles.listCell}>
+                  <div style={styles.probability}>
+                    <div
+                      style={{
+                        ...styles.probabilityBar,
+                        width: `${item.renewalProbability}%`,
+                        backgroundColor:
+                          item.renewalProbability >= 80
+                            ? '#10b981'
+                            : item.renewalProbability >= 60
+                            ? '#f59e0b'
+                            : '#ef4444',
+                      }}
+                    />
+                  </div>
+                  <span style={styles.probabilityText}>
+                    {item.renewalProbability.toFixed(0)}%
+                  </span>
+                </div>
+                <div style={styles.listCell}>
+                  <span
+                    style={{
+                      ...styles.priorityTag,
+                      color: config.color,
+                      backgroundColor: config.bgColor,
+                    }}
+                  >
+                    {config.label}
+                  </span>
+                </div>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -220,6 +228,10 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6b7280',
   },
   listHeaderCell: {},
+  listItemLink: {
+    textDecoration: 'none',
+    display: 'block',
+  },
   listItem: {
     display: 'grid',
     gridTemplateColumns: '100px 120px 100px 90px 60px 80px 60px',
@@ -228,6 +240,8 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '1px solid #f3f4f6',
     fontSize: '13px',
     alignItems: 'center',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
   },
   listCell: {
     color: '#374151',

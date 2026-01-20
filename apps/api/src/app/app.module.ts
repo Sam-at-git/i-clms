@@ -27,6 +27,8 @@ import { AuditModule } from '../audit';
 import { UserModule } from '../user';
 import { DepartmentModule } from '../department';
 import { CustomerModule } from '../customer/customer.module';
+import { ExportModule } from '../export/export.module';
+import { SystemConfigModule } from '../system-config/system-config.module';
 
 @Module({
   imports: [
@@ -64,6 +66,8 @@ import { CustomerModule } from '../customer/customer.module';
     UserModule,
     DepartmentModule,
     CustomerModule,
+    ExportModule,
+    SystemConfigModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar, JSONScalar],

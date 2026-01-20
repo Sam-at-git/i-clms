@@ -1,0 +1,20 @@
+query SemanticSearch($query: String!, $limit: Int) {
+  semanticSearch(query: $query, limit: $limit) {
+    contractId
+    contractNo
+    name
+    similarity
+    highlights
+  }
+}
+
+query FindSimilarContracts($contractId: String!, $limit: Int) {
+  findSimilarContracts(contractId: $contractId, limit: $limit) {
+    contractId
+    contractNo
+    name
+    customerName
+    similarity
+    matchReasons
+  }
+}

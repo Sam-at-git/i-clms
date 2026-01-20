@@ -8,6 +8,9 @@ export * from './ContractEdit';
 export * from './ContractDelete';
 export * from './ContractFilter';
 export * from './ContractSearch';
+export * from './AdvancedSearchPanel';
+export * from './SemanticSearch';
+export * from './SimilarContracts';
 // export * from './ContractTags'; // Temporarily disabled
 export * from './ContractHistory';
 export * from './ContractRelated';

@@ -1,16 +1,43 @@
 import { useState } from 'react';
 import { CustomerList } from '../../components/customers';
+import { CustomerFormModal } from '../../components/customers/CustomerFormModal';
 
 export function CustomersPage() {
   const [search, setSearch] = useState('');
   const [industry, setIndustry] = useState('');
   const [status, setStatus] = useState<any>(undefined);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleCreateClick = () => {
+    setEditingCustomer(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditClick = (customer: any) => {
+    setEditingCustomer(customer);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingCustomer(null);
+  };
+
+  const handleModalSuccess = () => {
+    setIsModalOpen(false);
+    setEditingCustomer(null);
+    setRefreshKey((prev) => prev + 1);
+  };
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
         <h1 style={styles.title}>客户管理</h1>
-        <button style={styles.createButton}>+ 新建客户</button>
+        <button onClick={handleCreateClick} style={styles.createButton}>
+          + 新建客户
+        </button>
       </div>
 
       {/* Filters */}
@@ -61,7 +88,15 @@ export function CustomersPage() {
       </div>
 
       {/* List */}
-      <CustomerList search={search} industry={industry} status={status} />
+      <CustomerList search={search} industry={industry} status={status} refreshKey={refreshKey} />
+
+      {/* Modal */}
+      <CustomerFormModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSuccess={handleModalSuccess}
+        customer={editingCustomer}
+      />
     </div>
   );
 }

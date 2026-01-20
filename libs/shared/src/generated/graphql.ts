@@ -263,6 +263,7 @@ export type Contract = {
   staffAugmentationDetail?: Maybe<StaffAugmentationDetail>;
   status: ContractStatus;
   supplements: Array<Contract>;
+  tags: Array<Tag>;
   taxAmount?: Maybe<Scalars['String']['output']>;
   taxRate?: Maybe<Scalars['String']['output']>;
   type: ContractType;
@@ -306,6 +307,8 @@ export type ContractFilterInput = {
   departmentId?: InputMaybe<Scalars['String']['input']>;
   expiresAfter?: InputMaybe<Scalars['DateTime']['input']>;
   expiresBefore?: InputMaybe<Scalars['DateTime']['input']>;
+  maxAmount?: InputMaybe<Scalars['Float']['input']>;
+  minAmount?: InputMaybe<Scalars['Float']['input']>;
   needsManualReview?: InputMaybe<Scalars['Boolean']['input']>;
   parseStatuses?: InputMaybe<Array<ParseStatus>>;
   search?: InputMaybe<Scalars['String']['input']>;
@@ -2041,7 +2044,7 @@ export type GetContractWithTagsQueryVariables = Exact<{
 }>;
 
 
-export type GetContractWithTagsQuery = { __typename?: 'Query', contract?: { __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, amountWithoutTax?: string | null, currency: string, taxRate?: string | null, taxAmount?: string | null, paymentMethod?: string | null, paymentTerms?: string | null, signedAt?: string | null, effectiveAt?: string | null, expiresAt?: string | null, duration?: string | null, fileUrl?: string | null, fileType?: string | null, industry?: string | null, salesPerson?: string | null, parseStatus: ParseStatus, parsedAt?: string | null, parseConfidence?: number | null, needsManualReview: boolean, createdAt: string, updatedAt: string, staffAugmentationDetail?: { __typename?: 'StaffAugmentationDetail', id: string, estimatedTotalHours?: string | null, monthlyHoursCap?: string | null, yearlyHoursCap?: string | null, settlementCycle?: string | null, timesheetApprovalFlow?: string | null, adjustmentMechanism?: string | null, rateItems: Array<{ __typename?: 'StaffRateItem', id: string, role: string, rateType: RateType, rate: string, rateEffectiveFrom?: string | null, rateEffectiveTo?: string | null }> } | null, projectOutsourcingDetail?: { __typename?: 'ProjectOutsourcingDetail', id: string, sowSummary?: string | null, deliverables?: string | null, acceptanceCriteria?: string | null, acceptanceFlow?: string | null, changeManagementFlow?: string | null, milestones: Array<{ __typename?: 'ProjectMilestone', id: string, sequence: number, name: string, deliverables?: string | null, amount?: string | null, paymentPercentage?: string | null, plannedDate?: string | null, actualDate?: string | null, acceptanceCriteria?: string | null, status: MilestoneStatus }> } | null, productSalesDetail?: { __typename?: 'ProductSalesDetail', id: string, deliveryContent?: string | null, deliveryDate?: string | null, deliveryLocation?: string | null, shippingResponsibility?: string | null, ipOwnership?: string | null, warrantyPeriod?: string | null, afterSalesTerms?: string | null, lineItems: Array<{ __typename?: 'ProductLineItem', id: string, productName: string, specification?: string | null, quantity: number, unit: string, unitPriceWithTax: string, unitPriceWithoutTax?: string | null, subtotal: string }> } | null, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, creditCode?: string | null, industry?: string | null, address?: string | null, contactPerson?: string | null, contactPhone?: string | null, contactEmail?: string | null }, department: { __typename?: 'Department', id: string, name: string, code: string }, uploadedBy: { __typename?: 'User', id: string, name: string, email: string } } | null };
+export type GetContractWithTagsQuery = { __typename?: 'Query', contract?: { __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, amountWithoutTax?: string | null, currency: string, taxRate?: string | null, taxAmount?: string | null, paymentMethod?: string | null, paymentTerms?: string | null, signedAt?: string | null, effectiveAt?: string | null, expiresAt?: string | null, duration?: string | null, fileUrl?: string | null, fileType?: string | null, industry?: string | null, salesPerson?: string | null, parseStatus: ParseStatus, parsedAt?: string | null, parseConfidence?: number | null, needsManualReview: boolean, createdAt: string, updatedAt: string, tags: Array<{ __typename?: 'Tag', id: string, name: string, category: string, color: string, isActive: boolean, isSystem: boolean }>, staffAugmentationDetail?: { __typename?: 'StaffAugmentationDetail', id: string, estimatedTotalHours?: string | null, monthlyHoursCap?: string | null, yearlyHoursCap?: string | null, settlementCycle?: string | null, timesheetApprovalFlow?: string | null, adjustmentMechanism?: string | null, rateItems: Array<{ __typename?: 'StaffRateItem', id: string, role: string, rateType: RateType, rate: string, rateEffectiveFrom?: string | null, rateEffectiveTo?: string | null }> } | null, projectOutsourcingDetail?: { __typename?: 'ProjectOutsourcingDetail', id: string, sowSummary?: string | null, deliverables?: string | null, acceptanceCriteria?: string | null, acceptanceFlow?: string | null, changeManagementFlow?: string | null, milestones: Array<{ __typename?: 'ProjectMilestone', id: string, sequence: number, name: string, deliverables?: string | null, amount?: string | null, paymentPercentage?: string | null, plannedDate?: string | null, actualDate?: string | null, acceptanceCriteria?: string | null, status: MilestoneStatus }> } | null, productSalesDetail?: { __typename?: 'ProductSalesDetail', id: string, deliveryContent?: string | null, deliveryDate?: string | null, deliveryLocation?: string | null, shippingResponsibility?: string | null, ipOwnership?: string | null, warrantyPeriod?: string | null, afterSalesTerms?: string | null, lineItems: Array<{ __typename?: 'ProductLineItem', id: string, productName: string, specification?: string | null, quantity: number, unit: string, unitPriceWithTax: string, unitPriceWithoutTax?: string | null, subtotal: string }> } | null, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, creditCode?: string | null, industry?: string | null, address?: string | null, contactPerson?: string | null, contactPhone?: string | null, contactEmail?: string | null }, department: { __typename?: 'Department', id: string, name: string, code: string }, uploadedBy: { __typename?: 'User', id: string, name: string, email: string } } | null };
 
 export type UpdateContractMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -2220,6 +2223,34 @@ export type HealthQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type HealthQuery = { __typename?: 'Query', health: { __typename?: 'HealthCheck', status: string, timestamp: string, version: string } };
+
+export type GetTagsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetTagsQuery = { __typename?: 'Query', tags: Array<{ __typename?: 'Tag', id: string, name: string, category: string, color: string, isActive: boolean, isSystem: boolean }> };
+
+export type GetAvailableTagsQueryVariables = Exact<{
+  contractId: Scalars['ID']['input'];
+}>;
+
+
+export type GetAvailableTagsQuery = { __typename?: 'Query', tags: Array<{ __typename?: 'Tag', id: string, name: string, category: string, color: string, isActive: boolean, isSystem: boolean }>, contract?: { __typename?: 'Contract', id: string, tags: Array<{ __typename?: 'Tag', id: string, name: string, category: string, color: string }> } | null };
+
+export type AssignTagsToContractMutationVariables = Exact<{
+  contractId: Scalars['ID']['input'];
+  tagIds: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
+}>;
+
+
+export type AssignTagsToContractMutation = { __typename?: 'Mutation', assignTagsToContract: boolean };
+
+export type RemoveTagFromContractMutationVariables = Exact<{
+  contractId: Scalars['ID']['input'];
+  tagId: Scalars['ID']['input'];
+}>;
+
+
+export type RemoveTagFromContractMutation = { __typename?: 'Mutation', removeTagFromContract: boolean };
 
 export type GetAuditLogsQueryVariables = Exact<{
   page: Scalars['Int']['input'];
@@ -2581,6 +2612,14 @@ export const GetContractWithTagsDocument = gql`
     needsManualReview
     createdAt
     updatedAt
+    tags {
+      id
+      name
+      category
+      color
+      isActive
+      isSystem
+    }
     staffAugmentationDetail {
       id
       estimatedTotalHours
@@ -3456,6 +3495,103 @@ export type HealthQueryHookResult = ReturnType<typeof useHealthQuery>;
 export type HealthLazyQueryHookResult = ReturnType<typeof useHealthLazyQuery>;
 export type HealthSuspenseQueryHookResult = ReturnType<typeof useHealthSuspenseQuery>;
 export type HealthQueryResult = ApolloReactCommon.QueryResult<HealthQuery, HealthQueryVariables>;
+export const GetTagsDocument = gql`
+    query GetTags {
+  tags {
+    id
+    name
+    category
+    color
+    isActive
+    isSystem
+  }
+}
+    `;
+export function useGetTagsQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetTagsQuery, GetTagsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetTagsQuery, GetTagsQueryVariables>(GetTagsDocument, options);
+      }
+export function useGetTagsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetTagsQuery, GetTagsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetTagsQuery, GetTagsQueryVariables>(GetTagsDocument, options);
+        }
+// @ts-ignore
+export function useGetTagsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetTagsQuery, GetTagsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetTagsQuery, GetTagsQueryVariables>;
+export function useGetTagsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetTagsQuery, GetTagsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetTagsQuery | undefined, GetTagsQueryVariables>;
+export function useGetTagsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetTagsQuery, GetTagsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetTagsQuery, GetTagsQueryVariables>(GetTagsDocument, options);
+        }
+export type GetTagsQueryHookResult = ReturnType<typeof useGetTagsQuery>;
+export type GetTagsLazyQueryHookResult = ReturnType<typeof useGetTagsLazyQuery>;
+export type GetTagsSuspenseQueryHookResult = ReturnType<typeof useGetTagsSuspenseQuery>;
+export type GetTagsQueryResult = ApolloReactCommon.QueryResult<GetTagsQuery, GetTagsQueryVariables>;
+export const GetAvailableTagsDocument = gql`
+    query GetAvailableTags($contractId: ID!) {
+  tags {
+    id
+    name
+    category
+    color
+    isActive
+    isSystem
+  }
+  contract(id: $contractId) {
+    id
+    tags {
+      id
+      name
+      category
+      color
+    }
+  }
+}
+    `;
+export function useGetAvailableTagsQuery(baseOptions: ApolloReactHooks.QueryHookOptions<GetAvailableTagsQuery, GetAvailableTagsQueryVariables> & ({ variables: GetAvailableTagsQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetAvailableTagsQuery, GetAvailableTagsQueryVariables>(GetAvailableTagsDocument, options);
+      }
+export function useGetAvailableTagsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetAvailableTagsQuery, GetAvailableTagsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetAvailableTagsQuery, GetAvailableTagsQueryVariables>(GetAvailableTagsDocument, options);
+        }
+// @ts-ignore
+export function useGetAvailableTagsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetAvailableTagsQuery, GetAvailableTagsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetAvailableTagsQuery, GetAvailableTagsQueryVariables>;
+export function useGetAvailableTagsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetAvailableTagsQuery, GetAvailableTagsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetAvailableTagsQuery | undefined, GetAvailableTagsQueryVariables>;
+export function useGetAvailableTagsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetAvailableTagsQuery, GetAvailableTagsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetAvailableTagsQuery, GetAvailableTagsQueryVariables>(GetAvailableTagsDocument, options);
+        }
+export type GetAvailableTagsQueryHookResult = ReturnType<typeof useGetAvailableTagsQuery>;
+export type GetAvailableTagsLazyQueryHookResult = ReturnType<typeof useGetAvailableTagsLazyQuery>;
+export type GetAvailableTagsSuspenseQueryHookResult = ReturnType<typeof useGetAvailableTagsSuspenseQuery>;
+export type GetAvailableTagsQueryResult = ApolloReactCommon.QueryResult<GetAvailableTagsQuery, GetAvailableTagsQueryVariables>;
+export const AssignTagsToContractDocument = gql`
+    mutation AssignTagsToContract($contractId: ID!, $tagIds: [ID!]!) {
+  assignTagsToContract(contractId: $contractId, tagIds: $tagIds)
+}
+    `;
+export type AssignTagsToContractMutationFn = ApolloReactCommon.MutationFunction<AssignTagsToContractMutation, AssignTagsToContractMutationVariables>;
+export function useAssignTagsToContractMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<AssignTagsToContractMutation, AssignTagsToContractMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<AssignTagsToContractMutation, AssignTagsToContractMutationVariables>(AssignTagsToContractDocument, options);
+      }
+export type AssignTagsToContractMutationHookResult = ReturnType<typeof useAssignTagsToContractMutation>;
+export type AssignTagsToContractMutationResult = ApolloReactCommon.MutationResult<AssignTagsToContractMutation>;
+export type AssignTagsToContractMutationOptions = ApolloReactCommon.BaseMutationOptions<AssignTagsToContractMutation, AssignTagsToContractMutationVariables>;
+export const RemoveTagFromContractDocument = gql`
+    mutation RemoveTagFromContract($contractId: ID!, $tagId: ID!) {
+  removeTagFromContract(contractId: $contractId, tagId: $tagId)
+}
+    `;
+export type RemoveTagFromContractMutationFn = ApolloReactCommon.MutationFunction<RemoveTagFromContractMutation, RemoveTagFromContractMutationVariables>;
+export function useRemoveTagFromContractMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<RemoveTagFromContractMutation, RemoveTagFromContractMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<RemoveTagFromContractMutation, RemoveTagFromContractMutationVariables>(RemoveTagFromContractDocument, options);
+      }
+export type RemoveTagFromContractMutationHookResult = ReturnType<typeof useRemoveTagFromContractMutation>;
+export type RemoveTagFromContractMutationResult = ApolloReactCommon.MutationResult<RemoveTagFromContractMutation>;
+export type RemoveTagFromContractMutationOptions = ApolloReactCommon.BaseMutationOptions<RemoveTagFromContractMutation, RemoveTagFromContractMutationVariables>;
 export const GetAuditLogsDocument = gql`
     query GetAuditLogs($page: Int!, $pageSize: Int!, $filter: AuditLogFilterInput) {
   auditLogs(page: $page, pageSize: $pageSize, filter: $filter) {

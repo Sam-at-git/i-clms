@@ -58,6 +58,11 @@ export class ContractService {
               lineItems: true,
             },
           },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
         },
       }),
       this.prisma.contract.count({ where }),
@@ -494,9 +499,12 @@ export class ContractService {
     const where: Prisma.ContractWhereInput = {};
 
     if (filter.search) {
+      // 支持合同名称、合同编号、客户名称、客户简称搜索
       where.OR = [
         { name: { contains: filter.search, mode: 'insensitive' } },
         { contractNo: { contains: filter.search, mode: 'insensitive' } },
+        { customer: { name: { contains: filter.search, mode: 'insensitive' } } },
+        { customer: { shortName: { contains: filter.search, mode: 'insensitive' } } },
       ];
     }
 
@@ -544,6 +552,16 @@ export class ContractService {
       where.needsManualReview = filter.needsManualReview;
     }
 
+    if (filter.minAmount !== undefined || filter.maxAmount !== undefined) {
+      where.amountWithTax = {};
+      if (filter.minAmount !== undefined) {
+        where.amountWithTax.gte = filter.minAmount.toString();
+      }
+      if (filter.maxAmount !== undefined) {
+        where.amountWithTax.lte = filter.maxAmount.toString();
+      }
+    }
+
     return where;
   }
 
@@ -565,6 +583,8 @@ export class ContractService {
       taxRate: contract.taxRate?.toString(),
       taxAmount: contract.taxAmount?.toString(),
       supplements: contract.supplements || [],
+      // Transform tags from ContractTag[] to TagDto[]
+      tags: contract.tags?.map((ct: any) => ct.tag) || [],
     };
   }
 }

@@ -6,6 +6,7 @@ import { DepartmentDto } from '../../department/dto/department.dto';
 import { StaffAugmentationDetail } from '../entities/staff-augmentation-detail.entity';
 import { ProjectOutsourcingDetail } from '../entities/project-outsourcing-detail.entity';
 import { ProductSalesDetail } from '../entities/product-sales-detail.entity';
+import { TagDto } from '../../tagging/dto/tagging.dto';
 
 @ObjectType()
 export class Contract {
@@ -120,4 +121,7 @@ export class Contract {
 
   @Field(() => ProductSalesDetail, { nullable: true })
   productSalesDetail?: ProductSalesDetail | null;
+
+  @Field(() => [TagDto])
+  tags!: TagDto[];
 }

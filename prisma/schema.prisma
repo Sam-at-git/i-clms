@@ -38,6 +38,9 @@ model User {
   // 关联
   uploadedContracts Contract[] @relation("ContractUploader")
   auditLogs         AuditLog[] @relation("AuditOperator")
+  milestoneStatusHistory MilestoneStatusHistory[]
+  passwordResetTokens PasswordResetToken[]
+  loginRecords       LoginRecord[]
 
   @@index([departmentId])
   @@index([email])
@@ -307,11 +310,45 @@ model ProjectMilestone {
   acceptanceCriteria String? // 验收标准
   status             MilestoneStatus @default(PENDING)
 
+  // 交付物文件信息
+  deliverableFileUrl  String? // 交付物文件URL
+  deliverableFileName String? // 交付物文件名
+  deliverableUploadedAt DateTime? // 交付物上传时间
+
+  // 验收相关信息
+  acceptedAt    DateTime? // 验收通过时间
+  acceptedBy    String?   // 验收人ID
+  rejectedAt    DateTime? // 拒绝时间
+  rejectedBy    String?   // 拒绝人ID
+  rejectionReason String? // 拒绝原因
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 状态历史记录
+  statusHistory MilestoneStatusHistory[]
+
   @@index([detailId])
   @@index([sequence])
+  @@index([status])
+}
+
+model MilestoneStatusHistory {
+  id          String           @id @default(cuid())
+  milestoneId String
+  milestone   ProjectMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  fromStatus MilestoneStatus // 变更前状态
+  toStatus   MilestoneStatus // 变更后状态
+  changedBy  String // 变更人ID
+  changedAt  DateTime @default(now()) // 变更时间
+  notes      String? // 备注
+
+  user User @relation(fields: [changedBy], references: [id], onDelete: Cascade)
+
+  @@index([milestoneId])
+  @@index([changedBy])
+  @@index([changedAt])
 }
 
 enum MilestoneStatus {
@@ -423,4 +460,41 @@ model AuditLog {
   @@index([entityType])
   @@index([operatorId])
   @@index([createdAt])
+}
+
+// ================================
+// 密码重置
+// ================================
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique  // 重置令牌
+  expiresAt DateTime // 过期时间
+  usedAt    DateTime? // 使用时间
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ================================
+// 登录历史
+// ================================
+
+model LoginRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String?  // IP地址
+  userAgent String?  // 用户代理
+  success   Boolean  // 是否成功
+  failureReason String? // 失败原因
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([success])
 }

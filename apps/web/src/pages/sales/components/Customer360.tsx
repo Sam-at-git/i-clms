@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 interface IndustryCount {
   industry: string;
   count: number;
@@ -82,24 +84,30 @@ export function Customer360({
           <h3 style={styles.cardTitle}>重点客户 (Top 10)</h3>
           <div style={styles.customerList}>
             {topCustomers.map((customer, index) => (
-              <div key={customer.customerId} style={styles.customerItem}>
-                <div style={styles.customerRank}>{index + 1}</div>
-                <div style={styles.customerInfo}>
-                  <div style={styles.customerName}>{customer.customerName}</div>
-                  <div style={styles.customerMeta}>
-                    <span>{customer.totalContracts} 份合同</span>
-                    <span>{customer.activeContracts} 进行中</span>
-                    {customer.industry && (
-                      <span style={styles.industryTag}>
-                        {customer.industry}
-                      </span>
-                    )}
+              <Link
+                key={customer.customerId}
+                to={`/customers/${customer.customerId}`}
+                style={styles.customerItemLink}
+              >
+                <div style={styles.customerItem}>
+                  <div style={styles.customerRank}>{index + 1}</div>
+                  <div style={styles.customerInfo}>
+                    <div style={styles.customerName}>{customer.customerName}</div>
+                    <div style={styles.customerMeta}>
+                      <span>{customer.totalContracts} 份合同</span>
+                      <span>{customer.activeContracts} 进行中</span>
+                      {customer.industry && (
+                        <span style={styles.industryTag}>
+                          {customer.industry}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={styles.customerValue}>
+                    {formatCurrency(customer.totalValue)}
                   </div>
                 </div>
-                <div style={styles.customerValue}>
-                  {formatCurrency(customer.totalValue)}
-                </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -189,6 +197,10 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: '8px',
   },
+  customerItemLink: {
+    textDecoration: 'none',
+    display: 'block',
+  },
   customerItem: {
     display: 'flex',
     alignItems: 'center',
@@ -196,6 +208,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '10px 12px',
     backgroundColor: '#f9fafb',
     borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   customerRank: {
     width: '24px',

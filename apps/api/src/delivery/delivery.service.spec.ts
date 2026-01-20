@@ -3,6 +3,7 @@ import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import { DeliveryService } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaClient } from '@prisma/client';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
 describe('DeliveryService', () => {
   let service: DeliveryService;
@@ -441,6 +442,505 @@ describe('DeliveryService', () => {
       const result = await service.getResourceUtilization();
 
       expect(result.totalStaffContracts).toBe(1);
+    });
+  });
+
+  // ==================== 里程碑状态管理测试 ====================
+
+  describe('updateMilestoneStatus', () => {
+    const mockUser = { id: 'user-1', name: 'Admin User' };
+    const mockMilestoneWithHistory = {
+      ...mockMilestone,
+      statusHistory: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should update milestone status successfully', async () => {
+      const mockUpdatedMilestone = {
+        ...mockMilestoneWithHistory,
+        status: 'IN_PROGRESS',
+      };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(mockMilestone as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockUpdatedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.updateMilestoneStatus(
+        { id: 'milestone-1', status: 'IN_PROGRESS' as any, notes: 'Started work' },
+        mockUser.id
+      );
+
+      expect(result.status).toBe('IN_PROGRESS');
+      expect(prismaService.projectMilestone.update).toHaveBeenCalled();
+      expect(prismaService.milestoneStatusHistory.create).toHaveBeenCalledWith({
+        data: {
+          milestoneId: 'milestone-1',
+          fromStatus: 'PENDING',
+          toStatus: 'IN_PROGRESS',
+          changedBy: mockUser.id,
+          notes: 'Started work',
+        },
+      });
+    });
+
+    it('should set actualDate when status changes to DELIVERED', async () => {
+      const mockDeliveredMilestone = {
+        ...mockMilestoneWithHistory,
+        status: 'DELIVERED',
+        actualDate: new Date(),
+      };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(mockMilestone as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockDeliveredMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      await service.updateMilestoneStatus(
+        { id: 'milestone-1', status: 'DELIVERED' as any },
+        mockUser.id
+      );
+
+      expect(prismaService.projectMilestone.update).toHaveBeenCalledWith({
+        where: { id: 'milestone-1' },
+        data: expect.objectContaining({
+          status: 'DELIVERED',
+          actualDate: expect.any(Date),
+        }),
+        include: expect.any(Object),
+      });
+    });
+
+    it('should throw NotFoundException when milestone not found', async () => {
+      prismaService.projectMilestone.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateMilestoneStatus(
+          { id: 'non-existent', status: 'IN_PROGRESS' as any },
+          mockUser.id
+        )
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException for invalid status transition', async () => {
+      const acceptedMilestone = { ...mockMilestone, status: 'ACCEPTED' };
+      prismaService.projectMilestone.findUnique.mockResolvedValue(acceptedMilestone as any);
+
+      await expect(
+        service.updateMilestoneStatus(
+          { id: 'milestone-1', status: 'PENDING' as any },
+          mockUser.id
+        )
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('uploadDeliverable', () => {
+    const mockUser = { id: 'user-1', name: 'Admin User' };
+    const mockMilestoneWithHistory = {
+      ...mockMilestone,
+      statusHistory: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should upload deliverable and change status to DELIVERED', async () => {
+      const mockUpdatedMilestone = {
+        ...mockMilestoneWithHistory,
+        status: 'DELIVERED',
+        deliverableFileUrl: 'https://storage.example.com/file.pdf',
+        deliverableFileName: 'deliverable.pdf',
+        deliverableUploadedAt: new Date(),
+      };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(mockMilestone as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockUpdatedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.uploadDeliverable(
+        {
+          milestoneId: 'milestone-1',
+          fileUrl: 'https://storage.example.com/file.pdf',
+          fileName: 'deliverable.pdf',
+          description: 'Phase 1 deliverable',
+        },
+        mockUser.id
+      );
+
+      expect(result.status).toBe('DELIVERED');
+      expect(result.deliverableFileUrl).toBe('https://storage.example.com/file.pdf');
+      expect(result.deliverableFileName).toBe('deliverable.pdf');
+      expect(prismaService.projectMilestone.update).toHaveBeenCalledWith({
+        where: { id: 'milestone-1' },
+        data: {
+          deliverableFileUrl: 'https://storage.example.com/file.pdf',
+          deliverableFileName: 'deliverable.pdf',
+          deliverableUploadedAt: expect.any(Date),
+          status: 'DELIVERED',
+        },
+        include: expect.any(Object),
+      });
+    });
+
+    it('should throw NotFoundException when milestone not found', async () => {
+      prismaService.projectMilestone.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.uploadDeliverable(
+          {
+            milestoneId: 'non-existent',
+            fileUrl: 'https://example.com/file.pdf',
+            fileName: 'file.pdf',
+          },
+          mockUser.id
+        )
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('acceptMilestone', () => {
+    const mockUser = { id: 'user-1', name: 'Admin User' };
+    const mockMilestoneWithHistory = {
+      ...mockMilestone,
+      status: 'DELIVERED',
+      statusHistory: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should accept delivered milestone successfully', async () => {
+      const mockAcceptedMilestone = {
+        ...mockMilestoneWithHistory,
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+        acceptedBy: mockUser.id,
+        rejectedAt: null,
+        rejectedBy: null as string | null,
+        rejectionReason: null as string | null,
+      };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(mockMilestoneWithHistory as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockAcceptedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.acceptMilestone(
+        { id: 'milestone-1', notes: 'Looks good!' },
+        mockUser.id
+      );
+
+      expect(result.status).toBe('ACCEPTED');
+      expect(result.acceptedBy).toBe(mockUser.id);
+      expect(result.acceptedAt).toBeDefined();
+      expect(prismaService.projectMilestone.update).toHaveBeenCalledWith({
+        where: { id: 'milestone-1' },
+        data: {
+          status: 'ACCEPTED',
+          acceptedAt: expect.any(Date),
+          acceptedBy: mockUser.id,
+          rejectedAt: null,
+          rejectedBy: null,
+          rejectionReason: null,
+        },
+        include: expect.any(Object),
+      });
+    });
+
+    it('should accept rejected milestone (re-accept)', async () => {
+      const mockRejectedMilestone = {
+        ...mockMilestoneWithHistory,
+        status: 'REJECTED',
+      };
+      const mockAcceptedMilestone = {
+        ...mockRejectedMilestone,
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+        acceptedBy: mockUser.id,
+      };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(mockRejectedMilestone as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockAcceptedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.acceptMilestone(
+        { id: 'milestone-1', notes: 'Fixed issues, accepting' },
+        mockUser.id
+      );
+
+      expect(result.status).toBe('ACCEPTED');
+    });
+
+    it('should throw ForbiddenException when milestone is not DELIVERED or REJECTED', async () => {
+      const pendingMilestone = { ...mockMilestone, status: 'PENDING' };
+      prismaService.projectMilestone.findUnique.mockResolvedValue(pendingMilestone as any);
+
+      await expect(
+        service.acceptMilestone({ id: 'milestone-1' }, mockUser.id)
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('rejectMilestone', () => {
+    const mockUser = { id: 'user-1', name: 'Admin User' };
+    const mockMilestoneWithHistory = {
+      ...mockMilestone,
+      status: 'DELIVERED',
+      statusHistory: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should reject delivered milestone successfully', async () => {
+      const mockRejectedMilestone = {
+        ...mockMilestoneWithHistory,
+        status: 'REJECTED',
+        rejectedAt: new Date(),
+        rejectedBy: mockUser.id,
+        rejectionReason: 'Missing requirements',
+        acceptedAt: null as Date | null,
+        acceptedBy: null as string | null,
+      };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(mockMilestoneWithHistory as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockRejectedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.rejectMilestone(
+        { id: 'milestone-1', reason: 'Missing requirements' },
+        mockUser.id
+      );
+
+      expect(result.status).toBe('REJECTED');
+      expect(result.rejectedBy).toBe(mockUser.id);
+      expect(result.rejectionReason).toBe('Missing requirements');
+      expect(prismaService.projectMilestone.update).toHaveBeenCalledWith({
+        where: { id: 'milestone-1' },
+        data: {
+          status: 'REJECTED',
+          rejectedAt: expect.any(Date),
+          rejectedBy: mockUser.id,
+          rejectionReason: 'Missing requirements',
+          acceptedAt: null,
+          acceptedBy: null,
+        },
+        include: expect.any(Object),
+      });
+    });
+
+    it('should throw ForbiddenException when milestone is not DELIVERED', async () => {
+      const pendingMilestone = { ...mockMilestone, status: 'PENDING' };
+      prismaService.projectMilestone.findUnique.mockResolvedValue(pendingMilestone as any);
+
+      await expect(
+        service.rejectMilestone(
+          { id: 'milestone-1', reason: 'Not ready' },
+          mockUser.id
+        )
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('getMilestoneDetail', () => {
+    it('should return milestone detail with status history', async () => {
+      const mockMilestoneWithHistory = {
+        ...mockMilestone,
+        statusHistory: [
+          {
+            id: 'history-1',
+            milestoneId: 'milestone-1',
+            fromStatus: 'PENDING',
+            toStatus: 'IN_PROGRESS',
+            changedBy: 'user-1',
+            changedAt: new Date(),
+            notes: 'Started',
+            user: { id: 'user-1', name: 'Admin User' },
+          },
+        ],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(mockMilestoneWithHistory as any);
+
+      const result = await service.getMilestoneDetail('milestone-1');
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe('milestone-1');
+      expect(result.statusHistory).toHaveLength(1);
+      expect(result.statusHistory[0].changedByName).toBe('Admin User');
+    });
+
+    it('should throw NotFoundException when milestone not found', async () => {
+      prismaService.projectMilestone.findUnique.mockResolvedValue(null);
+
+      await expect(service.getMilestoneDetail('non-existent')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+  });
+
+  describe('getMilestoneStatusHistory', () => {
+    it('should return status history for milestone', async () => {
+      const mockHistory = [
+        {
+          id: 'history-1',
+          milestoneId: 'milestone-1',
+          fromStatus: 'PENDING',
+          toStatus: 'IN_PROGRESS',
+          changedBy: 'user-1',
+          changedAt: new Date(),
+          notes: 'Started',
+          user: { id: 'user-1', name: 'Admin User' },
+        },
+        {
+          id: 'history-2',
+          milestoneId: 'milestone-1',
+          fromStatus: 'IN_PROGRESS',
+          toStatus: 'DELIVERED',
+          changedBy: 'user-1',
+          changedAt: new Date(),
+          notes: 'Completed',
+          user: { id: 'user-1', name: 'Admin User' },
+        },
+      ];
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(mockMilestone as any);
+      prismaService.milestoneStatusHistory.findMany.mockResolvedValue(mockHistory as any);
+
+      const result = await service.getMilestoneStatusHistory('milestone-1');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].changedByName).toBe('Admin User');
+      expect(result[0].fromStatus).toBe('PENDING');
+      expect(result[0].toStatus).toBe('IN_PROGRESS');
+    });
+
+    it('should throw NotFoundException when milestone not found', async () => {
+      prismaService.projectMilestone.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.getMilestoneStatusHistory('non-existent')
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('isValidStatusTransition', () => {
+    // Test via the updateMilestoneStatus method
+    it('should allow PENDING to IN_PROGRESS transition', async () => {
+      const testMilestone = { ...mockMilestone, status: 'PENDING' };
+      const mockUpdatedMilestone = { ...testMilestone, status: 'IN_PROGRESS', statusHistory: [], createdAt: new Date(), updatedAt: new Date() };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(testMilestone as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockUpdatedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.updateMilestoneStatus(
+        { id: 'milestone-1', status: 'IN_PROGRESS' as any },
+        'user-1'
+      );
+
+      expect(result.status).toBe('IN_PROGRESS');
+    });
+
+    it('should allow PENDING to DELIVERED transition', async () => {
+      const testMilestone = { ...mockMilestone, status: 'PENDING' };
+      const mockUpdatedMilestone = { ...testMilestone, status: 'DELIVERED', statusHistory: [], createdAt: new Date(), updatedAt: new Date() };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(testMilestone as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockUpdatedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.updateMilestoneStatus(
+        { id: 'milestone-1', status: 'DELIVERED' as any },
+        'user-1'
+      );
+
+      expect(result.status).toBe('DELIVERED');
+    });
+
+    it('should allow DELIVERED to ACCEPTED transition', async () => {
+      const testMilestone = { ...mockMilestone, status: 'DELIVERED', statusHistory: [], createdAt: new Date(), updatedAt: new Date() };
+      const mockUpdatedMilestone = { ...testMilestone, status: 'ACCEPTED', acceptedAt: new Date(), acceptedBy: 'user-1' };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(testMilestone as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockUpdatedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.updateMilestoneStatus(
+        { id: 'milestone-1', status: 'ACCEPTED' as any },
+        'user-1'
+      );
+
+      expect(result.status).toBe('ACCEPTED');
+    });
+
+    it('should allow DELIVERED to REJECTED transition', async () => {
+      const testMilestone = { ...mockMilestone, status: 'DELIVERED', statusHistory: [], createdAt: new Date(), updatedAt: new Date() };
+      const mockUpdatedMilestone = { ...testMilestone, status: 'REJECTED', rejectedAt: new Date(), rejectedBy: 'user-1', rejectionReason: 'Not good' };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(testMilestone as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockUpdatedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.updateMilestoneStatus(
+        { id: 'milestone-1', status: 'REJECTED' as any },
+        'user-1'
+      );
+
+      expect(result.status).toBe('REJECTED');
+    });
+
+    it('should allow REJECTED to DELIVERED transition (re-deliver)', async () => {
+      const testMilestone = { ...mockMilestone, status: 'REJECTED', statusHistory: [], createdAt: new Date(), updatedAt: new Date() };
+      const mockUpdatedMilestone = { ...testMilestone, status: 'DELIVERED' };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(testMilestone as any);
+      prismaService.projectMilestone.update.mockResolvedValue(mockUpdatedMilestone as any);
+      prismaService.milestoneStatusHistory.create.mockResolvedValue({} as any);
+
+      const result = await service.updateMilestoneStatus(
+        { id: 'milestone-1', status: 'DELIVERED' as any },
+        'user-1'
+      );
+
+      expect(result.status).toBe('DELIVERED');
+    });
+
+    it('should not allow ACCEPTED to any other transition', async () => {
+      const testMilestone = { ...mockMilestone, status: 'ACCEPTED' };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(testMilestone as any);
+
+      await expect(
+        service.updateMilestoneStatus(
+          { id: 'milestone-1', status: 'PENDING' as any },
+          'user-1'
+        )
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should not allow PENDING to ACCEPTED transition', async () => {
+      const testMilestone = { ...mockMilestone, status: 'PENDING' };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(testMilestone as any);
+
+      await expect(
+        service.updateMilestoneStatus(
+          { id: 'milestone-1', status: 'ACCEPTED' as any },
+          'user-1'
+        )
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should not allow PENDING to REJECTED transition', async () => {
+      const testMilestone = { ...mockMilestone, status: 'PENDING' };
+
+      prismaService.projectMilestone.findUnique.mockResolvedValue(testMilestone as any);
+
+      await expect(
+        service.updateMilestoneStatus(
+          { id: 'milestone-1', status: 'REJECTED' as any },
+          'user-1'
+        )
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

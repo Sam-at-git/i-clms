@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 interface MonthlyRevenue {
   month: string;
   amount: number;
@@ -96,12 +98,18 @@ export function RevenueChart({
           <h3 style={styles.chartTitle}>客户收入排名 (Top 5)</h3>
           <div style={styles.rankList}>
             {byCustomer.slice(0, 5).map((item, index) => (
-              <div key={item.customerId} style={styles.rankItem}>
-                <div style={styles.rankNumber}>{index + 1}</div>
-                <div style={styles.rankName}>{item.customerName}</div>
-                <div style={styles.rankValue}>{formatCurrency(item.amount)}</div>
-                <div style={styles.rankCount}>{item.contractCount}份</div>
-              </div>
+              <Link
+                key={item.customerId}
+                to={`/customers/${item.customerId}`}
+                style={styles.rankItemLink}
+              >
+                <div style={styles.rankItem}>
+                  <div style={styles.rankNumber}>{index + 1}</div>
+                  <div style={styles.rankName}>{item.customerName}</div>
+                  <div style={styles.rankValue}>{formatCurrency(item.amount)}</div>
+                  <div style={styles.rankCount}>{item.contractCount}份</div>
+                </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -226,6 +234,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px',
     backgroundColor: '#f9fafb',
     borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   rankNumber: {
     width: '24px',
@@ -254,6 +264,10 @@ const styles: Record<string, React.CSSProperties> = {
   rankCount: {
     fontSize: '12px',
     color: '#6b7280',
+  },
+  rankItemLink: {
+    textDecoration: 'none',
+    display: 'block',
   },
 };
 

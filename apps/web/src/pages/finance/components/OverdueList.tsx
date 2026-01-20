@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 interface OverdueAlert {
   contractId: string;
   contractNo: string;
@@ -83,40 +85,46 @@ export function OverdueList({ alerts }: OverdueListProps) {
         {alerts.map((alert) => {
           const config = levelConfig[alert.level];
           return (
-            <div key={`${alert.contractId}-${alert.expectedDate}`} style={styles.item}>
-              <div style={styles.itemHeader}>
-                <span style={styles.contractNo}>{alert.contractNo}</span>
-                <span
-                  style={{
-                    ...styles.levelBadge,
-                    color: config.color,
-                    backgroundColor: config.bgColor,
-                  }}
-                >
-                  {config.label}
-                </span>
-              </div>
-              <div style={styles.itemInfo}>
-                <div style={styles.infoRow}>
-                  <span style={styles.infoLabel}>客户</span>
-                  <span style={styles.infoValue}>{alert.customerName}</span>
-                </div>
-                <div style={styles.infoRow}>
-                  <span style={styles.infoLabel}>预期日期</span>
-                  <span style={styles.infoValue}>{formatDate(alert.expectedDate)}</span>
-                </div>
-                <div style={styles.infoRow}>
-                  <span style={styles.infoLabel}>逾期天数</span>
-                  <span style={{ ...styles.infoValue, color: config.color, fontWeight: 600 }}>
-                    {alert.daysOverdue} 天
+            <Link
+              key={`${alert.contractId}-${alert.expectedDate}`}
+              to={`/contracts/${alert.contractId}`}
+              style={styles.itemLink}
+            >
+              <div style={styles.item}>
+                <div style={styles.itemHeader}>
+                  <span style={styles.contractNo}>{alert.contractNo}</span>
+                  <span
+                    style={{
+                      ...styles.levelBadge,
+                      color: config.color,
+                      backgroundColor: config.bgColor,
+                    }}
+                  >
+                    {config.label}
                   </span>
                 </div>
-                <div style={styles.infoRow}>
-                  <span style={styles.infoLabel}>涉及金额</span>
-                  <span style={styles.infoValue}>{formatCurrency(alert.amount)}</span>
+                <div style={styles.itemInfo}>
+                  <div style={styles.infoRow}>
+                    <span style={styles.infoLabel}>客户</span>
+                    <span style={styles.infoValue}>{alert.customerName}</span>
+                  </div>
+                  <div style={styles.infoRow}>
+                    <span style={styles.infoLabel}>预期日期</span>
+                    <span style={styles.infoValue}>{formatDate(alert.expectedDate)}</span>
+                  </div>
+                  <div style={styles.infoRow}>
+                    <span style={styles.infoLabel}>逾期天数</span>
+                    <span style={{ ...styles.infoValue, color: config.color, fontWeight: 600 }}>
+                      {alert.daysOverdue} 天
+                    </span>
+                  </div>
+                  <div style={styles.infoRow}>
+                    <span style={styles.infoLabel}>涉及金额</span>
+                    <span style={styles.infoValue}>{formatCurrency(alert.amount)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -173,11 +181,17 @@ const styles: Record<string, React.CSSProperties> = {
     maxHeight: '400px',
     overflowY: 'auto',
   },
+  itemLink: {
+    textDecoration: 'none',
+    display: 'block',
+  },
   item: {
     padding: '12px',
     backgroundColor: '#f9fafb',
     borderRadius: '8px',
     border: '1px solid #e5e7eb',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   itemHeader: {
     display: 'flex',

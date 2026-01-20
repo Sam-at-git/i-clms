@@ -212,6 +212,7 @@ type Contract {
   staffAugmentationDetail: StaffAugmentationDetail
   status: ContractStatus!
   supplements: [Contract!]!
+  tags: [Tag!]!
   taxAmount: String
   taxRate: String
   type: ContractType!
@@ -252,6 +253,8 @@ input ContractFilterInput {
   departmentId: String
   expiresAfter: DateTime
   expiresBefore: DateTime
+  maxAmount: Float
+  minAmount: Float
   needsManualReview: Boolean
   parseStatuses: [ParseStatus!]
   search: String

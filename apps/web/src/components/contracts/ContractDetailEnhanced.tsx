@@ -5,9 +5,10 @@ import { useParams, Link } from 'react-router-dom';
 import { GetContractWithTagsQuery } from '@i-clms/shared/generated/graphql';
 import { ContractEdit } from './ContractEdit';
 import { ContractDelete } from './ContractDelete';
-// import { ContractTags } from './ContractTags'; // Temporarily disabled
+import { ContractTags } from './ContractTags';
 import { ContractHistory } from './ContractHistory';
 import { ContractRelated } from './ContractRelated';
+import { SimilarContracts } from './SimilarContracts';
 import { ContractPrint } from './ContractPrint';
 import { ContractTypeSpecificDetails } from './ContractTypeSpecificDetails';
 import { Breadcrumb } from '../navigation/Breadcrumb';
@@ -42,6 +43,14 @@ const GET_CONTRACT = gql`
       needsManualReview
       createdAt
       updatedAt
+      tags {
+        id
+        name
+        category
+        color
+        isActive
+        isSystem
+      }
       staffAugmentationDetail {
         id
         estimatedTotalHours
@@ -152,6 +161,14 @@ interface Contract {
   needsManualReview: boolean;
   createdAt: string;
   updatedAt: string;
+  tags: Array<{
+    id: string;
+    name: string;
+    category: string;
+    color: string;
+    isActive: boolean;
+    isSystem: boolean;
+  }>;
   customer: {
     id: string;
     name: string;
@@ -284,13 +301,13 @@ export function ContractDetailEnhanced() {
         {/* Left Column - Main Info */}
         <div style={styles.leftColumn}>
           {/* Tags */}
-          {/* <div style={styles.card}>
+          <div style={styles.card}>
             <ContractTags
               contractId={contract.id}
               tags={contract.tags}
               onUpdate={() => refetch()}
             />
-          </div> */}
+          </div>
 
           {/* Basic Info */}
           <div style={styles.card}>
@@ -401,6 +418,9 @@ export function ContractDetailEnhanced() {
             departmentId={contract.department.id}
             currentContractId={contract.id}
           />
+
+          {/* Similar Contracts by Semantic Search */}
+          <SimilarContracts contractId={contract.id} limit={5} />
 
           {/* Change History */}
           <ContractHistory contractId={contract.id} limit={10} />

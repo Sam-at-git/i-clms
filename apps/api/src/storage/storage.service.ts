@@ -90,6 +90,33 @@ export class StorageService implements OnModuleInit {
     };
   }
 
+  /**
+   * Upload a buffer directly to storage
+   */
+  async uploadBuffer(
+    buffer: Buffer,
+    fileName: string,
+    objectName?: string
+  ): Promise<FileUploadResult> {
+    const finalObjectName = objectName || fileName;
+
+    await this.minioClient.putObject(
+      this.bucketName,
+      finalObjectName,
+      buffer,
+      buffer.length,
+      { 'Content-Type': this.getMimeType(fileName) }
+    );
+
+    return {
+      objectName: finalObjectName,
+      originalName: fileName,
+      mimeType: this.getMimeType(fileName),
+      size: buffer.length,
+      url: await this.getFileUrl(finalObjectName),
+    };
+  }
+
   async getFileUrl(objectName: string, expirySeconds = 3600): Promise<string> {
     return this.minioClient.presignedGetObject(
       this.bucketName,
@@ -128,5 +155,20 @@ export class StorageService implements OnModuleInit {
   private getFileExtension(filename: string): string {
     const lastDot = filename.lastIndexOf('.');
     return lastDot !== -1 ? filename.substring(lastDot) : '';
+  }
+
+  private getMimeType(fileName: string): string {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const mimeTypes: Record<string, string> = {
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'xls': 'application/vnd.ms-excel',
+      'pdf': 'application/pdf',
+      'csv': 'text/csv',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'doc': 'application/msword',
+      'txt': 'text/plain',
+      'json': 'application/json',
+    };
+    return mimeTypes[ext] || 'application/octet-stream';
   }
 }

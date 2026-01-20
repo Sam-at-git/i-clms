@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import ContractsPage from '../pages/contracts';
 import ContractDetailPage from '../pages/contracts/[id]';
+import CustomersPage from '../pages/customers';
+import CustomerDetailPage from '../pages/customers/[id]';
 import LoginPage from '../pages/login';
 import ForgotPasswordPage from '../pages/forgot-password';
 import FinancePage from '../pages/finance';
@@ -16,6 +18,9 @@ import TagsPage from '../pages/admin/tags';
 import AuditLogsPage from '../pages/admin/audit-logs';
 import PasswordPage from '../pages/settings/password';
 import ProfilePage from '../pages/settings/profile';
+import SystemSettingsPage from '../pages/settings/system';
+import { MilestonesPage } from '../pages/milestones';
+import RiskAlertsPage from '../pages/risk-alerts';
 import { ProtectedRoute } from '../components/auth';
 import { ForbiddenPage, RoleGuard } from '../components/errors';
 import { useAuthStore } from '../state';
@@ -45,11 +50,20 @@ function Layout({ children }: { children: React.ReactNode }) {
             <Link to="/contracts" style={styles.navLink}>
               合同管理
             </Link>
+            <Link to="/customers" style={styles.navLink}>
+              客户管理
+            </Link>
             <Link to="/finance" style={styles.navLink}>
               财务仪表盘
             </Link>
             <Link to="/delivery" style={styles.navLink}>
               交付管理
+            </Link>
+            <Link to="/milestones" style={styles.navLink}>
+              里程碑管理
+            </Link>
+            <Link to="/risk-alerts" style={styles.navLink}>
+              风险预警
             </Link>
             <Link to="/sales" style={styles.navLink}>
               销售管理
@@ -88,6 +102,11 @@ function Layout({ children }: { children: React.ReactNode }) {
                     {isAdmin && (
                       <Link to="/admin/audit-logs" style={styles.dropdownItem}>
                         审计日志
+                      </Link>
+                    )}
+                    {isAdmin && (
+                      <Link to="/settings/system" style={styles.dropdownItem}>
+                        系统设置
                       </Link>
                     )}
                   </div>
@@ -160,6 +179,22 @@ export function App() {
                   }
                 />
                 <Route
+                  path="/customers"
+                  element={
+                    <ProtectedRoute>
+                      <CustomersPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/customers/:id"
+                  element={
+                    <ProtectedRoute>
+                      <CustomerDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/finance"
                   element={
                     <ProtectedRoute>
@@ -172,6 +207,24 @@ export function App() {
                   element={
                     <ProtectedRoute>
                       <DeliveryPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/milestones"
+                  element={
+                    <ProtectedRoute>
+                      <MilestonesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/risk-alerts"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard requireDeptAdmin>
+                        <RiskAlertsPage />
+                      </RoleGuard>
                     </ProtectedRoute>
                   }
                 />
@@ -258,6 +311,16 @@ export function App() {
                   element={
                     <ProtectedRoute>
                       <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/system"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard requireAdmin>
+                        <SystemSettingsPage />
+                      </RoleGuard>
                     </ProtectedRoute>
                   }
                 />

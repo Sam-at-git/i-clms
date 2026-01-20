@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { Link } from 'react-router-dom';
@@ -44,12 +44,13 @@ interface CustomerListProps {
   search?: string;
   industry?: string;
   status?: string;
+  refreshKey?: number;
 }
 
-export function CustomerList({ search, industry, status }: CustomerListProps) {
+export function CustomerList({ search, industry, status, refreshKey }: CustomerListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const { loading, error, data } = useQuery(GET_CUSTOMERS, {
+  const { loading, error, data, refetch } = useQuery(GET_CUSTOMERS, {
     variables: {
       filter: {
         search,
@@ -59,6 +60,13 @@ export function CustomerList({ search, industry, status }: CustomerListProps) {
     },
     fetchPolicy: 'cache-and-network',
   });
+
+  // Refetch data when refreshKey changes
+  useEffect(() => {
+    if (refreshKey && refreshKey > 0) {
+      refetch();
+    }
+  }, [refreshKey, refetch]);
 
   if (loading && !data) {
     return (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useRemoveCustomerContactMutation } from '@i-clms/shared/generated/graphql';
+import { ContactFormModal } from './ContactFormModal';
 
 interface Contact {
   id: string;
@@ -17,67 +18,134 @@ interface ContactListProps {
 }
 
 export function ContactList({ customerId, contacts, onUpdate }: ContactListProps) {
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
+
+  const [removeContact] = useRemoveCustomerContactMutation({
+    onCompleted: () => {
+      onUpdate?.();
+    },
+    onError: (error) => {
+      alert(`删除失败: ${error.message}`);
+      setDeletingContactId(null);
+    },
+  });
+
+  const handleAddClick = () => {
+    setEditingContact(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditClick = (contact: Contact) => {
+    setEditingContact(contact);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = async (contactId: string) => {
+    if (!confirm('确定要删除这个联系人吗？')) {
+      return;
+    }
+    setDeletingContactId(contactId);
+    await removeContact({ variables: { contactId } });
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingContact(null);
+  };
+
+  const handleModalSuccess = () => {
+    setIsModalOpen(false);
+    setEditingContact(null);
+    onUpdate?.();
+  };
 
   if (contacts.length === 0) {
     return (
-      <div style={styles.empty}>
-        <div style={styles.emptyText}>暂无联系人</div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          style={styles.addButton}
-        >
-          + 添加联系人
-        </button>
-      </div>
+      <>
+        <div style={styles.empty}>
+          <div style={styles.emptyText}>暂无联系人</div>
+          <button onClick={handleAddClick} style={styles.addButton}>
+            + 添加联系人
+          </button>
+        </div>
+        <ContactFormModal
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          onSuccess={handleModalSuccess}
+          customerId={customerId}
+          contact={editingContact}
+        />
+      </>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.list}>
-        {contacts.map((contact) => (
-          <div key={contact.id} style={styles.contactCard}>
-            <div style={styles.contactHeader}>
-              <div style={styles.contactName}>
-                {contact.name}
-                {contact.isPrimary && (
-                  <span style={styles.primaryBadge}>主要</span>
-                )}
+    <>
+      <div style={styles.container}>
+        <div style={styles.list}>
+          {contacts.map((contact) => (
+            <div key={contact.id} style={styles.contactCard}>
+              <div style={styles.contactHeader}>
+                <div style={styles.contactName}>
+                  {contact.name}
+                  {contact.isPrimary && (
+                    <span style={styles.primaryBadge}>主要</span>
+                  )}
+                </div>
+                <div style={styles.contactActions}>
+                  <button
+                    onClick={() => handleEditClick(contact)}
+                    style={styles.actionButton}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(contact.id)}
+                    style={{
+                      ...styles.actionButton,
+                      ...(deletingContactId === contact.id ? styles.deletingButton : {}),
+                    }}
+                    disabled={deletingContactId === contact.id}
+                  >
+                    {deletingContactId === contact.id ? '删除中...' : '删除'}
+                  </button>
+                </div>
               </div>
-              <div style={styles.contactActions}>
-                <button style={styles.actionButton}>编辑</button>
-                <button style={styles.actionButton}>删除</button>
-              </div>
+              {contact.title && (
+                <div style={styles.contactField}>
+                  <span style={styles.fieldLabel}>职位：</span>
+                  <span style={styles.fieldValue}>{contact.title}</span>
+                </div>
+              )}
+              {contact.phone && (
+                <div style={styles.contactField}>
+                  <span style={styles.fieldLabel}>电话：</span>
+                  <span style={styles.fieldValue}>{contact.phone}</span>
+                </div>
+              )}
+              {contact.email && (
+                <div style={styles.contactField}>
+                  <span style={styles.fieldLabel}>邮箱：</span>
+                  <span style={styles.fieldValue}>{contact.email}</span>
+                </div>
+              )}
             </div>
-            {contact.title && (
-              <div style={styles.contactField}>
-                <span style={styles.fieldLabel}>职位：</span>
-                <span style={styles.fieldValue}>{contact.title}</span>
-              </div>
-            )}
-            {contact.phone && (
-              <div style={styles.contactField}>
-                <span style={styles.fieldLabel}>电话：</span>
-                <span style={styles.fieldValue}>{contact.phone}</span>
-              </div>
-            )}
-            {contact.email && (
-              <div style={styles.contactField}>
-                <span style={styles.fieldLabel}>邮箱：</span>
-                <span style={styles.fieldValue}>{contact.email}</span>
-              </div>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
+        <button onClick={handleAddClick} style={styles.addButton}>
+          + 添加联系人
+        </button>
       </div>
-      <button
-        onClick={() => setShowAddForm(true)}
-        style={styles.addButton}
-      >
-        + 添加联系人
-      </button>
-    </div>
+      <ContactFormModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSuccess={handleModalSuccess}
+        customerId={customerId}
+        contact={editingContact}
+      />
+    </>
   );
 }
 
@@ -132,6 +200,11 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid #bfdbfe',
     borderRadius: '4px',
     cursor: 'pointer',
+  },
+  deletingButton: {
+    color: '#9ca3af',
+    border: '1px solid #e5e7eb',
+    cursor: 'not-allowed',
   },
   contactField: {
     fontSize: '13px',

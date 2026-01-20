@@ -1,0 +1,38 @@
+query GetTags {
+  tags {
+    id
+    name
+    category
+    color
+    isActive
+    isSystem
+  }
+}
+
+query GetAvailableTags($contractId: ID!) {
+  tags {
+    id
+    name
+    category
+    color
+    isActive
+    isSystem
+  }
+  contract(id: $contractId) {
+    id
+    tags {
+      id
+      name
+      category
+      color
+    }
+  }
+}
+
+mutation AssignTagsToContract($contractId: ID!, $tagIds: [ID!]!) {
+  assignTagsToContract(contractId: $contractId, tagIds: $tagIds)
+}
+
+mutation RemoveTagFromContract($contractId: ID!, $tagId: ID!) {
+  removeTagFromContract(contractId: $contractId, tagId: $tagId)
+}

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 interface MilestoneItem {
   id: string;
   name: string;
@@ -8,6 +10,8 @@ interface MilestoneItem {
   status: string;
   amount: number | null;
   daysOverdue: number | null;
+  // For navigation
+  contractId?: string;
 }
 
 interface MilestoneTrackerProps {
@@ -91,7 +95,16 @@ export function MilestoneTracker({
                     </span>
                   </div>
                   <div style={styles.milestoneInfo}>
-                    <span>{milestone.contractNo}</span>
+                    {milestone.contractId ? (
+                      <Link
+                        to={`/contracts/${milestone.contractId}`}
+                        style={styles.contractLink}
+                      >
+                        {milestone.contractNo}
+                      </Link>
+                    ) : (
+                      <span>{milestone.contractNo}</span>
+                    )}
                     <span>{milestone.customerName}</span>
                     <span>{formatDate(milestone.plannedDate)}</span>
                     <span>{formatCurrency(milestone.amount)}</span>
@@ -126,7 +139,16 @@ export function MilestoneTracker({
                       </span>
                     </div>
                     <div style={styles.milestoneInfo}>
-                      <span>{milestone.contractNo}</span>
+                      {milestone.contractId ? (
+                        <Link
+                          to={`/contracts/${milestone.contractId}`}
+                          style={styles.contractLink}
+                        >
+                          {milestone.contractNo}
+                        </Link>
+                      ) : (
+                        <span>{milestone.contractNo}</span>
+                      )}
                       <span>{milestone.customerName}</span>
                       <span>{formatDate(milestone.plannedDate)}</span>
                       <span>{formatCurrency(milestone.amount)}</span>
@@ -243,6 +265,15 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '8px',
     fontSize: '12px',
     color: '#6b7280',
+  },
+  contractLink: {
+    color: '#3b82f6',
+    textDecoration: 'none',
+    fontWeight: 500,
+    cursor: 'pointer',
+    '&:hover': {
+      textDecoration: 'underline',
+    },
   },
   empty: {
     padding: '24px',

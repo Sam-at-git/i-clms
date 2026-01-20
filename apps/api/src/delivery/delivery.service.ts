@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ProjectOverview,
@@ -14,7 +14,15 @@ import {
   RoleUtilization,
   MonthlyUtilization,
 } from './dto/resource-utilization.dto';
-import { ContractStatus, MilestoneStatus } from '../graphql/types/enums';
+import {
+  MilestoneDetail,
+  MilestoneStatusHistory,
+  UpdateMilestoneStatusInput,
+  UploadDeliverableInput,
+  AcceptMilestoneInput,
+  RejectMilestoneInput,
+} from './dto/milestone-status.dto';
+import { ContractStatus, MilestoneStatus, UserRole } from '../graphql/types/enums';
 
 // Type for Prisma Decimal values
 type DecimalValue = { toString(): string } | null | undefined;
@@ -267,5 +275,421 @@ export class DeliveryService {
   private decimalToNumber(value: DecimalValue): number {
     if (!value) return 0;
     return Number(value.toString());
+  }
+
+  // ==================== 里程碑状态管理 ====================
+
+  /**
+   * 获取里程碑详情（包含状态历史）
+   */
+  async getMilestoneDetail(id: string): Promise<MilestoneDetail> {
+    const milestone = await this.prisma.projectMilestone.findUnique({
+      where: { id },
+      include: {
+        statusHistory: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            changedAt: 'desc',
+          },
+        },
+      },
+    });
+
+    if (!milestone) {
+      throw new NotFoundException(`Milestone with ID ${id} not found`);
+    }
+
+    return this.mapToMilestoneDetail(milestone);
+  }
+
+  /**
+   * 更新里程碑状态
+   */
+  async updateMilestoneStatus(
+    input: UpdateMilestoneStatusInput,
+    userId: string
+  ): Promise<MilestoneDetail> {
+    const milestone = await this.prisma.projectMilestone.findUnique({
+      where: { id: input.id },
+    });
+
+    if (!milestone) {
+      throw new NotFoundException(`Milestone with ID ${input.id} not found`);
+    }
+
+    // 验证状态转换是否合法
+    const currentStatus = milestone.status as MilestoneStatus;
+    if (!this.isValidStatusTransition(currentStatus, input.status)) {
+      throw new ForbiddenException(
+        `Cannot change status from ${milestone.status} to ${input.status}`
+      );
+    }
+
+    // 更新里程碑状态
+    const updated = await this.prisma.projectMilestone.update({
+      where: { id: input.id },
+      data: {
+        status: input.status,
+        // 如果状态变为DELIVERED，设置实际完成时间
+        actualDate:
+          input.status === MilestoneStatus.DELIVERED &&
+          !milestone.actualDate
+            ? new Date()
+            : milestone.actualDate,
+      },
+      include: {
+        statusHistory: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            changedAt: 'desc',
+          },
+        },
+      },
+    });
+
+    // 记录状态变更历史
+    await this.prisma.milestoneStatusHistory.create({
+      data: {
+        milestoneId: input.id,
+        fromStatus: currentStatus,
+        toStatus: input.status,
+        changedBy: userId,
+        notes: input.notes,
+      },
+    });
+
+    return this.mapToMilestoneDetail(updated);
+  }
+
+  /**
+   * 上传交付物
+   */
+  async uploadDeliverable(
+    input: UploadDeliverableInput,
+    userId: string
+  ): Promise<MilestoneDetail> {
+    const milestone = await this.prisma.projectMilestone.findUnique({
+      where: { id: input.milestoneId },
+    });
+
+    if (!milestone) {
+      throw new NotFoundException(
+        `Milestone with ID ${input.milestoneId} not found`
+      );
+    }
+
+    const updated = await this.prisma.projectMilestone.update({
+      where: { id: input.milestoneId },
+      data: {
+        deliverableFileUrl: input.fileUrl,
+        deliverableFileName: input.fileName,
+        deliverableUploadedAt: new Date(),
+        // 上传交付物后自动将状态设为DELIVERED
+        status: 'DELIVERED',
+      },
+      include: {
+        statusHistory: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            changedAt: 'desc',
+          },
+        },
+      },
+    });
+
+    // 记录状态变更历史
+    await this.prisma.milestoneStatusHistory.create({
+      data: {
+        milestoneId: input.milestoneId,
+        fromStatus: milestone.status,
+        toStatus: 'DELIVERED',
+        changedBy: userId,
+        notes: input.description || `Uploaded deliverable: ${input.fileName}`,
+      },
+    });
+
+    return this.mapToMilestoneDetail(updated);
+  }
+
+  /**
+   * 验收通过里程碑
+   */
+  async acceptMilestone(
+    input: AcceptMilestoneInput,
+    userId: string
+  ): Promise<MilestoneDetail> {
+    const milestone = await this.prisma.projectMilestone.findUnique({
+      where: { id: input.id },
+    });
+
+    if (!milestone) {
+      throw new NotFoundException(`Milestone with ID ${input.id} not found`);
+    }
+
+    // 只有DELIVERED或REJECTED状态的里程碑可以被验收
+    if (
+      milestone.status !== 'DELIVERED' &&
+      milestone.status !== 'REJECTED'
+    ) {
+      throw new ForbiddenException(
+        `Can only accept milestones that are delivered or rejected`
+      );
+    }
+
+    const updated = await this.prisma.projectMilestone.update({
+      where: { id: input.id },
+      data: {
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+        acceptedBy: userId,
+        // 清除拒绝信息
+        rejectedAt: null,
+        rejectedBy: null,
+        rejectionReason: null,
+      },
+      include: {
+        statusHistory: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            changedAt: 'desc',
+          },
+        },
+      },
+    });
+
+    // 记录状态变更历史
+    await this.prisma.milestoneStatusHistory.create({
+      data: {
+        milestoneId: input.id,
+        fromStatus: milestone.status,
+        toStatus: 'ACCEPTED',
+        changedBy: userId,
+        notes: input.notes || 'Milestone accepted',
+      },
+    });
+
+    return this.mapToMilestoneDetail(updated);
+  }
+
+  /**
+   * 拒绝里程碑
+   */
+  async rejectMilestone(
+    input: RejectMilestoneInput,
+    userId: string
+  ): Promise<MilestoneDetail> {
+    const milestone = await this.prisma.projectMilestone.findUnique({
+      where: { id: input.id },
+    });
+
+    if (!milestone) {
+      throw new NotFoundException(`Milestone with ID ${input.id} not found`);
+    }
+
+    // 只有DELIVERED状态的里程碑可以被拒绝
+    if (milestone.status !== 'DELIVERED') {
+      throw new ForbiddenException(
+        `Can only reject milestones that are delivered`
+      );
+    }
+
+    const updated = await this.prisma.projectMilestone.update({
+      where: { id: input.id },
+      data: {
+        status: 'REJECTED',
+        rejectedAt: new Date(),
+        rejectedBy: userId,
+        rejectionReason: input.reason,
+        // 清除验收信息
+        acceptedAt: null,
+        acceptedBy: null,
+      },
+      include: {
+        statusHistory: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            changedAt: 'desc',
+          },
+        },
+      },
+    });
+
+    // 记录状态变更历史
+    await this.prisma.milestoneStatusHistory.create({
+      data: {
+        milestoneId: input.id,
+        fromStatus: milestone.status,
+        toStatus: 'REJECTED',
+        changedBy: userId,
+        notes: input.reason,
+      },
+    });
+
+    return this.mapToMilestoneDetail(updated);
+  }
+
+  /**
+   * 获取里程碑状态历史
+   */
+  async getMilestoneStatusHistory(
+    milestoneId: string
+  ): Promise<MilestoneStatusHistory[]> {
+    const milestone = await this.prisma.projectMilestone.findUnique({
+      where: { id: milestoneId },
+    });
+
+    if (!milestone) {
+      throw new NotFoundException(
+        `Milestone with ID ${milestoneId} not found`
+      );
+    }
+
+    const history = await this.prisma.milestoneStatusHistory.findMany({
+      where: { milestoneId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        changedAt: 'desc',
+      },
+    });
+
+    return history.map((h) => ({
+      id: h.id,
+      fromStatus: h.fromStatus as MilestoneStatus,
+      toStatus: h.toStatus as MilestoneStatus,
+      changedBy: h.changedBy,
+      changedByName: h.user.name,
+      changedAt: h.changedAt,
+      notes: h.notes,
+    }));
+  }
+
+  /**
+   * 验证状态转换是否合法
+   */
+  private isValidStatusTransition(
+    from: MilestoneStatus,
+    to: MilestoneStatus
+  ): boolean {
+    const validTransitions: Record<MilestoneStatus, MilestoneStatus[]> = {
+      [MilestoneStatus.PENDING]: [
+        MilestoneStatus.IN_PROGRESS,
+        MilestoneStatus.DELIVERED,
+      ],
+      [MilestoneStatus.IN_PROGRESS]: [MilestoneStatus.DELIVERED],
+      [MilestoneStatus.DELIVERED]: [
+        MilestoneStatus.ACCEPTED,
+        MilestoneStatus.REJECTED,
+      ],
+      [MilestoneStatus.ACCEPTED]: [], // 已验收不能再变更
+      [MilestoneStatus.REJECTED]: [MilestoneStatus.DELIVERED], // 拒绝后可重新交付
+    };
+
+    return validTransitions[from]?.includes(to) ?? false;
+  }
+
+  /**
+   * 将Prisma模型映射为MilestoneDetail DTO
+   */
+  private mapToMilestoneDetail(
+    milestone: any
+  ): MilestoneDetail {
+    // 获取验收/拒绝人的姓名
+    let acceptedByName: string | null = null;
+    let rejectedByName: string | null = null;
+
+    if (milestone.acceptedBy) {
+      // 从statusHistory中查找对应的用户名
+      const acceptedHistory = milestone.statusHistory?.find(
+        (h: any) =>
+          h.toStatus === MilestoneStatus.ACCEPTED &&
+          h.changedBy === milestone.acceptedBy
+      );
+      acceptedByName = acceptedHistory?.user?.name || null;
+    }
+
+    if (milestone.rejectedBy) {
+      const rejectedHistory = milestone.statusHistory?.find(
+        (h: any) =>
+          h.toStatus === MilestoneStatus.REJECTED &&
+          h.changedBy === milestone.rejectedBy
+      );
+      rejectedByName = rejectedHistory?.user?.name || null;
+    }
+
+    return {
+      id: milestone.id,
+      sequence: milestone.sequence,
+      name: milestone.name,
+      deliverables: milestone.deliverables,
+      amount: milestone.amount?.toString() || null,
+      paymentPercentage: milestone.paymentPercentage?.toString() || null,
+      plannedDate: milestone.plannedDate,
+      actualDate: milestone.actualDate,
+      acceptanceCriteria: milestone.acceptanceCriteria,
+      status: milestone.status as MilestoneStatus,
+      deliverableFileUrl: milestone.deliverableFileUrl,
+      deliverableFileName: milestone.deliverableFileName,
+      deliverableUploadedAt: milestone.deliverableUploadedAt,
+      acceptedAt: milestone.acceptedAt,
+      acceptedBy: milestone.acceptedBy,
+      acceptedByName,
+      rejectedAt: milestone.rejectedAt,
+      rejectedBy: milestone.rejectedBy,
+      rejectedByName,
+      rejectionReason: milestone.rejectionReason,
+      statusHistory: (milestone.statusHistory || []).map((h: any) => ({
+        id: h.id,
+        fromStatus: h.fromStatus as MilestoneStatus,
+        toStatus: h.toStatus as MilestoneStatus,
+        changedBy: h.changedBy,
+        changedByName: h.user?.name || '',
+        changedAt: h.changedAt,
+        notes: h.notes,
+      })),
+      createdAt: milestone.createdAt,
+      updatedAt: milestone.updatedAt,
+    };
   }
 }
