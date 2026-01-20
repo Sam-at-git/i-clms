@@ -1,5 +1,5 @@
 import { ObjectType, Field, ID, Float } from '@nestjs/graphql';
-import { MilestoneStatus } from '../enums/milestone-status.enum';
+import { MilestoneStatus } from '../../graphql/types/enums';
 
 @ObjectType()
 export class ProjectMilestone {

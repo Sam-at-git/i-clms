@@ -1,5 +1,5 @@
 import { ObjectType, Field, ID, Float } from '@nestjs/graphql';
-import { RateType } from '../enums/rate-type.enum';
+import { RateType } from '../../graphql/types/enums';
 
 @ObjectType()
 export class StaffRateItem {
