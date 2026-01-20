@@ -3,9 +3,9 @@ import { gql } from '@apollo/client';
 import { Timeline } from '../ui/Timeline';
 
 const GET_AUDIT_LOGS = gql`
-  query GetContractAuditLogs($contractId: String!, $page: Int, $pageSize: Int) {
+  query GetContractAuditLogs($page: Int, $pageSize: Int) {
     auditLogs(
-      filter: { entityType: "Contract", entityId: $contractId }
+      filter: { entityType: "Contract" }
       page: $page
       pageSize: $pageSize
     ) {
@@ -34,7 +34,6 @@ interface ContractHistoryProps {
 export function ContractHistory({ contractId, limit = 10 }: ContractHistoryProps) {
   const { loading, error, data } = useQuery(GET_AUDIT_LOGS, {
     variables: {
-      contractId,
       page: 1,
       pageSize: limit,
     },
