@@ -7,6 +7,7 @@ import { ContractDelete } from './ContractDelete';
 import { ContractFilter } from './ContractFilter';
 import { ContractSearch } from './ContractSearch';
 import { ViewToggle, ViewMode } from './ViewToggle';
+import { BatchActions } from './BatchActions';
 import { EmptyState } from '../ui/EmptyState';
 import { Skeleton } from '../ui/Skeleton';
 import { useContractFilters } from '../../lib/filter-hooks';
@@ -202,14 +203,8 @@ export function ContractListEnhanced() {
     }
   };
 
-  const handleBatchDelete = () => {
-    // TODO: Implement batch delete
-    console.log('Batch delete:', Array.from(selectedContracts));
-  };
-
-  const handleBatchExport = () => {
-    // TODO: Implement batch export
-    console.log('Batch export:', Array.from(selectedContracts));
+  const handleClearSelection = () => {
+    setSelectedContracts(new Set());
   };
 
   const formatAmount = (amount: string, currency: string) => {
@@ -249,21 +244,12 @@ export function ContractListEnhanced() {
       <ContractFilter onFilterChange={() => refetch()} />
 
       {/* Batch Actions */}
-      {selectedContracts.size > 0 && (
-        <div style={styles.batchActions}>
-          <span style={styles.batchCount}>
-            已选择 {selectedContracts.size} 项
-          </span>
-          <div style={styles.batchButtons}>
-            <button onClick={handleBatchDelete} style={styles.batchDeleteButton}>
-              批量删除
-            </button>
-            <button onClick={handleBatchExport} style={styles.batchExportButton}>
-              批量导出
-            </button>
-          </div>
-        </div>
-      )}
+      <BatchActions
+        selectedIds={Array.from(selectedContracts)}
+        onClearSelection={handleClearSelection}
+        onRefresh={() => refetch()}
+        totalCount={totalCount}
+      />
 
       {/* Loading indicator */}
       {loading && <Skeleton variant="rectangular" height={200} count={1} />}
