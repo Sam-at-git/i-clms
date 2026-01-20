@@ -26,17 +26,20 @@ export function RoleGuard({
 
   // Check admin requirement
   if (requireAdmin && !isAdmin(user)) {
-    return fallback || <ForbiddenPage />;
+    if (fallback) return fallback;
+    return <ForbiddenPage />;
   }
 
   // Check dept admin requirement
   if (requireDeptAdmin && !isAdmin(user) && !isDeptAdmin(user)) {
-    return fallback || <ForbiddenPage />;
+    if (fallback) return fallback;
+    return <ForbiddenPage />;
   }
 
   // Check allowed roles
   if (allowedRoles && !allowedRoles.includes(user.role as any)) {
-    return fallback || <ForbiddenPage />;
+    if (fallback) return fallback;
+    return <ForbiddenPage />;
   }
 
   return <>{children}</>;

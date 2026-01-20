@@ -255,9 +255,12 @@ export type Contract = {
   parsedAt?: Maybe<Scalars['DateTime']['output']>;
   paymentMethod?: Maybe<Scalars['String']['output']>;
   paymentTerms?: Maybe<Scalars['String']['output']>;
+  productSalesDetail?: Maybe<ProductSalesDetail>;
+  projectOutsourcingDetail?: Maybe<ProjectOutsourcingDetail>;
   salesPerson?: Maybe<Scalars['String']['output']>;
   signLocation?: Maybe<Scalars['String']['output']>;
   signedAt?: Maybe<Scalars['DateTime']['output']>;
+  staffAugmentationDetail?: Maybe<StaffAugmentationDetail>;
   status: ContractStatus;
   supplements: Array<Contract>;
   taxAmount?: Maybe<Scalars['String']['output']>;
@@ -1222,6 +1225,56 @@ export type PresignedUrl = {
   url: Scalars['String']['output'];
 };
 
+export type ProductLineItem = {
+  __typename?: 'ProductLineItem';
+  id: Scalars['ID']['output'];
+  productName: Scalars['String']['output'];
+  quantity: Scalars['Float']['output'];
+  specification?: Maybe<Scalars['String']['output']>;
+  subtotal: Scalars['String']['output'];
+  unit: Scalars['String']['output'];
+  unitPriceWithTax: Scalars['String']['output'];
+  unitPriceWithoutTax?: Maybe<Scalars['String']['output']>;
+};
+
+export type ProductSalesDetail = {
+  __typename?: 'ProductSalesDetail';
+  afterSalesTerms?: Maybe<Scalars['String']['output']>;
+  deliveryContent?: Maybe<Scalars['String']['output']>;
+  deliveryDate?: Maybe<Scalars['DateTime']['output']>;
+  deliveryLocation?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  ipOwnership?: Maybe<Scalars['String']['output']>;
+  lineItems: Array<ProductLineItem>;
+  shippingResponsibility?: Maybe<Scalars['String']['output']>;
+  warrantyPeriod?: Maybe<Scalars['String']['output']>;
+};
+
+export type ProjectMilestone = {
+  __typename?: 'ProjectMilestone';
+  acceptanceCriteria?: Maybe<Scalars['String']['output']>;
+  actualDate?: Maybe<Scalars['DateTime']['output']>;
+  amount?: Maybe<Scalars['String']['output']>;
+  deliverables?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  paymentPercentage?: Maybe<Scalars['String']['output']>;
+  plannedDate?: Maybe<Scalars['DateTime']['output']>;
+  sequence: Scalars['Float']['output'];
+  status: MilestoneStatus;
+};
+
+export type ProjectOutsourcingDetail = {
+  __typename?: 'ProjectOutsourcingDetail';
+  acceptanceCriteria?: Maybe<Scalars['String']['output']>;
+  acceptanceFlow?: Maybe<Scalars['String']['output']>;
+  changeManagementFlow?: Maybe<Scalars['String']['output']>;
+  deliverables?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  milestones: Array<ProjectMilestone>;
+  sowSummary?: Maybe<Scalars['String']['output']>;
+};
+
 export type ProjectOverview = {
   __typename?: 'ProjectOverview';
   byCustomer: Array<CustomerProjects>;
@@ -1543,6 +1596,13 @@ export type QueryUsersArgs = {
   pageSize?: Scalars['Int']['input'];
 };
 
+/** 费率类型 */
+export enum RateType {
+  Daily = 'DAILY',
+  Hourly = 'HOURLY',
+  Monthly = 'MONTHLY'
+}
+
 export type RegisterInput = {
   departmentId: Scalars['String']['input'];
   email: Scalars['String']['input'];
@@ -1760,6 +1820,28 @@ export enum SortOrder {
   Desc = 'DESC'
 }
 
+export type StaffAugmentationDetail = {
+  __typename?: 'StaffAugmentationDetail';
+  adjustmentMechanism?: Maybe<Scalars['String']['output']>;
+  estimatedTotalHours?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  monthlyHoursCap?: Maybe<Scalars['String']['output']>;
+  rateItems: Array<StaffRateItem>;
+  settlementCycle?: Maybe<Scalars['String']['output']>;
+  timesheetApprovalFlow?: Maybe<Scalars['String']['output']>;
+  yearlyHoursCap?: Maybe<Scalars['String']['output']>;
+};
+
+export type StaffRateItem = {
+  __typename?: 'StaffRateItem';
+  id: Scalars['ID']['output'];
+  rate: Scalars['String']['output'];
+  rateEffectiveFrom?: Maybe<Scalars['DateTime']['output']>;
+  rateEffectiveTo?: Maybe<Scalars['DateTime']['output']>;
+  rateType: RateType;
+  role: Scalars['String']['output'];
+};
+
 export type StatusCount = {
   __typename?: 'StatusCount';
   count: Scalars['Int']['output'];
@@ -1954,6 +2036,13 @@ export type GetContractQueryVariables = Exact<{
 
 export type GetContractQuery = { __typename?: 'Query', contract?: { __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, amountWithoutTax?: string | null, currency: string, taxRate?: string | null, taxAmount?: string | null, paymentMethod?: string | null, paymentTerms?: string | null, signedAt?: string | null, effectiveAt?: string | null, expiresAt?: string | null, duration?: string | null, fileUrl?: string | null, fileType?: string | null, industry?: string | null, salesPerson?: string | null, parseStatus: ParseStatus, parsedAt?: string | null, parseConfidence?: number | null, needsManualReview: boolean, createdAt: string, updatedAt: string, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, creditCode?: string | null, industry?: string | null, address?: string | null, contactPerson?: string | null, contactPhone?: string | null, contactEmail?: string | null }, department: { __typename?: 'Department', id: string, name: string, code: string }, uploadedBy: { __typename?: 'User', id: string, name: string, email: string } } | null };
 
+export type GetContractWithTagsQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type GetContractWithTagsQuery = { __typename?: 'Query', contract?: { __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, amountWithoutTax?: string | null, currency: string, taxRate?: string | null, taxAmount?: string | null, paymentMethod?: string | null, paymentTerms?: string | null, signedAt?: string | null, effectiveAt?: string | null, expiresAt?: string | null, duration?: string | null, fileUrl?: string | null, fileType?: string | null, industry?: string | null, salesPerson?: string | null, parseStatus: ParseStatus, parsedAt?: string | null, parseConfidence?: number | null, needsManualReview: boolean, createdAt: string, updatedAt: string, staffAugmentationDetail?: { __typename?: 'StaffAugmentationDetail', id: string, estimatedTotalHours?: string | null, monthlyHoursCap?: string | null, yearlyHoursCap?: string | null, settlementCycle?: string | null, timesheetApprovalFlow?: string | null, adjustmentMechanism?: string | null, rateItems: Array<{ __typename?: 'StaffRateItem', id: string, role: string, rateType: RateType, rate: string, rateEffectiveFrom?: string | null, rateEffectiveTo?: string | null }> } | null, projectOutsourcingDetail?: { __typename?: 'ProjectOutsourcingDetail', id: string, sowSummary?: string | null, deliverables?: string | null, acceptanceCriteria?: string | null, acceptanceFlow?: string | null, changeManagementFlow?: string | null, milestones: Array<{ __typename?: 'ProjectMilestone', id: string, sequence: number, name: string, deliverables?: string | null, amount?: string | null, paymentPercentage?: string | null, plannedDate?: string | null, actualDate?: string | null, acceptanceCriteria?: string | null, status: MilestoneStatus }> } | null, productSalesDetail?: { __typename?: 'ProductSalesDetail', id: string, deliveryContent?: string | null, deliveryDate?: string | null, deliveryLocation?: string | null, shippingResponsibility?: string | null, ipOwnership?: string | null, warrantyPeriod?: string | null, afterSalesTerms?: string | null, lineItems: Array<{ __typename?: 'ProductLineItem', id: string, productName: string, specification?: string | null, quantity: number, unit: string, unitPriceWithTax: string, unitPriceWithoutTax?: string | null, subtotal: string }> } | null, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, creditCode?: string | null, industry?: string | null, address?: string | null, contactPerson?: string | null, contactPhone?: string | null, contactEmail?: string | null }, department: { __typename?: 'Department', id: string, name: string, code: string }, uploadedBy: { __typename?: 'User', id: string, name: string, email: string } } | null };
+
 export type UpdateContractMutationVariables = Exact<{
   id: Scalars['ID']['input'];
   input: UpdateContractInput;
@@ -1962,6 +2051,24 @@ export type UpdateContractMutationVariables = Exact<{
 
 export type UpdateContractMutation = { __typename?: 'Mutation', updateContract: { __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, signedAt?: string | null } };
 
+export type GetCustomersBasicQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetCustomersBasicQuery = { __typename?: 'Query', customers: { __typename?: 'PaginatedCustomers', items: Array<{ __typename?: 'Customer', id: string, name: string, shortName?: string | null }> } };
+
+export type GetDepartmentsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetDepartmentsQuery = { __typename?: 'Query', departments: Array<{ __typename?: 'Department', id: string, name: string, code: string }> };
+
+export type GetContractAuditLogsQueryVariables = Exact<{
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetContractAuditLogsQuery = { __typename?: 'Query', auditLogs: { __typename?: 'AuditLogConnection', total: number, items: Array<{ __typename?: 'AuditLog', id: string, action: string, createdAt: string, newValue?: any | null, oldValue?: any | null, operator: { __typename?: 'AuditOperator', id: string, name: string, email: string } }> } };
+
 export type GetContractsQueryVariables = Exact<{
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
@@ -1969,6 +2076,24 @@ export type GetContractsQueryVariables = Exact<{
 
 
 export type GetContractsQuery = { __typename?: 'Query', contracts: { __typename?: 'ContractConnection', totalCount: number, hasNextPage: boolean, hasPreviousPage: boolean, nodes: Array<{ __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, currency: string, signedAt?: string | null, parseStatus: ParseStatus, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null }, department: { __typename?: 'Department', id: string, name: string } }> } };
+
+export type GetContractsWithFilterAdvancedQueryVariables = Exact<{
+  filter?: InputMaybe<ContractFilterInput>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ContractOrderInput>;
+}>;
+
+
+export type GetContractsWithFilterAdvancedQuery = { __typename?: 'Query', contracts: { __typename?: 'ContractConnection', totalCount: number, hasNextPage: boolean, hasPreviousPage: boolean, nodes: Array<{ __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, currency: string, signedAt?: string | null, parseStatus: ParseStatus, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null }, department: { __typename?: 'Department', id: string, name: string } }> } };
+
+export type GetRelatedContractsQueryVariables = Exact<{
+  customerId?: InputMaybe<Scalars['String']['input']>;
+  departmentId?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetRelatedContractsQuery = { __typename?: 'Query', contracts: { __typename?: 'ContractConnection', nodes: Array<{ __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, amountWithTax: string, currency: string, signedAt?: string | null, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null } }> } };
 
 export type ParseAndExtractMutationVariables = Exact<{
   objectName: Scalars['String']['input'];
@@ -1983,6 +2108,27 @@ export type CreateContractMutationVariables = Exact<{
 
 
 export type CreateContractMutation = { __typename?: 'Mutation', createContract: { __typename?: 'Contract', id: string, contractNo: string, name: string } };
+
+export type GetCustomerByIdQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type GetCustomerByIdQuery = { __typename?: 'Query', customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, creditCode?: string | null, industry?: string | null, status: CustomerStatus, contactPerson?: string | null, contactPhone?: string | null, contactEmail?: string | null, address?: string | null, createdAt: string, updatedAt: string, contacts: Array<{ __typename?: 'CustomerContact', id: string, name: string, title?: string | null, phone?: string | null, email?: string | null, isPrimary: boolean, createdAt: string, updatedAt: string }>, contracts?: Array<{ __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, amountWithTax: string, currency: string, signedAt?: string | null }> | null } };
+
+export type GetCustomerStatsByIdQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type GetCustomerStatsByIdQuery = { __typename?: 'Query', customerStats: { __typename?: 'CustomerStats', totalContracts: number, activeContracts: number, totalValue: number, averageContractValue: number, firstContractDate?: string | null, lastContractDate?: string | null, lifetimeValueScore: number, isActive: boolean } };
+
+export type GetCustomerListQueryVariables = Exact<{
+  filter?: InputMaybe<CustomerFilterInput>;
+}>;
+
+
+export type GetCustomerListQuery = { __typename?: 'Query', customers: { __typename?: 'PaginatedCustomers', total: number, hasMore: boolean, items: Array<{ __typename?: 'Customer', id: string, name: string, shortName?: string | null, creditCode?: string | null, industry?: string | null, status: CustomerStatus, contactPerson?: string | null, contactPhone?: string | null, contactEmail?: string | null, address?: string | null, createdAt: string, updatedAt: string }> } };
 
 export type GetContractsWithFilterQueryVariables = Exact<{
   filter?: InputMaybe<ContractFilterInput>;
@@ -2024,6 +2170,51 @@ export type CreateOrUpdateContractMutationVariables = Exact<{
 
 
 export type CreateOrUpdateContractMutation = { __typename?: 'Mutation', createOrUpdateContract: { __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, amountWithTax: string, signedAt?: string | null, customer: { __typename?: 'Customer', id: string, name: string } } };
+
+export type CreateCustomerMutationVariables = Exact<{
+  input: CreateCustomerInput;
+}>;
+
+
+export type CreateCustomerMutation = { __typename?: 'Mutation', createCustomer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, status: CustomerStatus } };
+
+export type UpdateCustomerMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  input: UpdateCustomerInput;
+}>;
+
+
+export type UpdateCustomerMutation = { __typename?: 'Mutation', updateCustomer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, status: CustomerStatus } };
+
+export type DeleteCustomerMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteCustomerMutation = { __typename?: 'Mutation', deleteCustomer: { __typename?: 'Customer', id: string, name: string } };
+
+export type AddCustomerContactMutationVariables = Exact<{
+  customerId: Scalars['ID']['input'];
+  input: CreateContactInput;
+}>;
+
+
+export type AddCustomerContactMutation = { __typename?: 'Mutation', addCustomerContact: { __typename?: 'CustomerContact', id: string, name: string, title?: string | null, phone?: string | null, email?: string | null, isPrimary: boolean } };
+
+export type UpdateCustomerContactMutationVariables = Exact<{
+  contactId: Scalars['ID']['input'];
+  input: UpdateContactInput;
+}>;
+
+
+export type UpdateCustomerContactMutation = { __typename?: 'Mutation', updateCustomerContact: { __typename?: 'CustomerContact', id: string, name: string, title?: string | null, phone?: string | null, email?: string | null, isPrimary: boolean } };
+
+export type RemoveCustomerContactMutationVariables = Exact<{
+  contactId: Scalars['ID']['input'];
+}>;
+
+
+export type RemoveCustomerContactMutation = { __typename?: 'Mutation', removeCustomerContact: { __typename?: 'CustomerContact', id: string, name: string } };
 
 export type HealthQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2218,11 +2409,6 @@ export type GetUsersQueryVariables = Exact<{
 
 export type GetUsersQuery = { __typename?: 'Query', users: { __typename?: 'UserConnection', total: number, page: number, pageSize: number, items: Array<{ __typename?: 'User', id: string, name: string, email: string, role: UserRole, isActive: boolean, mustChangePassword: boolean, createdAt: string, department: { __typename?: 'UserDepartment', id: string, name: string, code: string } }> } };
 
-export type GetDepartmentsQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type GetDepartmentsQuery = { __typename?: 'Query', departments: Array<{ __typename?: 'Department', id: string, name: string, code: string }> };
-
 export type CreateUserMutationVariables = Exact<{
   input: CreateUserInput;
 }>;
@@ -2365,6 +2551,136 @@ export type GetContractQueryHookResult = ReturnType<typeof useGetContractQuery>;
 export type GetContractLazyQueryHookResult = ReturnType<typeof useGetContractLazyQuery>;
 export type GetContractSuspenseQueryHookResult = ReturnType<typeof useGetContractSuspenseQuery>;
 export type GetContractQueryResult = ApolloReactCommon.QueryResult<GetContractQuery, GetContractQueryVariables>;
+export const GetContractWithTagsDocument = gql`
+    query GetContractWithTags($id: ID!) {
+  contract(id: $id) {
+    id
+    contractNo
+    name
+    type
+    status
+    ourEntity
+    amountWithTax
+    amountWithoutTax
+    currency
+    taxRate
+    taxAmount
+    paymentMethod
+    paymentTerms
+    signedAt
+    effectiveAt
+    expiresAt
+    duration
+    fileUrl
+    fileType
+    industry
+    salesPerson
+    parseStatus
+    parsedAt
+    parseConfidence
+    needsManualReview
+    createdAt
+    updatedAt
+    staffAugmentationDetail {
+      id
+      estimatedTotalHours
+      monthlyHoursCap
+      yearlyHoursCap
+      settlementCycle
+      timesheetApprovalFlow
+      adjustmentMechanism
+      rateItems {
+        id
+        role
+        rateType
+        rate
+        rateEffectiveFrom
+        rateEffectiveTo
+      }
+    }
+    projectOutsourcingDetail {
+      id
+      sowSummary
+      deliverables
+      acceptanceCriteria
+      acceptanceFlow
+      changeManagementFlow
+      milestones {
+        id
+        sequence
+        name
+        deliverables
+        amount
+        paymentPercentage
+        plannedDate
+        actualDate
+        acceptanceCriteria
+        status
+      }
+    }
+    productSalesDetail {
+      id
+      deliveryContent
+      deliveryDate
+      deliveryLocation
+      shippingResponsibility
+      ipOwnership
+      warrantyPeriod
+      afterSalesTerms
+      lineItems {
+        id
+        productName
+        specification
+        quantity
+        unit
+        unitPriceWithTax
+        unitPriceWithoutTax
+        subtotal
+      }
+    }
+    customer {
+      id
+      name
+      shortName
+      creditCode
+      industry
+      address
+      contactPerson
+      contactPhone
+      contactEmail
+    }
+    department {
+      id
+      name
+      code
+    }
+    uploadedBy {
+      id
+      name
+      email
+    }
+  }
+}
+    `;
+export function useGetContractWithTagsQuery(baseOptions: ApolloReactHooks.QueryHookOptions<GetContractWithTagsQuery, GetContractWithTagsQueryVariables> & ({ variables: GetContractWithTagsQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetContractWithTagsQuery, GetContractWithTagsQueryVariables>(GetContractWithTagsDocument, options);
+      }
+export function useGetContractWithTagsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetContractWithTagsQuery, GetContractWithTagsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetContractWithTagsQuery, GetContractWithTagsQueryVariables>(GetContractWithTagsDocument, options);
+        }
+// @ts-ignore
+export function useGetContractWithTagsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetContractWithTagsQuery, GetContractWithTagsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetContractWithTagsQuery, GetContractWithTagsQueryVariables>;
+export function useGetContractWithTagsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetContractWithTagsQuery, GetContractWithTagsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetContractWithTagsQuery | undefined, GetContractWithTagsQueryVariables>;
+export function useGetContractWithTagsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetContractWithTagsQuery, GetContractWithTagsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetContractWithTagsQuery, GetContractWithTagsQueryVariables>(GetContractWithTagsDocument, options);
+        }
+export type GetContractWithTagsQueryHookResult = ReturnType<typeof useGetContractWithTagsQuery>;
+export type GetContractWithTagsLazyQueryHookResult = ReturnType<typeof useGetContractWithTagsLazyQuery>;
+export type GetContractWithTagsSuspenseQueryHookResult = ReturnType<typeof useGetContractWithTagsSuspenseQuery>;
+export type GetContractWithTagsQueryResult = ApolloReactCommon.QueryResult<GetContractWithTagsQuery, GetContractWithTagsQueryVariables>;
 export const UpdateContractDocument = gql`
     mutation UpdateContract($id: ID!, $input: UpdateContractInput!) {
   updateContract(id: $id, input: $input) {
@@ -2387,6 +2703,102 @@ export function useUpdateContractMutation(baseOptions?: ApolloReactHooks.Mutatio
 export type UpdateContractMutationHookResult = ReturnType<typeof useUpdateContractMutation>;
 export type UpdateContractMutationResult = ApolloReactCommon.MutationResult<UpdateContractMutation>;
 export type UpdateContractMutationOptions = ApolloReactCommon.BaseMutationOptions<UpdateContractMutation, UpdateContractMutationVariables>;
+export const GetCustomersBasicDocument = gql`
+    query GetCustomersBasic {
+  customers {
+    items {
+      id
+      name
+      shortName
+    }
+  }
+}
+    `;
+export function useGetCustomersBasicQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>(GetCustomersBasicDocument, options);
+      }
+export function useGetCustomersBasicLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>(GetCustomersBasicDocument, options);
+        }
+// @ts-ignore
+export function useGetCustomersBasicSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>;
+export function useGetCustomersBasicSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomersBasicQuery | undefined, GetCustomersBasicQueryVariables>;
+export function useGetCustomersBasicSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>(GetCustomersBasicDocument, options);
+        }
+export type GetCustomersBasicQueryHookResult = ReturnType<typeof useGetCustomersBasicQuery>;
+export type GetCustomersBasicLazyQueryHookResult = ReturnType<typeof useGetCustomersBasicLazyQuery>;
+export type GetCustomersBasicSuspenseQueryHookResult = ReturnType<typeof useGetCustomersBasicSuspenseQuery>;
+export type GetCustomersBasicQueryResult = ApolloReactCommon.QueryResult<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>;
+export const GetDepartmentsDocument = gql`
+    query GetDepartments {
+  departments {
+    id
+    name
+    code
+  }
+}
+    `;
+export function useGetDepartmentsQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
+      }
+export function useGetDepartmentsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
+        }
+// @ts-ignore
+export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetDepartmentsQuery, GetDepartmentsQueryVariables>;
+export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetDepartmentsQuery | undefined, GetDepartmentsQueryVariables>;
+export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
+        }
+export type GetDepartmentsQueryHookResult = ReturnType<typeof useGetDepartmentsQuery>;
+export type GetDepartmentsLazyQueryHookResult = ReturnType<typeof useGetDepartmentsLazyQuery>;
+export type GetDepartmentsSuspenseQueryHookResult = ReturnType<typeof useGetDepartmentsSuspenseQuery>;
+export type GetDepartmentsQueryResult = ApolloReactCommon.QueryResult<GetDepartmentsQuery, GetDepartmentsQueryVariables>;
+export const GetContractAuditLogsDocument = gql`
+    query GetContractAuditLogs($page: Int, $pageSize: Int) {
+  auditLogs(filter: {entityType: "Contract"}, page: $page, pageSize: $pageSize) {
+    items {
+      id
+      action
+      createdAt
+      operator {
+        id
+        name
+        email
+      }
+      newValue
+      oldValue
+    }
+    total
+  }
+}
+    `;
+export function useGetContractAuditLogsQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>(GetContractAuditLogsDocument, options);
+      }
+export function useGetContractAuditLogsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>(GetContractAuditLogsDocument, options);
+        }
+// @ts-ignore
+export function useGetContractAuditLogsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>;
+export function useGetContractAuditLogsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetContractAuditLogsQuery | undefined, GetContractAuditLogsQueryVariables>;
+export function useGetContractAuditLogsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>(GetContractAuditLogsDocument, options);
+        }
+export type GetContractAuditLogsQueryHookResult = ReturnType<typeof useGetContractAuditLogsQuery>;
+export type GetContractAuditLogsLazyQueryHookResult = ReturnType<typeof useGetContractAuditLogsLazyQuery>;
+export type GetContractAuditLogsSuspenseQueryHookResult = ReturnType<typeof useGetContractAuditLogsSuspenseQuery>;
+export type GetContractAuditLogsQueryResult = ApolloReactCommon.QueryResult<GetContractAuditLogsQuery, GetContractAuditLogsQueryVariables>;
 export const GetContractsDocument = gql`
     query GetContracts($skip: Int, $take: Int) {
   contracts(skip: $skip, take: $take) {
@@ -2436,6 +2848,98 @@ export type GetContractsQueryHookResult = ReturnType<typeof useGetContractsQuery
 export type GetContractsLazyQueryHookResult = ReturnType<typeof useGetContractsLazyQuery>;
 export type GetContractsSuspenseQueryHookResult = ReturnType<typeof useGetContractsSuspenseQuery>;
 export type GetContractsQueryResult = ApolloReactCommon.QueryResult<GetContractsQuery, GetContractsQueryVariables>;
+export const GetContractsWithFilterAdvancedDocument = gql`
+    query GetContractsWithFilterAdvanced($filter: ContractFilterInput, $skip: Int, $take: Int, $orderBy: ContractOrderInput) {
+  contracts(filter: $filter, skip: $skip, take: $take, orderBy: $orderBy) {
+    nodes {
+      id
+      contractNo
+      name
+      type
+      status
+      ourEntity
+      amountWithTax
+      currency
+      signedAt
+      parseStatus
+      customer {
+        id
+        name
+        shortName
+      }
+      department {
+        id
+        name
+      }
+    }
+    totalCount
+    hasNextPage
+    hasPreviousPage
+  }
+}
+    `;
+export function useGetContractsWithFilterAdvancedQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>(GetContractsWithFilterAdvancedDocument, options);
+      }
+export function useGetContractsWithFilterAdvancedLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>(GetContractsWithFilterAdvancedDocument, options);
+        }
+// @ts-ignore
+export function useGetContractsWithFilterAdvancedSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>;
+export function useGetContractsWithFilterAdvancedSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetContractsWithFilterAdvancedQuery | undefined, GetContractsWithFilterAdvancedQueryVariables>;
+export function useGetContractsWithFilterAdvancedSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>(GetContractsWithFilterAdvancedDocument, options);
+        }
+export type GetContractsWithFilterAdvancedQueryHookResult = ReturnType<typeof useGetContractsWithFilterAdvancedQuery>;
+export type GetContractsWithFilterAdvancedLazyQueryHookResult = ReturnType<typeof useGetContractsWithFilterAdvancedLazyQuery>;
+export type GetContractsWithFilterAdvancedSuspenseQueryHookResult = ReturnType<typeof useGetContractsWithFilterAdvancedSuspenseQuery>;
+export type GetContractsWithFilterAdvancedQueryResult = ApolloReactCommon.QueryResult<GetContractsWithFilterAdvancedQuery, GetContractsWithFilterAdvancedQueryVariables>;
+export const GetRelatedContractsDocument = gql`
+    query GetRelatedContracts($customerId: String, $departmentId: String) {
+  contracts(
+    filter: {customerId: $customerId, departmentId: $departmentId}
+    take: 10
+  ) {
+    nodes {
+      id
+      contractNo
+      name
+      type
+      status
+      amountWithTax
+      currency
+      signedAt
+      customer {
+        id
+        name
+        shortName
+      }
+    }
+  }
+}
+    `;
+export function useGetRelatedContractsQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>(GetRelatedContractsDocument, options);
+      }
+export function useGetRelatedContractsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>(GetRelatedContractsDocument, options);
+        }
+// @ts-ignore
+export function useGetRelatedContractsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>;
+export function useGetRelatedContractsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetRelatedContractsQuery | undefined, GetRelatedContractsQueryVariables>;
+export function useGetRelatedContractsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>(GetRelatedContractsDocument, options);
+        }
+export type GetRelatedContractsQueryHookResult = ReturnType<typeof useGetRelatedContractsQuery>;
+export type GetRelatedContractsLazyQueryHookResult = ReturnType<typeof useGetRelatedContractsLazyQuery>;
+export type GetRelatedContractsSuspenseQueryHookResult = ReturnType<typeof useGetRelatedContractsSuspenseQuery>;
+export type GetRelatedContractsQueryResult = ApolloReactCommon.QueryResult<GetRelatedContractsQuery, GetRelatedContractsQueryVariables>;
 export const ParseAndExtractDocument = gql`
     mutation ParseAndExtract($objectName: String!) {
   parseAndExtract(objectName: $objectName) {
@@ -2484,6 +2988,137 @@ export function useCreateContractMutation(baseOptions?: ApolloReactHooks.Mutatio
 export type CreateContractMutationHookResult = ReturnType<typeof useCreateContractMutation>;
 export type CreateContractMutationResult = ApolloReactCommon.MutationResult<CreateContractMutation>;
 export type CreateContractMutationOptions = ApolloReactCommon.BaseMutationOptions<CreateContractMutation, CreateContractMutationVariables>;
+export const GetCustomerByIdDocument = gql`
+    query GetCustomerById($id: ID!) {
+  customer(id: $id) {
+    id
+    name
+    shortName
+    creditCode
+    industry
+    status
+    contactPerson
+    contactPhone
+    contactEmail
+    address
+    createdAt
+    updatedAt
+    contacts {
+      id
+      name
+      title
+      phone
+      email
+      isPrimary
+      createdAt
+      updatedAt
+    }
+    contracts {
+      id
+      contractNo
+      name
+      type
+      status
+      amountWithTax
+      currency
+      signedAt
+    }
+  }
+}
+    `;
+export function useGetCustomerByIdQuery(baseOptions: ApolloReactHooks.QueryHookOptions<GetCustomerByIdQuery, GetCustomerByIdQueryVariables> & ({ variables: GetCustomerByIdQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetCustomerByIdQuery, GetCustomerByIdQueryVariables>(GetCustomerByIdDocument, options);
+      }
+export function useGetCustomerByIdLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetCustomerByIdQuery, GetCustomerByIdQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetCustomerByIdQuery, GetCustomerByIdQueryVariables>(GetCustomerByIdDocument, options);
+        }
+// @ts-ignore
+export function useGetCustomerByIdSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetCustomerByIdQuery, GetCustomerByIdQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomerByIdQuery, GetCustomerByIdQueryVariables>;
+export function useGetCustomerByIdSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomerByIdQuery, GetCustomerByIdQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomerByIdQuery | undefined, GetCustomerByIdQueryVariables>;
+export function useGetCustomerByIdSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomerByIdQuery, GetCustomerByIdQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetCustomerByIdQuery, GetCustomerByIdQueryVariables>(GetCustomerByIdDocument, options);
+        }
+export type GetCustomerByIdQueryHookResult = ReturnType<typeof useGetCustomerByIdQuery>;
+export type GetCustomerByIdLazyQueryHookResult = ReturnType<typeof useGetCustomerByIdLazyQuery>;
+export type GetCustomerByIdSuspenseQueryHookResult = ReturnType<typeof useGetCustomerByIdSuspenseQuery>;
+export type GetCustomerByIdQueryResult = ApolloReactCommon.QueryResult<GetCustomerByIdQuery, GetCustomerByIdQueryVariables>;
+export const GetCustomerStatsByIdDocument = gql`
+    query GetCustomerStatsById($id: ID!) {
+  customerStats(id: $id) {
+    totalContracts
+    activeContracts
+    totalValue
+    averageContractValue
+    firstContractDate
+    lastContractDate
+    lifetimeValueScore
+    isActive
+  }
+}
+    `;
+export function useGetCustomerStatsByIdQuery(baseOptions: ApolloReactHooks.QueryHookOptions<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables> & ({ variables: GetCustomerStatsByIdQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables>(GetCustomerStatsByIdDocument, options);
+      }
+export function useGetCustomerStatsByIdLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables>(GetCustomerStatsByIdDocument, options);
+        }
+// @ts-ignore
+export function useGetCustomerStatsByIdSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables>;
+export function useGetCustomerStatsByIdSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomerStatsByIdQuery | undefined, GetCustomerStatsByIdQueryVariables>;
+export function useGetCustomerStatsByIdSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables>(GetCustomerStatsByIdDocument, options);
+        }
+export type GetCustomerStatsByIdQueryHookResult = ReturnType<typeof useGetCustomerStatsByIdQuery>;
+export type GetCustomerStatsByIdLazyQueryHookResult = ReturnType<typeof useGetCustomerStatsByIdLazyQuery>;
+export type GetCustomerStatsByIdSuspenseQueryHookResult = ReturnType<typeof useGetCustomerStatsByIdSuspenseQuery>;
+export type GetCustomerStatsByIdQueryResult = ApolloReactCommon.QueryResult<GetCustomerStatsByIdQuery, GetCustomerStatsByIdQueryVariables>;
+export const GetCustomerListDocument = gql`
+    query GetCustomerList($filter: CustomerFilterInput) {
+  customers(filter: $filter) {
+    items {
+      id
+      name
+      shortName
+      creditCode
+      industry
+      status
+      contactPerson
+      contactPhone
+      contactEmail
+      address
+      createdAt
+      updatedAt
+    }
+    total
+    hasMore
+  }
+}
+    `;
+export function useGetCustomerListQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetCustomerListQuery, GetCustomerListQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetCustomerListQuery, GetCustomerListQueryVariables>(GetCustomerListDocument, options);
+      }
+export function useGetCustomerListLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetCustomerListQuery, GetCustomerListQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetCustomerListQuery, GetCustomerListQueryVariables>(GetCustomerListDocument, options);
+        }
+// @ts-ignore
+export function useGetCustomerListSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetCustomerListQuery, GetCustomerListQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomerListQuery, GetCustomerListQueryVariables>;
+export function useGetCustomerListSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomerListQuery, GetCustomerListQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomerListQuery | undefined, GetCustomerListQueryVariables>;
+export function useGetCustomerListSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomerListQuery, GetCustomerListQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetCustomerListQuery, GetCustomerListQueryVariables>(GetCustomerListDocument, options);
+        }
+export type GetCustomerListQueryHookResult = ReturnType<typeof useGetCustomerListQuery>;
+export type GetCustomerListLazyQueryHookResult = ReturnType<typeof useGetCustomerListLazyQuery>;
+export type GetCustomerListSuspenseQueryHookResult = ReturnType<typeof useGetCustomerListSuspenseQuery>;
+export type GetCustomerListQueryResult = ApolloReactCommon.QueryResult<GetCustomerListQuery, GetCustomerListQueryVariables>;
 export const GetContractsWithFilterDocument = gql`
     query GetContractsWithFilter($filter: ContractFilterInput, $skip: Int, $take: Int, $orderBy: ContractOrderInput) {
   contracts(filter: $filter, skip: $skip, take: $take, orderBy: $orderBy) {
@@ -2685,6 +3320,114 @@ export function useCreateOrUpdateContractMutation(baseOptions?: ApolloReactHooks
 export type CreateOrUpdateContractMutationHookResult = ReturnType<typeof useCreateOrUpdateContractMutation>;
 export type CreateOrUpdateContractMutationResult = ApolloReactCommon.MutationResult<CreateOrUpdateContractMutation>;
 export type CreateOrUpdateContractMutationOptions = ApolloReactCommon.BaseMutationOptions<CreateOrUpdateContractMutation, CreateOrUpdateContractMutationVariables>;
+export const CreateCustomerDocument = gql`
+    mutation CreateCustomer($input: CreateCustomerInput!) {
+  createCustomer(input: $input) {
+    id
+    name
+    shortName
+    status
+  }
+}
+    `;
+export type CreateCustomerMutationFn = ApolloReactCommon.MutationFunction<CreateCustomerMutation, CreateCustomerMutationVariables>;
+export function useCreateCustomerMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<CreateCustomerMutation, CreateCustomerMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<CreateCustomerMutation, CreateCustomerMutationVariables>(CreateCustomerDocument, options);
+      }
+export type CreateCustomerMutationHookResult = ReturnType<typeof useCreateCustomerMutation>;
+export type CreateCustomerMutationResult = ApolloReactCommon.MutationResult<CreateCustomerMutation>;
+export type CreateCustomerMutationOptions = ApolloReactCommon.BaseMutationOptions<CreateCustomerMutation, CreateCustomerMutationVariables>;
+export const UpdateCustomerDocument = gql`
+    mutation UpdateCustomer($id: ID!, $input: UpdateCustomerInput!) {
+  updateCustomer(id: $id, input: $input) {
+    id
+    name
+    shortName
+    status
+  }
+}
+    `;
+export type UpdateCustomerMutationFn = ApolloReactCommon.MutationFunction<UpdateCustomerMutation, UpdateCustomerMutationVariables>;
+export function useUpdateCustomerMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<UpdateCustomerMutation, UpdateCustomerMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<UpdateCustomerMutation, UpdateCustomerMutationVariables>(UpdateCustomerDocument, options);
+      }
+export type UpdateCustomerMutationHookResult = ReturnType<typeof useUpdateCustomerMutation>;
+export type UpdateCustomerMutationResult = ApolloReactCommon.MutationResult<UpdateCustomerMutation>;
+export type UpdateCustomerMutationOptions = ApolloReactCommon.BaseMutationOptions<UpdateCustomerMutation, UpdateCustomerMutationVariables>;
+export const DeleteCustomerDocument = gql`
+    mutation DeleteCustomer($id: ID!) {
+  deleteCustomer(id: $id) {
+    id
+    name
+  }
+}
+    `;
+export type DeleteCustomerMutationFn = ApolloReactCommon.MutationFunction<DeleteCustomerMutation, DeleteCustomerMutationVariables>;
+export function useDeleteCustomerMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<DeleteCustomerMutation, DeleteCustomerMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<DeleteCustomerMutation, DeleteCustomerMutationVariables>(DeleteCustomerDocument, options);
+      }
+export type DeleteCustomerMutationHookResult = ReturnType<typeof useDeleteCustomerMutation>;
+export type DeleteCustomerMutationResult = ApolloReactCommon.MutationResult<DeleteCustomerMutation>;
+export type DeleteCustomerMutationOptions = ApolloReactCommon.BaseMutationOptions<DeleteCustomerMutation, DeleteCustomerMutationVariables>;
+export const AddCustomerContactDocument = gql`
+    mutation AddCustomerContact($customerId: ID!, $input: CreateContactInput!) {
+  addCustomerContact(customerId: $customerId, input: $input) {
+    id
+    name
+    title
+    phone
+    email
+    isPrimary
+  }
+}
+    `;
+export type AddCustomerContactMutationFn = ApolloReactCommon.MutationFunction<AddCustomerContactMutation, AddCustomerContactMutationVariables>;
+export function useAddCustomerContactMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<AddCustomerContactMutation, AddCustomerContactMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<AddCustomerContactMutation, AddCustomerContactMutationVariables>(AddCustomerContactDocument, options);
+      }
+export type AddCustomerContactMutationHookResult = ReturnType<typeof useAddCustomerContactMutation>;
+export type AddCustomerContactMutationResult = ApolloReactCommon.MutationResult<AddCustomerContactMutation>;
+export type AddCustomerContactMutationOptions = ApolloReactCommon.BaseMutationOptions<AddCustomerContactMutation, AddCustomerContactMutationVariables>;
+export const UpdateCustomerContactDocument = gql`
+    mutation UpdateCustomerContact($contactId: ID!, $input: UpdateContactInput!) {
+  updateCustomerContact(contactId: $contactId, input: $input) {
+    id
+    name
+    title
+    phone
+    email
+    isPrimary
+  }
+}
+    `;
+export type UpdateCustomerContactMutationFn = ApolloReactCommon.MutationFunction<UpdateCustomerContactMutation, UpdateCustomerContactMutationVariables>;
+export function useUpdateCustomerContactMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<UpdateCustomerContactMutation, UpdateCustomerContactMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<UpdateCustomerContactMutation, UpdateCustomerContactMutationVariables>(UpdateCustomerContactDocument, options);
+      }
+export type UpdateCustomerContactMutationHookResult = ReturnType<typeof useUpdateCustomerContactMutation>;
+export type UpdateCustomerContactMutationResult = ApolloReactCommon.MutationResult<UpdateCustomerContactMutation>;
+export type UpdateCustomerContactMutationOptions = ApolloReactCommon.BaseMutationOptions<UpdateCustomerContactMutation, UpdateCustomerContactMutationVariables>;
+export const RemoveCustomerContactDocument = gql`
+    mutation RemoveCustomerContact($contactId: ID!) {
+  removeCustomerContact(contactId: $contactId) {
+    id
+    name
+  }
+}
+    `;
+export type RemoveCustomerContactMutationFn = ApolloReactCommon.MutationFunction<RemoveCustomerContactMutation, RemoveCustomerContactMutationVariables>;
+export function useRemoveCustomerContactMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<RemoveCustomerContactMutation, RemoveCustomerContactMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<RemoveCustomerContactMutation, RemoveCustomerContactMutationVariables>(RemoveCustomerContactDocument, options);
+      }
+export type RemoveCustomerContactMutationHookResult = ReturnType<typeof useRemoveCustomerContactMutation>;
+export type RemoveCustomerContactMutationResult = ApolloReactCommon.MutationResult<RemoveCustomerContactMutation>;
+export type RemoveCustomerContactMutationOptions = ApolloReactCommon.BaseMutationOptions<RemoveCustomerContactMutation, RemoveCustomerContactMutationVariables>;
 export const HealthDocument = gql`
     query Health {
   health {
@@ -3706,34 +4449,6 @@ export type GetUsersQueryHookResult = ReturnType<typeof useGetUsersQuery>;
 export type GetUsersLazyQueryHookResult = ReturnType<typeof useGetUsersLazyQuery>;
 export type GetUsersSuspenseQueryHookResult = ReturnType<typeof useGetUsersSuspenseQuery>;
 export type GetUsersQueryResult = ApolloReactCommon.QueryResult<GetUsersQuery, GetUsersQueryVariables>;
-export const GetDepartmentsDocument = gql`
-    query GetDepartments {
-  departments {
-    id
-    name
-    code
-  }
-}
-    `;
-export function useGetDepartmentsQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return ApolloReactHooks.useQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
-      }
-export function useGetDepartmentsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
-          const options = {...defaultOptions, ...baseOptions}
-          return ApolloReactHooks.useLazyQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
-        }
-// @ts-ignore
-export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetDepartmentsQuery, GetDepartmentsQueryVariables>;
-export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetDepartmentsQuery | undefined, GetDepartmentsQueryVariables>;
-export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
-          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
-          return ApolloReactHooks.useSuspenseQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
-        }
-export type GetDepartmentsQueryHookResult = ReturnType<typeof useGetDepartmentsQuery>;
-export type GetDepartmentsLazyQueryHookResult = ReturnType<typeof useGetDepartmentsLazyQuery>;
-export type GetDepartmentsSuspenseQueryHookResult = ReturnType<typeof useGetDepartmentsSuspenseQuery>;
-export type GetDepartmentsQueryResult = ApolloReactCommon.QueryResult<GetDepartmentsQuery, GetDepartmentsQueryVariables>;
 export const CreateUserDocument = gql`
     mutation CreateUser($input: CreateUserInput!) {
   createUser(input: $input) {

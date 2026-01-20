@@ -40,7 +40,7 @@ const TOGGLE_TAG = gql`
 `;
 
 const DELETE_TAG = gql`
-  mutation DeleteTag($id: ID!) {
+  mutation DeleteTagInManager($id: ID!) {
     deleteTag(id: $id) {
       id
     }

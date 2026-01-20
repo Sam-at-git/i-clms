@@ -49,7 +49,7 @@ const REMOVE_TAG_FROM_CONTRACT = gql`
 `;
 
 const CREATE_TAG = gql`
-  mutation CreateTag($input: CreateTagInput!) {
+  mutation CreateTagInSelector($input: CreateTagInput!) {
     createTag(input: $input) {
       id
       name

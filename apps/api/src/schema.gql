@@ -204,9 +204,12 @@ type Contract {
   parsedAt: DateTime
   paymentMethod: String
   paymentTerms: String
+  productSalesDetail: ProductSalesDetail
+  projectOutsourcingDetail: ProjectOutsourcingDetail
   salesPerson: String
   signLocation: String
   signedAt: DateTime
+  staffAugmentationDetail: StaffAugmentationDetail
   status: ContractStatus!
   supplements: [Contract!]!
   taxAmount: String
@@ -992,6 +995,52 @@ type PresignedUrl {
   url: String!
 }
 
+type ProductLineItem {
+  id: ID!
+  productName: String!
+  quantity: Float!
+  specification: String
+  subtotal: String!
+  unit: String!
+  unitPriceWithTax: String!
+  unitPriceWithoutTax: String
+}
+
+type ProductSalesDetail {
+  afterSalesTerms: String
+  deliveryContent: String
+  deliveryDate: DateTime
+  deliveryLocation: String
+  id: ID!
+  ipOwnership: String
+  lineItems: [ProductLineItem!]!
+  shippingResponsibility: String
+  warrantyPeriod: String
+}
+
+type ProjectMilestone {
+  acceptanceCriteria: String
+  actualDate: DateTime
+  amount: String
+  deliverables: String
+  id: ID!
+  name: String!
+  paymentPercentage: String
+  plannedDate: DateTime
+  sequence: Float!
+  status: MilestoneStatus!
+}
+
+type ProjectOutsourcingDetail {
+  acceptanceCriteria: String
+  acceptanceFlow: String
+  changeManagementFlow: String
+  deliverables: String
+  id: ID!
+  milestones: [ProjectMilestone!]!
+  sowSummary: String
+}
+
 type ProjectOverview {
   byCustomer: [CustomerProjects!]!
   byStatus: [StatusCount!]!
@@ -1157,6 +1206,13 @@ type Query {
 
   """Get paginated users (Admin only)"""
   users(filter: UserFilterInput, page: Int! = 1, pageSize: Int! = 20): UserConnection!
+}
+
+"""费率类型"""
+enum RateType {
+  DAILY
+  HOURLY
+  MONTHLY
 }
 
 input RegisterInput {
@@ -1352,6 +1408,26 @@ type SimilarContract {
 enum SortOrder {
   ASC
   DESC
+}
+
+type StaffAugmentationDetail {
+  adjustmentMechanism: String
+  estimatedTotalHours: String
+  id: ID!
+  monthlyHoursCap: String
+  rateItems: [StaffRateItem!]!
+  settlementCycle: String
+  timesheetApprovalFlow: String
+  yearlyHoursCap: String
+}
+
+type StaffRateItem {
+  id: ID!
+  rate: String!
+  rateEffectiveFrom: DateTime
+  rateEffectiveTo: DateTime
+  rateType: RateType!
+  role: String!
 }
 
 type StatusCount {

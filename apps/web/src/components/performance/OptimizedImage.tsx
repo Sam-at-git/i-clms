@@ -30,7 +30,9 @@ export function OptimizedImage({
   useEffect(() => {
     const img = imgRef.current;
     if (img) {
-      img.complete ? setIsLoaded(true) : undefined;
+      if (img.complete) {
+        setIsLoaded(true);
+      }
     }
   }, []);
 

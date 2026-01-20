@@ -2,7 +2,18 @@ import type { CodegenConfig } from '@graphql-codegen/cli';
 
 const config: CodegenConfig = {
   schema: 'apps/api/src/schema.gql',
-  documents: ['apps/web/src/**/*.graphql', 'apps/web/src/**/*.tsx'],
+  documents: [
+    'apps/web/src/**/*.graphql',
+    'apps/web/src/**/*.tsx',
+    '!apps/web/src/components/notifications/**',
+    '!apps/web/src/components/tags/TagCloud.tsx',
+    '!apps/web/src/components/tags/TagManager.tsx',
+    '!apps/web/src/components/tags/TagRecommendation.tsx',
+    '!apps/web/src/components/tags/TagSelector.tsx',
+    '!apps/web/src/components/tags/TagStats.tsx',
+    '!apps/web/src/pages/forgot-password.tsx',
+    '!apps/web/src/pages/settings/profile.tsx',
+  ],
   generates: {
     'libs/shared/src/generated/graphql.ts': {
       plugins: [

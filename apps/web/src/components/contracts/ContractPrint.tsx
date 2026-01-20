@@ -40,7 +40,7 @@ interface Contract {
 }
 
 interface ContractPrintProps {
-  contract: Contract;
+  contract: Contract | any;
 }
 
 export function ContractPrint({ contract }: ContractPrintProps) {

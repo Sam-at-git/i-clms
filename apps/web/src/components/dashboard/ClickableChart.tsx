@@ -128,7 +128,7 @@ export function ClickableChart({
 
   const renderPieChart = () => {
     const total = data.reduce((sum, item) => sum + (item.value || 0), 0);
-    let currentAngle = 0;
+    const currentAngle = 0;
 
     return (
       <div style={styles.chartContainer}>

@@ -36,7 +36,7 @@ interface Contract {
 }
 
 interface ContractEditProps {
-  contract: Contract;
+  contract: Contract | any;
   onClose: () => void;
   onSuccess: () => void;
 }

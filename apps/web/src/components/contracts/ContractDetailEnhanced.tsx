@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { useParams, Link } from 'react-router-dom';
+import { GetContractWithTagsQuery } from '@i-clms/shared/generated/graphql';
 import { ContractEdit } from './ContractEdit';
 import { ContractDelete } from './ContractDelete';
 // import { ContractTags } from './ContractTags'; // Temporarily disabled
@@ -175,7 +176,7 @@ interface Contract {
 }
 
 interface ContractData {
-  contract: Contract | null;
+  contract?: GetContractWithTagsQuery['contract'] | null;
 }
 
 const CONTRACT_TYPE_LABELS: Record<string, string> = {
@@ -218,7 +219,7 @@ export function ContractDetailEnhanced() {
 
   const contract = data.contract;
 
-  const formatAmount = (amount: string | null, currency: string) => {
+  const formatAmount = (amount: string | null | undefined, currency: string) => {
     if (!amount) return '-';
     const num = parseFloat(amount);
     if (isNaN(num)) return '-';
@@ -228,12 +229,12 @@ export function ContractDetailEnhanced() {
     })}`;
   };
 
-  const formatDate = (dateStr: string | null) => {
+  const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('zh-CN');
   };
 
-  const formatDateTime = (dateStr: string | null) => {
+  const formatDateTime = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleString('zh-CN');
   };
@@ -303,7 +304,7 @@ export function ContractDetailEnhanced() {
           </div>
 
           {/* Contract Type-Specific Details */}
-          {(contract.staffAugmentationDetail || contract.projectOutsourcingDetail || contract.productSalesDetail) && (
+          {contract.staffAugmentationDetail || contract.projectOutsourcingDetail || contract.productSalesDetail ? (
             <ContractTypeSpecificDetails
               contractType={contract.type}
               data={
@@ -312,7 +313,7 @@ export function ContractDetailEnhanced() {
                 contract.productSalesDetail
               }
             />
-          )}
+          ) : null}
 
           {/* Customer Info */}
           <div style={styles.card}>
