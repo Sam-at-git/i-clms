@@ -1,0 +1,449 @@
+import { Injectable, Logger } from '@nestjs/common';
+
+/**
+ * 语义分段结果
+ */
+export interface SemanticChunk {
+  id: string;
+  text: string;
+  metadata: {
+    type: 'header' | 'article' | 'schedule' | 'financial' | 'party' | 'signature' | 'other';
+    title?: string;        // 章节标题
+    articleNumber?: string; // 条款编号
+    priority: number;      // 优先级（用于排序）
+    fieldRelevance: string[]; // 相关字段
+  };
+  position: {
+    start: number;
+    end: number;
+    pageHint?: number;     // 页码提示
+  };
+}
+
+/**
+ * 语义分段检测结果
+ */
+export interface SemanticSegmentDetection {
+  type: SemanticChunk['metadata']['type'];
+  title?: string;
+  articleNumber?: string;
+  patterns: RegExp[];
+  priority: number;
+  fieldRelevance: string[];
+}
+
+/**
+ * 改进的语义分段服务
+ *
+ * 核心改进：
+ * 1. 基于合同结构的语义分段（而非固定长度）
+ * 2. 识别章节标题、条款编号
+ * 3. 为每个chunk标记相关字段，支持RAG检索
+ * 4. 支持页码提示（如果有）
+ */
+@Injectable()
+export class SemanticChunkerService {
+  private readonly logger = new Logger(SemanticChunkerService.name);
+
+  // 章节模式定义
+  private readonly SECTION_PATTERNS: SemanticSegmentDetection[] = [
+    // 合同头部（最重要，优先级最高）
+    {
+      type: 'header',
+      priority: 100,
+      patterns: [
+        /^(合同编号|合同名称|甲方|乙方|委托方|受托方|卖方|买方|发包方|承包方)[:：]/,
+        /^(合同当事人|签订双方|双方当事人)[:：]/,
+        /^(甲方|乙方|委托方|受托方)[:：]/,
+      ],
+      fieldRelevance: ['contractNo', 'name', 'customerName', 'ourEntity', 'type', 'contractType'],
+    },
+    // 财务条款
+    {
+      type: 'financial',
+      priority: 90,
+      patterns: [
+        /^第[一二三四五六七八九十百千]+[条款章][\.、\s]*(合同价格|合同价款|金额|费用|总价|报酬|服务费|咨询费)/,
+        /^(合同价格|合同价款|含税金额|不含税金额|总价款|合同总金额)[:：]/,
+        /^(支付|付款|结算|开票|税费|税率|币种|货币)[:：]/,
+      ],
+      fieldRelevance: ['amountWithTax', 'amountWithoutTax', 'taxRate', 'paymentTerms', 'paymentMethod', 'currency'],
+    },
+    // 时间期限
+    {
+      type: 'schedule',
+      priority: 80,
+      patterns: [
+        /^第[一二三四五六七八九十百千]+[条款章][\.、\s]*(合同期限|履行期限|有效期|起止时间)/,
+        /^(签订日期|生效日期|起始日期|终止日期|到期日期|履行期限|合同期限|有效期)[:：]/,
+        /^(期限|有效期|起止|履行期间)[:：]/,
+      ],
+      fieldRelevance: ['signedAt', 'effectiveAt', 'expiresAt', 'duration'],
+    },
+    // 主体信息
+    {
+      type: 'party',
+      priority: 95,
+      patterns: [
+        /^第[一二三四五六七八九十百千]+[条款章][\.、\s]*(双方主体|当事人|甲乙双方)/,
+        /^(甲方|乙方|委托方|受托方|发包方|承包方|卖方|买方)[:：]/,
+      ],
+      fieldRelevance: ['customerName', 'ourEntity', 'partyA', 'partyB'],
+    },
+    // 签署信息
+    {
+      type: 'signature',
+      priority: 70,
+      patterns: [
+        /^(法定代表人|授权代表|签字|盖章|签署日期|签订地点)[:：]/,
+        /^(甲方代表|乙方代表|委托方代表|受托方代表)[:：]/,
+      ],
+      fieldRelevance: ['signedAt', 'signLocation', 'salesPerson', 'legalRepresentative'],
+    },
+    // 具体条款
+    {
+      type: 'article',
+      priority: 50,
+      patterns: [
+        /^第[一二三四五六七八九十百千\d]+[条款章][\.、\s]/,
+        /^\d+\.[\s\S]/, // 数字编号
+      ],
+      fieldRelevance: [],
+    },
+  ];
+
+  // 页面分隔符（PDF常见）
+  private readonly PAGE_BREAK_PATTERNS = [
+    /\f/, // 换页符
+    /---+\s*Page\s*\d+\s*---+/i,
+    /第\s*\d+\s*页/,
+  ];
+
+  /**
+   * 主方法：对合同文本进行语义分段
+   * @param text 合同全文
+   * @param minChunkSize 最小chunk大小（防止过小的片段）
+   * @returns 语义分段的chunk数组
+   */
+  chunkBySemanticStructure(text: string, minChunkSize = 500): SemanticChunk[] {
+    this.logger.log(`[SemanticChunking] Starting: ${text.length} chars`);
+
+    const chunks: SemanticChunk[] = [];
+    let currentChunk: Partial<SemanticChunk> = {
+      id: `chunk-0`,
+      text: '',
+      metadata: {
+        type: 'other',
+        priority: 0,
+        fieldRelevance: [],
+      },
+      position: { start: 0, end: 0 },
+    };
+    let chunkIndex = 0;
+    let currentType: SemanticChunk['metadata']['type'] = 'other';
+    let currentTitle: string | undefined;
+    let currentArticleNumber: string | undefined;
+    let currentPageHint = 1;
+
+    // 按行处理
+    const lines = text.split(/\n/);
+    let currentPosition = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineStart = currentPosition;
+      const lineEnd = currentPosition + line.length;
+      currentPosition = lineEnd + 1; // +1 for newline
+
+      // 检测页面分隔
+      const pageMatch = this.detectPageBreak(line);
+      if (pageMatch) {
+        currentPageHint = pageMatch;
+        continue;
+      }
+
+      // 检测章节标题/条款
+      const detection = this.detectSectionType(line);
+
+      if (detection && this.shouldStartNewChunk(detection, currentChunk, currentPosition - lineStart, minChunkSize)) {
+        // 保存当前chunk（如果有内容）
+        if (currentChunk.text && currentChunk.text.trim().length > 0) {
+          chunks.push(this.finalizeChunk(currentChunk, chunkIndex));
+          chunkIndex++;
+        }
+
+        // 开始新chunk
+        currentType = detection.type;
+        currentTitle = detection.title || this.extractTitle(line);
+        currentArticleNumber = detection.articleNumber || this.extractArticleNumber(line);
+
+        currentChunk = {
+          id: `chunk-${chunkIndex}`,
+          text: line + '\n',
+          metadata: {
+            type: detection.type,
+            title: currentTitle,
+            articleNumber: currentArticleNumber,
+            priority: detection.priority,
+            fieldRelevance: detection.fieldRelevance,
+          },
+          position: {
+            start: lineStart,
+            end: lineEnd,
+            pageHint: currentPageHint,
+          },
+        };
+      } else {
+        // 追加到当前chunk
+        currentChunk.text = (currentChunk.text || '') + line + '\n';
+        currentChunk.position = {
+          start: currentChunk.position?.start || 0,
+          end: lineEnd,
+          pageHint: currentPageHint,
+        };
+      }
+    }
+
+    // 保存最后一个chunk
+    if (currentChunk.text && currentChunk.text.trim().length > 0) {
+      chunks.push(this.finalizeChunk(currentChunk, chunkIndex));
+    }
+
+    // 后处理：合并过小的chunk
+    const mergedChunks = this.mergeSmallChunks(chunks, minChunkSize);
+
+    this.logger.log(`[SemanticChunking] Created ${mergedChunks.length} chunks from ${text.length} chars`);
+
+    return mergedChunks;
+  }
+
+  /**
+   * 检测页面分隔
+   */
+  private detectPageBreak(line: string): number | null {
+    for (const pattern of this.PAGE_BREAK_PATTERNS) {
+      const match = line.match(pattern);
+      if (match) {
+        const pageMatch = match[0].match(/\d+/);
+        return pageMatch ? parseInt(pageMatch[0], 10) : null;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 检测当前行的章节类型
+   */
+  private detectSectionType(line: string): SemanticSegmentDetection | null {
+    const trimmedLine = line.trim();
+
+    for (const detection of this.SECTION_PATTERNS) {
+      for (const pattern of detection.patterns) {
+        if (pattern.test(trimmedLine)) {
+          return {
+            ...detection,
+            title: this.extractTitle(trimmedLine),
+            articleNumber: this.extractArticleNumber(trimmedLine),
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 判断是否应该开始新的chunk
+   */
+  private shouldStartNewChunk(
+    detection: SemanticSegmentDetection,
+    currentChunk: Partial<SemanticChunk>,
+    lineLength: number,
+    minChunkSize: number
+  ): boolean {
+    const currentSize = currentChunk.text?.length || 0;
+    const currentType = currentChunk.metadata?.type;
+    const isSameType = currentType === detection.type;
+    const isHighPriority = detection.priority >= 80;
+
+    // 如果是相同类型，继续累积（除非当前chunk已经很大）
+    if (isSameType && currentSize < minChunkSize) {
+      return false;
+    }
+
+    // 开始新chunk的条件：
+    // 1. 当前chunk已经足够大
+    // 2. 检测到高优先级章节且类型发生变化
+    // 3. 当前chunk有内容且检测到不同类型的高优先级章节
+    return !!(
+      currentSize >= minChunkSize ||
+      (isHighPriority && !isSameType) ||
+      (currentSize > 0 && currentType && currentType !== detection.type && isHighPriority)
+    );
+  }
+
+  /**
+   * 提取标题
+   */
+  private extractTitle(line: string): string | undefined {
+    const trimmed = line.trim();
+    if (trimmed.length > 50) return undefined; // 标题不会太长
+    return trimmed || undefined;
+  }
+
+  /**
+   * 提取条款编号
+   */
+  private extractArticleNumber(line: string): string | undefined {
+    const match = line.match(/^第([一二三四五六七八九十百千\d]+)[条款章]/);
+    return match ? match[1] : undefined;
+  }
+
+  /**
+   * 完成chunk的构建
+   */
+  private finalizeChunk(chunk: Partial<SemanticChunk>, index: number): SemanticChunk {
+    return {
+      id: chunk.id || `chunk-${index}`,
+      text: chunk.text || '',
+      metadata: {
+        type: chunk.metadata?.type || 'other',
+        title: chunk.metadata?.title,
+        articleNumber: chunk.metadata?.articleNumber,
+        priority: chunk.metadata?.priority || 0,
+        fieldRelevance: chunk.metadata?.fieldRelevance || [],
+      },
+      position: {
+        start: chunk.position?.start || 0,
+        end: chunk.position?.end || 0,
+        pageHint: chunk.position?.pageHint,
+      },
+    };
+  }
+
+  /**
+   * 合并过小的chunk到相邻chunk
+   *
+   * 注意：高优先级的chunk（priority >= 80）不会被合并，以保留其语义类型
+   * 此外，只有很小的chunk（< minSize/2）才会被合并
+   */
+  private mergeSmallChunks(chunks: SemanticChunk[], minSize: number): SemanticChunk[] {
+    const merged: SemanticChunk[] = [];
+    let i = 0;
+
+    while (i < chunks.length) {
+      const current = chunks[i];
+
+      // 如果当前chunk很小且不是高优先级chunk
+      if (current.text.length < minSize / 2 && i > 0 && current.metadata.priority < 80) {
+        // 合并到前一个chunk
+        const prev = merged[merged.length - 1];
+        if (prev) {
+          prev.text += '\n\n' + current.text;
+          prev.position.end = current.position.end;
+          // 保留优先级更高的metadata
+          if (current.metadata.priority > prev.metadata.priority) {
+            prev.metadata = { ...prev.metadata, ...current.metadata };
+          }
+        } else {
+          merged.push(current);
+        }
+      } else {
+        merged.push(current);
+      }
+
+      i++;
+    }
+
+    return merged;
+  }
+
+  /**
+   * 根据字段相关性检索chunks
+   * 这是RAG的基础：只提取相关chunks，而非全部
+   */
+  getRelevantChunksForFields(
+    chunks: SemanticChunk[],
+    fields: string[]
+  ): SemanticChunk[] {
+    // 计算每个chunk的相关性得分
+    const scoredChunks = chunks.map(chunk => {
+      const score = chunk.metadata.fieldRelevance.filter(f => fields.includes(f)).length;
+      return { chunk, score };
+    });
+
+    // 按得分排序，取top chunks
+    const sorted = scoredChunks
+      .filter(sc => sc.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    // 总是包含header（如果有）
+    const header = chunks.find(c => c.metadata.type === 'header');
+    if (header && !sorted.some(sc => sc.chunk.id === header.id)) {
+      sorted.unshift({ chunk: header, score: 0 });
+    }
+
+    // 也包含优先级高的chunk（即使没有直接相关字段）
+    const highPriority = chunks
+      .filter(c => c.metadata.priority >= 80)
+      .filter(c => !sorted.some(sc => sc.chunk.id === c.id));
+
+    for (const hp of highPriority) {
+      sorted.push({ chunk: hp, score: 0 });
+    }
+
+    this.logger.log(
+      `[SemanticChunking] Retrieved ${sorted.length} relevant chunks for fields: ${fields.join(', ')}`
+    );
+
+    return sorted.map(sc => sc.chunk);
+  }
+
+  /**
+   * 获取chunk摘要（用于日志或调试）
+   */
+  getChunksSummary(chunks: SemanticChunk[]): string {
+    return chunks.map(c =>
+      `[${c.id}] ${c.metadata.type}${c.metadata.title ? `: ${c.metadata.title}` : ''} ` +
+      `(${c.text.length} chars, priority=${c.metadata.priority})`
+    ).join('\n');
+  }
+
+  /**
+   * 仅分段（不提取数据）
+   * 这个方法被 OptimizedParserService 调用
+   */
+  chunkText(text: string, minChunkSize = 500): {
+    success: boolean;
+    chunks: any[];
+    totalLength: number;
+    strategy: string;
+    summary: string;
+  } {
+    try {
+      const chunks = this.chunkBySemanticStructure(text, minChunkSize);
+
+      return {
+        success: true,
+        chunks: chunks.map(chunk => ({
+          id: chunk.id,
+          type: chunk.metadata.type,
+          title: chunk.metadata.title,
+          articleNumber: chunk.metadata.articleNumber,
+          priority: chunk.metadata.priority,
+          fieldRelevance: chunk.metadata.fieldRelevance,
+          length: chunk.text.length,
+          startIndex: chunk.position.start,
+          endIndex: chunk.position.end,
+          pageHint: chunk.position.pageHint,
+        })),
+        totalLength: text.length,
+        strategy: 'semantic-structure',
+        summary: `Created ${chunks.length} semantic chunks from ${text.length} characters`,
+      };
+    } catch (error) {
+      this.logger.error('[SemanticChunker] Chunking failed:', error);
+      throw error;
+    }
+  }
+}

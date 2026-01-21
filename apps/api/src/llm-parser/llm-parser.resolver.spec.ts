@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ParseStrategy, CompletenessScore } from './entities/completeness-score.entity';
 import { LlmParseResult } from './dto/llm-parse-result.dto';
+import { SemanticChunkerService } from './semantic-chunker.service';
+import { OptimizedParserService } from './optimized-parser.service';
 
 // Mock dependencies to avoid ESM import issues
 jest.mock('uuid', () => ({
@@ -82,6 +84,20 @@ describe('LlmParserResolver', () => {
           provide: CompletenessCheckerService,
           useValue: {
             calculateScore: jest.fn(),
+          },
+        },
+        {
+          provide: SemanticChunkerService,
+          useValue: {
+            chunkBySemanticStructure: jest.fn(),
+            getRelevantChunksForFields: jest.fn(),
+            chunkText: jest.fn(),
+          },
+        },
+        {
+          provide: OptimizedParserService,
+          useValue: {
+            parseOptimized: jest.fn(),
           },
         },
       ],
