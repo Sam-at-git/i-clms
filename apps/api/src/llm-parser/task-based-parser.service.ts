@@ -84,14 +84,18 @@ export class TaskBasedParserService implements OnModuleInit {
 
   refreshClient() {
     const config = this.configService.getActiveConfig();
+    const timeout = config.timeout || 300000; // Default to 5 minutes
+
     this.openai = new OpenAI({
       baseURL: config.baseUrl,
       apiKey: config.apiKey,
-      timeout: 60000,
+      timeout: timeout,
+      // Set maxRetries to 0 to avoid retry logic interfering with timeout
+      maxRetries: 0,
     });
     this.logger.log(
       `[TaskBasedParser] OpenAI client refreshed: provider="${this.configService.getProviderName()}", ` +
-      `model="${config.model}", baseUrl="${config.baseUrl}"`
+      `model="${config.model}", baseUrl="${config.baseUrl}", timeout=${timeout}ms`
     );
   }
 
