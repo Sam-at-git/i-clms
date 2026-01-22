@@ -11,6 +11,7 @@ import { ContractRelated } from './ContractRelated';
 import { SimilarContracts } from './SimilarContracts';
 import { ContractPrint } from './ContractPrint';
 import { ContractTypeSpecificDetails } from './ContractTypeSpecificDetails';
+import { LegalClausesCard } from './LegalClausesCard';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 
 const GET_CONTRACT = gql`
@@ -321,16 +322,14 @@ export function ContractDetailEnhanced() {
           </div>
 
           {/* Contract Type-Specific Details */}
-          {contract.staffAugmentationDetail || contract.projectOutsourcingDetail || contract.productSalesDetail ? (
-            <ContractTypeSpecificDetails
-              contractType={contract.type}
-              data={
-                contract.staffAugmentationDetail ||
-                contract.projectOutsourcingDetail ||
-                contract.productSalesDetail
-              }
-            />
-          ) : null}
+          <ContractTypeSpecificDetails
+            contractType={contract.type}
+            data={
+              contract.staffAugmentationDetail ||
+              contract.projectOutsourcingDetail ||
+              contract.productSalesDetail
+            }
+          />
 
           {/* Customer Info */}
           <div style={styles.card}>
@@ -397,6 +396,9 @@ export function ContractDetailEnhanced() {
               />
             </div>
           </div>
+
+          {/* Legal Clauses */}
+          <LegalClausesCard contractId={contract.id} />
 
           {/* System Info */}
           <div style={styles.card}>

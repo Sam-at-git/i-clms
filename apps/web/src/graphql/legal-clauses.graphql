@@ -1,0 +1,35 @@
+query GetContractLegalClauses($contractId: String!) {
+  contractLegalClauses(contractId: $contractId) {
+    id
+    contractId
+    clauseType
+    licenseType
+    licenseFee
+    guarantor
+    guaranteeType
+    guaranteeAmount
+    guaranteePeriod
+    liabilityLimit
+    exclusions
+    compensationMethod
+    terminationNotice
+    breachLiability
+    disputeResolution
+    disputeLocation
+    confidence
+    originalText
+  }
+  contractDataProtection(contractId: $contractId) {
+    id
+    contractId
+    involvesPersonalData
+    personalDataType
+    processingLocation
+    crossBorderTransfer
+    securityMeasures
+    dataRetention
+    riskLevel
+    confidence
+    originalText
+  }
+}
