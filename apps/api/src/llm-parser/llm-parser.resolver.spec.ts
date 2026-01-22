@@ -32,11 +32,15 @@ jest.mock('../parser/parser.service', () => ({
 import { LlmParserResolver } from './llm-parser.resolver';
 import { LlmParserService } from './llm-parser.service';
 import { CompletenessCheckerService } from './completeness-checker.service';
+import { ParseProgressService } from './parse-progress.service';
+import { TaskBasedParserService } from './task-based-parser.service';
 
 describe('LlmParserResolver', () => {
   let resolver: LlmParserResolver;
   let llmParserService: jest.Mocked<LlmParserService>;
   let completenessChecker: jest.Mocked<CompletenessCheckerService>;
+  let progressService: jest.Mocked<ParseProgressService>;
+  let taskBasedParser: jest.Mocked<TaskBasedParserService>;
 
   const mockCompletenessScore: CompletenessScore = {
     totalScore: 80,
@@ -100,6 +104,35 @@ describe('LlmParserResolver', () => {
             parseOptimized: jest.fn(),
           },
         },
+        {
+          provide: ParseProgressService,
+          useValue: {
+            createSession: jest.fn().mockReturnValue('test-session-id'),
+            getSession: jest.fn(),
+            getParseProgress: jest.fn(),
+            getProgressPercentage: jest.fn(),
+            completeSession: jest.fn(),
+            failSession: jest.fn(),
+            updateStage: jest.fn(),
+            setChunks: jest.fn(),
+            setTasks: jest.fn(),
+            startChunk: jest.fn(),
+            completeChunk: jest.fn(),
+            failChunk: jest.fn(),
+            startTask: jest.fn(),
+            completeTask: jest.fn(),
+            failTask: jest.fn(),
+            getAllSessions: jest.fn(),
+            cleanupExpiredSessions: jest.fn(),
+          },
+        },
+        {
+          provide: TaskBasedParserService,
+          useValue: {
+            parseByTasks: jest.fn(),
+            refreshClient: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -108,6 +141,8 @@ describe('LlmParserResolver', () => {
     completenessChecker = module.get(
       CompletenessCheckerService,
     ) as jest.Mocked<CompletenessCheckerService>;
+    progressService = module.get(ParseProgressService) as jest.Mocked<ParseProgressService>;
+    taskBasedParser = module.get(TaskBasedParserService) as jest.Mocked<TaskBasedParserService>;
   });
 
   it('should be defined', () => {
@@ -224,8 +259,152 @@ describe('LlmParserResolver', () => {
 
       const result = await resolver.parseContractWithLlm('contract.pdf');
 
-      expect(llmParserService.parseContractWithLlm).toHaveBeenCalledWith('contract.pdf');
+      expect(llmParserService.parseContractWithLlm).toHaveBeenCalledWith('contract.pdf', undefined);
       expect(result).toEqual(mockParseResult);
+    });
+
+    it('should call service with object name and sessionId', async () => {
+      llmParserService.parseContractWithLlm.mockResolvedValue(mockParseResult);
+
+      const result = await resolver.parseContractWithLlm('contract.pdf', 'test-session-123');
+
+      expect(llmParserService.parseContractWithLlm).toHaveBeenCalledWith('contract.pdf', 'test-session-123');
+      expect(result).toEqual(mockParseResult);
+    });
+  });
+
+  describe('createParseSession', () => {
+    it('should create a new parse session and return sessionId', () => {
+      progressService.createSession.mockReturnValue('new-session-id');
+
+      const sessionId = resolver.createParseSession('contract.pdf');
+
+      expect(progressService.createSession).toHaveBeenCalledWith('contract.pdf');
+      expect(sessionId).toBe('new-session-id');
+    });
+  });
+
+  describe('startParseContractAsync', () => {
+    it('should start async parsing and return sessionId immediately', async () => {
+      progressService.createSession.mockReturnValue('async-session-123');
+      llmParserService.parseContractWithLlm.mockResolvedValue(mockParseResult);
+
+      const result = await resolver.startParseContractAsync('contract.pdf');
+
+      expect(progressService.createSession).toHaveBeenCalledWith('contract.pdf');
+      expect(result.sessionId).toBe('async-session-123');
+      expect(result.message).toContain('解析任务已启动');
+
+      // Service should be called in background (not awaited)
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(llmParserService.parseContractWithLlm).toHaveBeenCalledWith('contract.pdf', 'async-session-123');
+    });
+
+    it('should handle background errors by failing the session', async () => {
+      progressService.createSession.mockReturnValue('async-session-fail');
+      llmParserService.parseContractWithLlm.mockRejectedValue(new Error('Parse failed'));
+
+      const result = await resolver.startParseContractAsync('contract.pdf');
+
+      expect(result.sessionId).toBe('async-session-fail');
+
+      // Wait for background execution
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(progressService.failSession).toHaveBeenCalledWith('async-session-fail', 'Parse failed');
+    });
+  });
+
+  describe('getParseProgress', () => {
+    it('should return progress for a valid session', () => {
+      const mockSession = {
+        sessionId: 'test-session',
+        objectName: 'contract.pdf',
+        status: 'llm_processing' as const,
+        currentStage: 'Extracting contract data',
+        totalChunks: 5,
+        completedChunks: 2,
+        currentChunkIndex: 2,
+        chunks: [],
+        totalTasks: 8,
+        completedTasks: 3,
+        tasks: [],
+        startTime: Date.now(),
+      };
+      progressService.getSession.mockReturnValue(mockSession as any);
+      progressService.getProgressPercentage.mockReturnValue(40);
+
+      const result = resolver.getParseProgress('test-session');
+
+      expect(result).toBeDefined();
+      expect(result?.sessionId).toBe('test-session');
+      expect(result?.progressPercentage).toBe(40);
+      expect(result?.status).toBe('llm_processing');
+    });
+
+    it('should return null for non-existent session', () => {
+      progressService.getSession.mockReturnValue(undefined);
+
+      const result = resolver.getParseProgress('non-existent');
+
+      expect(result).toBeNull();
+    });
+
+    it('should calculate estimated remaining time', () => {
+      const futureTime = Date.now() + 30000; // 30 seconds in future
+      const mockSession = {
+        sessionId: 'test-session',
+        objectName: 'contract.pdf',
+        status: 'llm_processing' as const,
+        currentStage: 'Processing',
+        totalChunks: 5,
+        completedChunks: 2,
+        currentChunkIndex: 2,
+        chunks: [],
+        totalTasks: 8,
+        completedTasks: 3,
+        tasks: [],
+        startTime: Date.now() - 10000,
+        estimatedEndTime: futureTime,
+      };
+      progressService.getSession.mockReturnValue(mockSession as any);
+      progressService.getProgressPercentage.mockReturnValue(40);
+
+      const result = resolver.getParseProgress('test-session');
+
+      expect(result?.estimatedRemainingSeconds).toBeGreaterThanOrEqual(0);
+      expect(result?.estimatedRemainingSeconds).toBeLessThanOrEqual(60);
+    });
+  });
+
+  describe('getParseResult', () => {
+    it('should return null for non-existent session', () => {
+      progressService.getSession.mockReturnValue(undefined);
+
+      const result = resolver.getParseResult('non-existent');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for incomplete session', () => {
+      const mockSession = {
+        sessionId: 'test-session',
+        objectName: 'contract.pdf',
+        status: 'llm_processing' as const,
+        currentStage: 'Processing',
+        totalChunks: 5,
+        completedChunks: 2,
+        currentChunkIndex: 2,
+        chunks: [],
+        totalTasks: 8,
+        completedTasks: 3,
+        tasks: [],
+        startTime: Date.now(),
+      };
+      progressService.getSession.mockReturnValue(mockSession as any);
+
+      const result = resolver.getParseResult('test-session');
+
+      expect(result).toBeNull();
     });
   });
 
