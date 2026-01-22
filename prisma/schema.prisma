@@ -41,6 +41,7 @@ model User {
   milestoneStatusHistory MilestoneStatusHistory[]
   passwordResetTokens PasswordResetToken[]
   loginRecords       LoginRecord[]
+  updatedSystemConfigs SystemConfig[] @relation("SystemConfigUpdater")
 
   @@index([departmentId])
   @@index([email])
@@ -192,6 +193,12 @@ model Contract {
 
   // 通用标签
   tags ContractTag[]
+
+  // 法务条款
+  legalClauses ContractLegalClause[]
+
+  // 向量段落（RAG检索）
+  chunks ContractChunk[]
 
   @@index([customerId])
   @@index([type])
@@ -497,4 +504,169 @@ model LoginRecord {
   @@index([userId])
   @@index([createdAt])
   @@index([success])
+}
+
+// ================================
+// 系统配置
+// ================================
+
+model SystemConfig {
+  id              String   @id @default(cuid())
+  key             String   @unique // 配置键 (如: llm.provider, llm.model, smtp.enabled)
+  value           String   // 配置值 (JSON字符串)
+  category        String   // 配置分类 (llm, smtp, storage)
+  description     String?  // 配置描述
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?  // 更新者ID
+  updatedByUser   User?    @relation("SystemConfigUpdater", fields: [updatedBy], references: [id])
+
+  @@index([category])
+  @@index([key])
+}
+
+// ================================
+// 向量存储与缓存 (pgvector)
+// ================================
+
+/// 向量嵌入缓存表 - 缓存文本的向量嵌入
+model EmbeddingCache {
+  id        Int      @id @default(autoincrement())
+  textHash  String   // SHA256哈希
+  modelName String   // 模型名称
+  embedding Unsupported("vector(1024)")?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([textHash, modelName], map: "embedding_cache_text_model_unique")
+  @@index([textHash, modelName])
+  @@map("embedding_cache")
+}
+
+/// LLM结果缓存表
+model LlmCache {
+  id         Int      @id @default(autoincrement())
+  promptHash String   // SHA256(prompt + input)
+  modelName  String   // 模型名称
+  request    String   @db.Text // 原始请求
+  response   String   @db.Text // LLM响应
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime? // 过期时间
+
+  @@unique([promptHash, modelName], map: "llm_cache_prompt_model_unique")
+  @@index([promptHash, modelName])
+  @@index([expiresAt])
+  @@map("llm_cache")
+}
+
+/// 合同段落向量表 - 用于RAG检索
+model ContractChunk {
+  id         Int       @id @default(autoincrement())
+  contractId String    // 关联Contract.id (String类型)
+  chunkIndex Int       // 段落索引
+  content    String    @db.Text // 段落内容
+  embedding  Unsupported("vector(1024)")?
+  chunkType  String?   // 段落类型: header/financial/schedule/party/other
+  metadata   Json?     // 额外元数据
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, chunkIndex], map: "contract_chunks_contract_index_unique")
+  @@index([contractId, chunkIndex])
+  @@map("contract_chunks")
+}
+
+/// 文档指纹缓存表 - 同一文档的解析结果缓存
+model DocumentFingerprint {
+  id          Int      @id @default(autoincrement())
+  fileHash    String   @unique // SHA256(文件内容)
+  fileName    String
+  fileSize    Int
+  mimeType    String
+  parseResult Json     // 解析结果
+  strategy    String   // 使用的解析策略
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime? // 过期时间(默认7天)
+
+  @@index([fileHash])
+  @@index([expiresAt])
+  @@map("document_fingerprint")
+}
+
+// ================================
+// 法务条款提取与存储 (SPEC-31)
+// ================================
+
+model ContractLegalClause {
+  id         Int     @id @default(autoincrement())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  // 条款类型
+  clauseType LegalClauseType
+
+  // ========== 知识产权条款 INTELLECTUAL_PROPERTY ==========
+  // 许可范围：独占许可、非独占许可、普通许可等
+  licenseType String? // 独占/非独占/普通
+
+  // 许可费用描述（可能为"免费"、"按实际使用量"、"固定金额"等）
+  licenseFee String? @db.Text
+
+  // ========== 担保条款 GUARANTEE ==========
+  // 担保方：甲方、乙方、第三方
+  guarantor String? // FIRST_PARTY/SECOND_PARTY/THIRD_PARTY
+
+  // 担保类型：一般保证、连带责任保证
+  guaranteeType String? // GENERAL/JOINT_AND_SEVERAL
+
+  // 担保金额（数字）
+  guaranteeAmount Decimal? @db.Decimal(20, 2)
+
+  // 担保期限描述（如"合同履行期内"、"质保期2年"）
+  guaranteePeriod String? @db.Text
+
+  // ========== 责任限制条款 LIABILITY_LIMITATION ==========
+  // 责任上限金额
+  liabilityLimit Decimal? @db.Decimal(20, 2)
+
+  // 除外责任类型（JSON数组或文本描述）
+  exclusions String? @db.Text
+
+  // 赔偿计算方式
+  compensationMethod String? @db.Text
+
+  // ========== 终止与争议条款 TERMINATION_DISPUTE ==========
+  // 便利终止通知期（如"30天"、"60天"）
+  terminationNotice String?
+
+  // 违约责任描述
+  breachLiability String? @db.Text
+
+  // 争议解决方式（仲裁/诉讼）
+  disputeResolution String? // ARBITRATION/LITIGATION/NEGOTIATION
+
+  // 争议解决地点（如"北京"、"新加坡"）
+  disputeLocation String?
+
+  // ========== 通用字段 ==========
+  // AI提取的置信度 (0-1)
+  confidence Float?
+
+  // 原始文本引用（用于溯源）
+  originalText String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([contractId])
+  @@index([clauseType])
+  @@map("contract_legal_clause")
+}
+
+enum LegalClauseType {
+  INTELLECTUAL_PROPERTY // 知识产权条款
+  GUARANTEE            // 担保条款
+  LIABILITY_LIMITATION // 责任限制条款
+  TERMINATION_DISPUTE  // 终止与争议条款
 }

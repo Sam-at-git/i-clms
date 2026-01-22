@@ -29,6 +29,11 @@ import { DepartmentModule } from '../department';
 import { CustomerModule } from '../customer/customer.module';
 import { ExportModule } from '../export/export.module';
 import { SystemConfigModule } from '../system-config/system-config.module';
+import { VectorStoreModule } from '../vector-store/vector-store.module';
+import { CacheModule } from '../cache/cache.module';
+import { DoclingModule } from '../docling/docling.module';
+import { RAGModule } from '../rag/rag.module';
+import { LegalClausesModule } from '../legal-clauses/legal-clauses.module';
 
 @Module({
   imports: [
@@ -68,6 +73,11 @@ import { SystemConfigModule } from '../system-config/system-config.module';
     CustomerModule,
     ExportModule,
     SystemConfigModule,
+    VectorStoreModule,
+    CacheModule,
+    DoclingModule,
+    RAGModule,
+    LegalClausesModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar, JSONScalar],
