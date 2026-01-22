@@ -34,6 +34,7 @@ import { CacheModule } from '../cache/cache.module';
 import { DoclingModule } from '../docling/docling.module';
 import { RAGModule } from '../rag/rag.module';
 import { LegalClausesModule } from '../legal-clauses/legal-clauses.module';
+import { DataProtectionModule } from '../data-protection/data-protection.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { LegalClausesModule } from '../legal-clauses/legal-clauses.module';
     DoclingModule,
     RAGModule,
     LegalClausesModule,
+    DataProtectionModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar, JSONScalar],

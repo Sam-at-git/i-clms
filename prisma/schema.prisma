@@ -197,6 +197,9 @@ model Contract {
   // 法务条款
   legalClauses ContractLegalClause[]
 
+  // 数据保护条款（一对一）
+  dataProtection ContractDataProtection?
+
   // 向量段落（RAG检索）
   chunks ContractChunk[]
 
@@ -669,4 +672,56 @@ enum LegalClauseType {
   GUARANTEE            // 担保条款
   LIABILITY_LIMITATION // 责任限制条款
   TERMINATION_DISPUTE  // 终止与争议条款
+}
+
+// ================================
+// 数据保护条款提取与存储 (SPEC-32)
+// ================================
+
+model ContractDataProtection {
+  id         Int      @id @default(autoincrement())
+  contractId String   @unique
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  // 是否涉及个人数据
+  involvesPersonalData Boolean @default(false)
+
+  // 个人数据类型描述（如"用户姓名、联系方式、身份证号等"）
+  personalDataType String? @db.Text
+
+  // 数据处理地点限制（如"仅限中国大陆境内"）
+  processingLocation String?
+
+  // 跨境传输要求（如"需获得用户单独同意"、"通过安全评估"）
+  crossBorderTransfer String? @db.Text
+
+  // 安全措施要求（如"加密存储"、"访问控制"）
+  securityMeasures String? @db.Text
+
+  // 数据保留期限（如"合同终止后3年"）
+  dataRetention String?
+
+  // 风险等级 (NONE/LOW/MEDIUM/HIGH)
+  riskLevel String @default("NONE")
+
+  // AI提取的置信度 (0-1)
+  confidence Float?
+
+  // 原始文本引用
+  originalText String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([contractId])
+  @@index([involvesPersonalData])
+  @@index([riskLevel])
+  @@map("contract_data_protection")
+}
+
+enum DataProtectionRisk {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
 }
