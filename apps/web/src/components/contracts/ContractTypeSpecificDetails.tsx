@@ -158,7 +158,9 @@ function ProjectOutsourcingDetails({ data }: { data?: any }) {
   const hasContent = milestones.length > 0 ||
                      data?.sowSummary ||
                      data?.deliverables ||
-                     data?.acceptanceCriteria;
+                     data?.acceptanceCriteria ||
+                     data?.acceptanceFlow ||
+                     data?.changeManagementFlow;
 
   if (!hasContent) {
     return <div style={styles.empty}>暂无项目外包详情信息</div>;
@@ -167,27 +169,100 @@ function ProjectOutsourcingDetails({ data }: { data?: any }) {
   // 计算里程碑总金额和完成进度
   const totalAmount = milestones.reduce((sum: number, m: any) => sum + parseFloat(m.amount || 0), 0);
   const completedCount = milestones.filter((m: any) => m.status === 'ACCEPTED').length;
+  const inProgressCount = milestones.filter((m: any) => m.status === 'IN_PROGRESS' || m.status === 'DELIVERED').length;
   const completedAmount = milestones
     .filter((m: any) => m.status === 'ACCEPTED')
     .reduce((sum: number, m: any) => sum + parseFloat(m.amount || 0), 0);
+  const progressPercentage = milestones.length > 0 ? Math.round((completedCount / milestones.length) * 100) : 0;
+
+  // 解析交付物（可能是JSON数组字符串或普通文本）
+  const parseDeliverables = (deliverables: string | null | undefined): string[] => {
+    if (!deliverables) return [];
+    try {
+      const parsed = JSON.parse(deliverables);
+      return Array.isArray(parsed) ? parsed : [deliverables];
+    } catch {
+      // 不是JSON，按行或分隔符拆分
+      return deliverables.split(/[,\n;]/).filter(d => d.trim());
+    }
+  };
 
   return (
     <div>
       <h3 style={styles.cardTitle}>项目外包详情</h3>
+
+      {/* 统计卡片 */}
+      {milestones.length > 0 && (
+        <div style={styles.statsCards}>
+          <div style={styles.statsCard}>
+            <div style={styles.statsValue}>{milestones.length}</div>
+            <div style={styles.statsLabel}>总里程碑数</div>
+          </div>
+          <div style={styles.statsCard}>
+            <div style={styles.statsValue}>{completedCount}</div>
+            <div style={styles.statsLabel}>已完成</div>
+          </div>
+          <div style={styles.statsCard}>
+            <div style={styles.statsValue}>{inProgressCount}</div>
+            <div style={styles.statsLabel}>进行中</div>
+          </div>
+          <div style={styles.statsCard}>
+            <div style={styles.statsValue}>¥{totalAmount.toLocaleString()}</div>
+            <div style={styles.statsLabel}>合同总金额</div>
+          </div>
+          <div style={{ ...styles.statsCard, ...styles.progressCard }}>
+            <div style={styles.statsValue}>{progressPercentage}%</div>
+            <div style={styles.statsLabel}>完成进度</div>
+            <div style={{ ...styles.progressBar, width: `${progressPercentage}%` }} />
+          </div>
+        </div>
+      )}
 
       {/* 项目概述 */}
       {(data?.sowSummary || data?.deliverables || data?.acceptanceCriteria) && (
         <div style={styles.section}>
           <h4 style={styles.subTitle}>项目概述</h4>
           <div style={styles.infoGrid}>
-            <InfoItem label="工作范围" value={data?.sowSummary} />
-            <InfoItem label="交付物" value={data?.deliverables} />
-            <InfoItem label="验收标准" value={data?.acceptanceCriteria} />
+            <InfoItem label="工作范围" value={data?.sowSummary} fullWidth />
+            {data?.deliverables && (
+              <div style={{ ...styles.infoItemFull, gridArea: 'deliverables' }}>
+                <label style={infoItemStyles.label}>交付物清单</label>
+                <div style={styles.deliverablesList}>
+                  {parseDeliverables(data.deliverables).map((item, idx) => (
+                    <span key={idx} style={styles.deliverableTag}>
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <InfoItem label="验收标准" value={data?.acceptanceCriteria} fullWidth />
           </div>
         </div>
       )}
 
-      {/* 里程碑列表 */}
+      {/* 流程信息 */}
+      {(data?.acceptanceFlow || data?.changeManagementFlow) && (
+        <div style={styles.section}>
+          <h4 style={styles.subTitle}>流程管理</h4>
+          <div style={styles.flowContainer}>
+            {data?.acceptanceFlow && (
+              <div style={styles.flowSection}>
+                <h5 style={styles.flowTitle}>验收流程</h5>
+                <div style={styles.flowContent}>{data.acceptanceFlow}</div>
+              </div>
+            )}
+            {data?.changeManagementFlow && (
+              <div style={styles.flowSection}>
+                <h5 style={styles.flowTitle}>变更管理流程</h5>
+                <div style={styles.flowContent}>{data.changeManagementFlow}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 里程碑时间线 */}
       {milestones.length > 0 && (
         <div style={styles.section}>
           <div style={styles.milestoneHeader}>
@@ -210,6 +285,61 @@ function ProjectOutsourcingDetails({ data }: { data?: any }) {
             </div>
           </div>
 
+          {/* 时间线可视化 */}
+          <div style={styles.timeline}>
+            {milestones.map((m: any, index: number) => {
+              const isCompleted = m.status === 'ACCEPTED';
+              const isInProgress = m.status === 'IN_PROGRESS' || m.status === 'DELIVERED';
+              const isPending = m.status === 'PENDING';
+
+              return (
+                <div key={m.id || index} style={styles.timelineItem}>
+                  <div style={styles.timelineDotWrapper}>
+                    <div style={{
+                      ...styles.timelineDot,
+                      ...(isCompleted && styles.timelineDotCompleted),
+                      ...(isInProgress && styles.timelineDotInProgress),
+                      ...(isPending && styles.timelineDotPending),
+                    }} />
+                    {index < milestones.length - 1 && (
+                      <div style={{
+                        ...styles.timelineLine,
+                        ...(isCompleted && styles.timelineLineCompleted),
+                      }} />
+                    )}
+                  </div>
+                  <div style={styles.timelineContent}>
+                    <div style={styles.timelineHeader}>
+                      <span style={styles.timelineSequence}>M{m.sequence || index + 1}</span>
+                      <span style={styles.timelineName}>{m.name}</span>
+                      <span style={{
+                        ...styles.statusBadge,
+                        backgroundColor: getStatusColor(m.status),
+                      }}>
+                        {getStatusLabel(m.status)}
+                      </span>
+                    </div>
+                    <div style={styles.timelineDetails}>
+                      <span style={styles.timelineAmount}>¥{parseFloat(m.amount || 0).toLocaleString()}</span>
+                      <span style={styles.timelineDate}>{m.plannedDate || '日期待定'}</span>
+                    </div>
+                    {m.deliverables && (
+                      <div style={styles.timelineDeliverables}>
+                        {parseDeliverables(m.deliverables).slice(0, 3).map((d, idx) => (
+                          <span key={idx} style={styles.miniTag}>{d}</span>
+                        ))}
+                        {parseDeliverables(m.deliverables).length > 3 && (
+                          <span style={styles.moreIndicator}>+{parseDeliverables(m.deliverables).length - 3}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 表格视图 */}
           <table style={styles.table}>
             <thead>
               <tr>
@@ -229,7 +359,18 @@ function ProjectOutsourcingDetails({ data }: { data?: any }) {
                   <td style={styles.td}>
                     <div style={styles.milestoneName}>{m.name}</div>
                   </td>
-                  <td style={styles.td}>{m.deliverables || '-'}</td>
+                  <td style={styles.td}>
+                    {m.deliverables ? (
+                      <div style={styles.cellDeliverables}>
+                        {parseDeliverables(m.deliverables).slice(0, 2).map((d, idx) => (
+                          <span key={idx} style={styles.miniTag}>{d}</span>
+                        ))}
+                        {parseDeliverables(m.deliverables).length > 2 && (
+                          <span style={styles.moreIndicator}>+{parseDeliverables(m.deliverables).length - 2}</span>
+                        )}
+                      </div>
+                    ) : '-'}
+                  </td>
                   <td style={styles.tdAmount}>
                     {m.amount ? `¥${parseFloat(m.amount).toLocaleString()}` : '-'}
                   </td>
@@ -335,10 +476,10 @@ function ProductSalesDetails({ data }: { data?: any }) {
   );
 }
 
-function InfoItem({ label, value }: { label: string; value: string | null | undefined }) {
+function InfoItem({ label, value, fullWidth }: { label: string; value: string | null | undefined; fullWidth?: boolean }) {
   if (!value) return null;
   return (
-    <div style={infoItemStyles.container}>
+    <div style={fullWidth ? { ...infoItemStyles.container, ...styles.infoItemFull } : infoItemStyles.container}>
       <span style={infoItemStyles.label}>{label}：</span>
       <span style={infoItemStyles.value}>{value}</span>
     </div>
@@ -373,6 +514,44 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '8px',
     padding: '20px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  },
+  // 统计卡片
+  statsCards: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '12px',
+    marginBottom: '20px',
+  },
+  statsCard: {
+    padding: '16px',
+    backgroundColor: '#f9fafb',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    textAlign: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  progressCard: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#10b981',
+  },
+  progressBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    height: '3px',
+    backgroundColor: '#10b981',
+    transition: 'width 0.3s ease',
+  },
+  statsValue: {
+    fontSize: '24px',
+    fontWeight: 600,
+    color: '#111827',
+    marginBottom: '4px',
+  },
+  statsLabel: {
+    fontSize: '12px',
+    color: '#6b7280',
   },
   cardTitle: {
     fontSize: '16px',
@@ -546,6 +725,162 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     color: '#9ca3af',
     fontSize: '14px',
+  },
+  // 交付物显示
+  deliverablesList: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+  },
+  deliverableTag: {
+    display: 'inline-block',
+    padding: '4px 10px',
+    backgroundColor: '#e0f2fe',
+    color: '#0369a1',
+    borderRadius: '4px',
+    fontSize: '12px',
+    border: '1px solid #bae6fd',
+  },
+  // 流程容器
+  flowContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: '16px',
+  },
+  flowSection: {
+    padding: '16px',
+    backgroundColor: '#f9fafb',
+    borderRadius: '6px',
+    border: '1px solid #e5e7eb',
+  },
+  flowTitle: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#374151',
+    margin: '0 0 8px 0',
+  },
+  flowContent: {
+    fontSize: '13px',
+    color: '#4b5563',
+    lineHeight: '1.6',
+    margin: 0,
+    whiteSpace: 'pre-wrap',
+  },
+  // 时间线
+  timeline: {
+    marginBottom: '20px',
+  },
+  timelineItem: {
+    display: 'flex',
+    gap: '16px',
+    marginBottom: '16px',
+    position: 'relative',
+  },
+  timelineDotWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  timelineDot: {
+    width: '16px',
+    height: '16px',
+    borderRadius: '50%',
+    backgroundColor: '#d1d5db',
+    border: '3px solid #fff',
+    boxShadow: '0 0 0 2px #d1d5db',
+    flexShrink: 0,
+    zIndex: 1,
+  },
+  timelineDotCompleted: {
+    backgroundColor: '#10b981',
+    boxShadow: '0 0 0 2px #10b981',
+  },
+  timelineDotInProgress: {
+    backgroundColor: '#3b82f6',
+    boxShadow: '0 0 0 2px #3b82f6',
+  },
+  timelineDotPending: {
+    backgroundColor: '#d1d5db',
+    boxShadow: '0 0 0 2px #d1d5db',
+  },
+  timelineLine: {
+    width: '2px',
+    flex: 1,
+    backgroundColor: '#e5e7eb',
+    marginTop: '4px',
+    minHeight: '40px',
+  },
+  timelineLineCompleted: {
+    backgroundColor: '#10b981',
+  },
+  timelineContent: {
+    flex: 1,
+    padding: '12px',
+    backgroundColor: '#f9fafb',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+  },
+  timelineHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '8px',
+  },
+  timelineSequence: {
+    display: 'inline-block',
+    padding: '2px 6px',
+    backgroundColor: '#374151',
+    color: '#fff',
+    fontSize: '11px',
+    fontWeight: 600,
+    borderRadius: '4px',
+  },
+  timelineName: {
+    fontWeight: 500,
+    color: '#111827',
+    fontSize: '14px',
+  },
+  timelineDetails: {
+    display: 'flex',
+    gap: '16px',
+    fontSize: '13px',
+    color: '#6b7280',
+    marginBottom: '8px',
+  },
+  timelineAmount: {
+    fontWeight: 600,
+    color: '#059669',
+  },
+  timelineDate: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  timelineDeliverables: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+  },
+  // 单元格内交付物
+  cellDeliverables: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+  },
+  miniTag: {
+    display: 'inline-block',
+    padding: '2px 6px',
+    backgroundColor: '#e0f2fe',
+    color: '#0369a1',
+    borderRadius: '3px',
+    fontSize: '11px',
+  },
+  moreIndicator: {
+    fontSize: '11px',
+    color: '#6b7280',
+    padding: '2px 4px',
+  },
+  infoItemFull: {
+    gridColumn: '1 / -1',
   },
 };
 
