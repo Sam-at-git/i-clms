@@ -400,32 +400,157 @@ function ProductSalesDetails({ data }: { data?: any }) {
   const hasContent = lineItems.length > 0 ||
                      data?.deliveryContent ||
                      data?.deliveryDate ||
-                     data?.warrantyPeriod;
+                     data?.warrantyPeriod ||
+                     data?.shippingResponsibility ||
+                     data?.ipOwnership ||
+                     data?.afterSalesTerms;
 
   if (!hasContent) {
     return <div style={styles.empty}>暂无产品购销详情信息</div>;
   }
 
-  // 计算总金额
+  // 计算统计数据
   const totalAmount = lineItems.reduce((sum: number, item: any) => {
     const price = parseFloat(item.unitPriceWithTax || 0);
     const qty = parseInt(item.quantity || 0);
     return sum + (price * qty);
   }, 0);
 
+  const totalQuantity = lineItems.reduce((sum: number, item: any) => sum + parseInt(item.quantity || 0), 0);
+  const avgPrice = lineItems.length > 0 ? totalAmount / lineItems.length : 0;
+  const uniqueProducts = new Set(lineItems.map((item: any) => item.productName)).size;
+
+  // 计算含税/不含税金额对比
+  const totalAmountWithTax = totalAmount;
+  const totalAmountWithoutTax = lineItems.reduce((sum: number, item: any) => {
+    const price = parseFloat(item.unitPriceWithoutTax || 0);
+    const qty = parseInt(item.quantity || 0);
+    return sum + (price * qty);
+  }, 0);
+  const totalTaxAmount = totalAmountWithTax - totalAmountWithoutTax;
+
+  // 按产品分组统计
+  const productGroups = lineItems.reduce((acc: Record<string, any>, item: any) => {
+    const name = item.productName;
+    if (!acc[name]) {
+      acc[name] = {
+        name,
+        count: 0,
+        quantity: 0,
+        amount: 0,
+      };
+    }
+    acc[name].count += 1;
+    acc[name].quantity += parseInt(item.quantity || 0);
+    acc[name].amount += parseFloat(item.unitPriceWithTax || 0) * parseInt(item.quantity || 0);
+    return acc;
+  }, {});
+
+  const shippingResponsibilityMap: Record<string, string> = {
+    SELLER: '卖方负责',
+    BUYER: '买方负责',
+    SHARED: '双方协商',
+  };
+
+  const ipOwnershipMap: Record<string, string> = {
+    SELLER: '卖方所有',
+    BUYER: '买方所有',
+    SHARED: '双方共有',
+    LICENSED: '授权使用',
+  };
+
   return (
     <div>
       <h3 style={styles.cardTitle}>产品购销详情</h3>
 
-      {/* 交付信息 */}
-      {(data?.deliveryContent || data?.deliveryDate || data?.warrantyPeriod) && (
+      {/* 统计卡片 */}
+      {lineItems.length > 0 && (
+        <div style={styles.statsCards}>
+          <div style={styles.statsCard}>
+            <div style={styles.statsValue}>{lineItems.length}</div>
+            <div style={styles.statsLabel}>产品条目数</div>
+          </div>
+          <div style={styles.statsCard}>
+            <div style={styles.statsValue}>{uniqueProducts}</div>
+            <div style={styles.statsLabel}>产品种类数</div>
+          </div>
+          <div style={styles.statsCard}>
+            <div style={styles.statsValue}>{totalQuantity}</div>
+            <div style={styles.statsLabel}>总数量</div>
+          </div>
+          <div style={styles.statsCard}>
+            <div style={styles.statsValue}>¥{totalAmount.toLocaleString()}</div>
+            <div style={styles.statsLabel}>合同总金额</div>
+          </div>
+          <div style={styles.statsCard}>
+            <div style={styles.statsValue}>¥{avgPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+            <div style={styles.statsLabel}>平均单价</div>
+          </div>
+        </div>
+      )}
+
+      {/* 交付与保修信息 */}
+      {(data?.deliveryContent || data?.deliveryDate || data?.deliveryLocation ||
+        data?.shippingResponsibility || data?.warrantyPeriod) && (
         <div style={styles.section}>
-          <h4 style={styles.subTitle}>交付信息</h4>
+          <h4 style={styles.subTitle}>交付与保修</h4>
           <div style={styles.infoGrid}>
-            <InfoItem label="交付内容" value={data?.deliveryContent} />
+            <InfoItem label="交付内容" value={data?.deliveryContent} fullWidth />
             <InfoItem label="交付日期" value={data?.deliveryDate} />
             <InfoItem label="交付地点" value={data?.deliveryLocation} />
-            <InfoItem label="保修期" value={data?.warrantyPeriod} />
+            <InfoItem
+              label="运输责任"
+              value={data?.shippingResponsibility ? shippingResponsibilityMap[data.shippingResponsibility] || data.shippingResponsibility : null}
+            />
+            <InfoItem label="保修期限" value={data?.warrantyPeriod} fullWidth />
+          </div>
+        </div>
+      )}
+
+      {/* 知识产权与售后 */}
+      {(data?.ipOwnership || data?.afterSalesTerms) && (
+        <div style={styles.section}>
+          <h4 style={styles.subTitle}>知识产权与售后</h4>
+          <div style={styles.termsContainer}>
+            {data?.ipOwnership && (
+              <div style={styles.termSection}>
+                <h5 style={styles.termTitle}>知识产权归属</h5>
+                <p style={styles.termContent}>
+                  <strong>归属方式：</strong>
+                  {ipOwnershipMap[data.ipOwnership] || data.ipOwnership}
+                </p>
+              </div>
+            )}
+            {data?.afterSalesTerms && (
+              <div style={styles.termSection}>
+                <h5 style={styles.termTitle}>售后服务条款</h5>
+                <p style={styles.termContent}>{data.afterSalesTerms}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 税费分析 */}
+      {lineItems.length > 0 && totalTaxAmount > 0 && (
+        <div style={styles.section}>
+          <h4 style={styles.subTitle}>税费分析</h4>
+          <div style={styles.taxAnalysis}>
+            <div style={styles.taxRow}>
+              <span style={styles.taxLabel}>不含税总额</span>
+              <span style={styles.taxValue}>¥{totalAmountWithoutTax.toLocaleString()}</span>
+            </div>
+            <div style={styles.taxRow}>
+              <span style={styles.taxLabel}>税额</span>
+              <span style={styles.taxValueAccent}>¥{totalTaxAmount.toLocaleString()}</span>
+            </div>
+            <div style={{ ...styles.taxRow, ...styles.taxRowTotal }}>
+              <span style={styles.taxLabel}>含税总额</span>
+              <span style={styles.taxValueTotal}>¥{totalAmountWithTax.toLocaleString()}</span>
+            </div>
+            <div style={styles.taxRate}>
+              税率约 {((totalTaxAmount / totalAmountWithoutTax) * 100).toFixed(1)}%
+            </div>
           </div>
         </div>
       )}
@@ -433,13 +558,36 @@ function ProductSalesDetails({ data }: { data?: any }) {
       {/* 产品清单 */}
       {lineItems.length > 0 && (
         <div style={styles.section}>
-          <h4 style={styles.subTitle}>产品清单 <span style={styles.totalAmount}>(合计: ¥{totalAmount.toLocaleString()})</span></h4>
+          <div style={styles.milestoneHeader}>
+            <h4 style={styles.subTitle}>产品清单</h4>
+            <div style={styles.milestoneSummary}>
+              <span style={styles.summaryItem}>
+                共 <strong>{lineItems.length}</strong> 个条目
+              </span>
+              <span style={styles.summaryItem}>
+                合计 <strong>¥{totalAmount.toLocaleString()}</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* 产品分组统计 */}
+          {Object.keys(productGroups).length > 1 && (
+            <div style={styles.productGroups}>
+              {Object.entries(productGroups).map(([name, group]: [string, any]) => (
+                <div key={name} style={styles.productGroupTag}>
+                  <span style={styles.productGroupName}>{name}</span>
+                  <span style={styles.productGroupCount}>×{group.quantity}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <table style={styles.table}>
             <thead>
               <tr>
                 <th style={styles.thNo}>#</th>
                 <th style={styles.th}>产品名称</th>
-                <th style={styles.th}>规格</th>
+                <th style={styles.th}>规格型号</th>
                 <th style={styles.thQty}>数量</th>
                 <th style={styles.th}>单位</th>
                 <th style={styles.thAmount}>含税单价</th>
@@ -451,24 +599,45 @@ function ProductSalesDetails({ data }: { data?: any }) {
                 const price = parseFloat(item.unitPriceWithTax || 0);
                 const qty = parseInt(item.quantity || 0);
                 const subtotal = price * qty;
+                const priceWithoutTax = parseFloat(item.unitPriceWithoutTax || 0);
+                const taxPerUnit = price - priceWithoutTax;
+
                 return (
                   <tr key={item.id || index}>
                     <td style={styles.tdNo}>{index + 1}</td>
                     <td style={styles.td}>
                       <div style={styles.productName}>{item.productName}</div>
-                      {item.specification && (
-                        <div style={styles.specification}>{item.specification}</div>
-                      )}
                     </td>
-                    <td style={styles.td}>{item.specification || '-'}</td>
+                    <td style={styles.td}>
+                      {item.specification ? (
+                        <span style={styles.specificationTag}>{item.specification}</span>
+                      ) : '-'}
+                    </td>
                     <td style={styles.tdQty}>{qty}</td>
-                    <td style={styles.td}>{item.unit}</td>
-                    <td style={styles.tdAmount}>¥{price.toLocaleString()}</td>
+                    <td style={styles.td}>{item.unit || '-'}</td>
+                    <td style={styles.tdAmount}>
+                      <div style={styles.priceCell}>
+                        <div>¥{price.toLocaleString()}</div>
+                        {priceWithoutTax > 0 && (
+                          <div style={styles.priceWithoutTax}>
+                            (不含税 ¥{priceWithoutTax.toLocaleString()})
+                          </div>
+                        )}
+                      </div>
+                    </td>
                     <td style={styles.tdAmount}>¥{subtotal.toLocaleString()}</td>
                   </tr>
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr style={styles.tfootRow}>
+                <td colSpan={4} style={styles.tfootLabel}>合计</td>
+                <td style={styles.tfootQty}>{totalQuantity}</td>
+                <td style={styles.tfootValue}>-</td>
+                <td style={styles.tfootValue}>¥{totalAmount.toLocaleString()}</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
@@ -881,6 +1050,106 @@ const styles: Record<string, React.CSSProperties> = {
   },
   infoItemFull: {
     gridColumn: '1 / -1',
+  },
+  // 产品相关样式
+  taxAnalysis: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: '8px',
+    padding: '16px',
+    border: '1px solid #bbf7d0',
+  },
+  taxRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: '8px',
+    fontSize: '14px',
+  },
+  taxRowTotal: {
+    paddingTop: '8px',
+    borderTop: '1px solid #bbf7d0',
+    marginTop: '4px',
+    fontWeight: 600,
+  },
+  taxLabel: {
+    color: '#374151',
+  },
+  taxValue: {
+    color: '#6b7280',
+  },
+  taxValueAccent: {
+    color: '#059669',
+  },
+  taxValueTotal: {
+    color: '#047857',
+    fontWeight: 600,
+  },
+  taxRate: {
+    marginTop: '8px',
+    fontSize: '12px',
+    color: '#059669',
+    textAlign: 'right',
+  },
+  productGroups: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+  productGroupTag: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '6px 12px',
+    backgroundColor: '#f0f9ff',
+    borderRadius: '6px',
+    border: '1px solid #bae6fd',
+  },
+  productGroupName: {
+    fontSize: '13px',
+    color: '#0369a1',
+    marginRight: '8px',
+  },
+  productGroupCount: {
+    fontSize: '12px',
+    color: '#6b7280',
+    fontWeight: 500,
+  },
+  specificationTag: {
+    display: 'inline-block',
+    padding: '2px 6px',
+    backgroundColor: '#f3f4f6',
+    color: '#4b5563',
+    borderRadius: '3px',
+    fontSize: '11px',
+    border: '1px solid #e5e7eb',
+  },
+  priceCell: {
+    textAlign: 'right',
+  },
+  priceWithoutTax: {
+    fontSize: '11px',
+    color: '#9ca3af',
+    marginTop: '2px',
+  },
+  tfootRow: {
+    backgroundColor: '#f9fafb',
+    fontWeight: 600,
+  },
+  tfootLabel: {
+    padding: '12px',
+    textAlign: 'right',
+    color: '#374151',
+    borderRight: '1px solid #e5e7eb',
+  },
+  tfootQty: {
+    padding: '12px',
+    textAlign: 'center',
+    color: '#111827',
+    borderRight: '1px solid #e5e7eb',
+  },
+  tfootValue: {
+    padding: '12px',
+    textAlign: 'right',
+    color: '#059669',
   },
 };
 
