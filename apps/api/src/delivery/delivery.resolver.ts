@@ -11,6 +11,7 @@ import {
   UploadDeliverableInput,
   AcceptMilestoneInput,
   RejectMilestoneInput,
+  ProjectMilestoneWithContract,
 } from './dto/milestone-status.dto';
 import { GqlAuthGuard } from '../auth/guards/gql-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -49,6 +50,12 @@ export class DeliveryResolver {
     @Args('id') id: string,
   ): Promise<MilestoneDetail> {
     return this.deliveryService.getMilestoneDetail(id);
+  }
+
+  @Query(() => [ProjectMilestoneWithContract], { description: '获取所有项目里程碑（带合同信息）' })
+  @Roles(UserRole.ADMIN, UserRole.DEPT_ADMIN)
+  async projectMilestones(): Promise<ProjectMilestoneWithContract[]> {
+    return this.deliveryService.getAllProjectMilestones();
   }
 
   @Query(() => [MilestoneStatusHistory], { description: '获取里程碑状态历史' })

@@ -19,7 +19,7 @@ import AuditLogsPage from '../pages/admin/audit-logs';
 import PasswordPage from '../pages/settings/password';
 import ProfilePage from '../pages/settings/profile';
 import SystemSettingsPage from '../pages/settings/system';
-import { MilestonesPage } from '../pages/milestones';
+import ModelConfigPage from '../pages/settings/model';
 import RiskAlertsPage from '../pages/risk-alerts';
 import { ProtectedRoute } from '../components/auth';
 import { ForbiddenPage, RoleGuard } from '../components/errors';
@@ -58,9 +58,6 @@ function Layout({ children }: { children: React.ReactNode }) {
             </Link>
             <Link to="/delivery" style={styles.navLink}>
               交付管理
-            </Link>
-            <Link to="/milestones" style={styles.navLink}>
-              里程碑管理
             </Link>
             <Link to="/risk-alerts" style={styles.navLink}>
               风险预警
@@ -105,9 +102,14 @@ function Layout({ children }: { children: React.ReactNode }) {
                       </Link>
                     )}
                     {isAdmin && (
-                      <Link to="/settings/system" style={styles.dropdownItem}>
-                        系统设置
-                      </Link>
+                      <>
+                        <Link to="/settings/model" style={styles.dropdownItem}>
+                          模型设置
+                        </Link>
+                        <Link to="/settings/system" style={styles.dropdownItem}>
+                          系统设置
+                        </Link>
+                      </>
                     )}
                   </div>
                 )}
@@ -211,14 +213,6 @@ export function App() {
                   }
                 />
                 <Route
-                  path="/milestones"
-                  element={
-                    <ProtectedRoute>
-                      <MilestonesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
                   path="/risk-alerts"
                   element={
                     <ProtectedRoute>
@@ -311,6 +305,16 @@ export function App() {
                   element={
                     <ProtectedRoute>
                       <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/model"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard requireAdmin>
+                        <ModelConfigPage />
+                      </RoleGuard>
                     </ProtectedRoute>
                   }
                 />

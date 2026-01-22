@@ -77,4 +77,19 @@ export class LlmParseResult {
 
   @Field(() => [String], { nullable: true })
   warnings?: string[];
+
+  @Field(() => String, { nullable: true })
+  sessionId?: string; // 进度追踪会话ID，前端可用于查询解析进度
+}
+
+/**
+ * 异步解析启动响应
+ */
+@ObjectType()
+export class AsyncParseStartResponse {
+  @Field(() => String)
+  sessionId!: string;
+
+  @Field(() => String)
+  message!: string;
 }

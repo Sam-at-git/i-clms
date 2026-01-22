@@ -21,6 +21,24 @@ jest.mock('file-type', () => ({
   fileTypeFromBuffer: jest.fn(),
 }));
 
+// Mock parse-strategy.dto to avoid decorator issues in test context
+jest.mock('./dto/parse-strategy.dto', () => ({
+  ParseStrategyType: {
+    RULE: 'RULE',
+    LLM: 'LLM',
+    DOCLING: 'DOCLING',
+    RAG: 'RAG',
+    MULTI: 'MULTI',
+  },
+  StrategyCost: {
+    FREE: 'free',
+    LOW: 'low',
+    MEDIUM: 'medium',
+    HIGH: 'high',
+  },
+  registerEnumType: jest.fn(),
+}));
+
 // Mock ParserService to avoid the import chain
 jest.mock('../parser/parser.service', () => ({
   ParserService: jest.fn().mockImplementation(() => ({
@@ -34,6 +52,10 @@ import { LlmParserService } from './llm-parser.service';
 import { CompletenessCheckerService } from './completeness-checker.service';
 import { ParseProgressService } from './parse-progress.service';
 import { TaskBasedParserService } from './task-based-parser.service';
+import { TopicRegistryService } from './topics/topic-registry.service';
+import { ParseStrategyService } from './parse-strategy.service';
+import { MultiStrategyService } from './multi-strategy.service';
+import { LLMEvaluatorService } from './evaluation/llm-evaluator.service';
 
 describe('LlmParserResolver', () => {
   let resolver: LlmParserResolver;
@@ -41,6 +63,8 @@ describe('LlmParserResolver', () => {
   let completenessChecker: jest.Mocked<CompletenessCheckerService>;
   let progressService: jest.Mocked<ParseProgressService>;
   let taskBasedParser: jest.Mocked<TaskBasedParserService>;
+  let topicRegistry: jest.Mocked<TopicRegistryService>;
+  let parseStrategyService: jest.Mocked<ParseStrategyService>;
 
   const mockCompletenessScore: CompletenessScore = {
     totalScore: 80,
@@ -133,6 +157,64 @@ describe('LlmParserResolver', () => {
             refreshClient: jest.fn(),
           },
         },
+        {
+          provide: TopicRegistryService,
+          useValue: {
+            getAllTopics: jest.fn().mockReturnValue([]),
+            getTopic: jest.fn(),
+            getTopicFields: jest.fn().mockReturnValue([]),
+            calculateCompleteness: jest.fn().mockReturnValue({
+              score: 80,
+              total: 12.8,
+              maxScore: 16,
+              topicScores: [],
+            }),
+            getTopicFieldValues: jest.fn().mockReturnValue([]),
+            getMissingFields: jest.fn().mockReturnValue([]),
+            hasTopic: jest.fn().mockReturnValue(true),
+            getTopicCount: jest.fn().mockReturnValue(8),
+            getTotalWeight: jest.fn().mockReturnValue(16),
+          },
+        },
+        {
+          provide: ParseStrategyService,
+          useValue: {
+            getAvailableStrategies: jest.fn().mockResolvedValue([]),
+            getStrategyConfig: jest.fn().mockReturnValue({}),
+            updateStrategyConfig: jest.fn().mockReturnValue({}),
+            testStrategyAvailability: jest.fn().mockResolvedValue({}),
+            testAllStrategies: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: MultiStrategyService,
+          useValue: {
+            parseWithMulti: jest.fn().mockResolvedValue({
+              results: [],
+              finalFields: {},
+              voteResults: [],
+              overallConfidence: 0,
+              conflicts: [],
+              warnings: [],
+              duration: 0,
+            }),
+            getParseResult: jest.fn(),
+            resolveConflicts: jest.fn(),
+            compareSessions: jest.fn(),
+            cleanupOldSessions: jest.fn(),
+          },
+        },
+        {
+          provide: LLMEvaluatorService,
+          useValue: {
+            evaluateConflict: jest.fn(),
+            evaluateSimilarity: jest.fn(),
+            evaluateQuality: jest.fn(),
+            batchEvaluate: jest.fn(),
+            batchEvaluateConflicts: jest.fn(),
+            resolveConflictEnhanced: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -143,6 +225,8 @@ describe('LlmParserResolver', () => {
     ) as jest.Mocked<CompletenessCheckerService>;
     progressService = module.get(ParseProgressService) as jest.Mocked<ParseProgressService>;
     taskBasedParser = module.get(TaskBasedParserService) as jest.Mocked<TaskBasedParserService>;
+    topicRegistry = module.get(TopicRegistryService) as jest.Mocked<TopicRegistryService>;
+    parseStrategyService = module.get(ParseStrategyService) as jest.Mocked<ParseStrategyService>;
   });
 
   it('should be defined', () => {

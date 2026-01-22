@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, ContractType as PrismaContractType } from '@prisma/client';
 import {
   CreateContractInput,
   UpdateContractInput,
@@ -10,6 +10,7 @@ import {
   SortOrder,
 } from './dto';
 import { ContractConnection } from './models';
+import { ContractType } from './models/enums';
 
 @Injectable()
 export class ContractService {
@@ -241,7 +242,197 @@ export class ContractService {
       },
     });
 
-    return this.transformContract(contract);
+    // 创建类型特定详情（如果提供了数据）
+    await this.createTypeSpecificDetails(contract.id, contract.type as ContractType, input);
+
+    // 重新查询以获取包含详情的完整数据
+    const fullContract = await this.prisma.contract.findUnique({
+      where: { id: contract.id },
+      include: {
+        customer: true,
+        department: true,
+        uploadedBy: {
+          include: {
+            department: true,
+          },
+        },
+        parentContract: true,
+        supplements: true,
+        staffAugmentation: {
+          include: {
+            rateItems: true,
+          },
+        },
+        projectOutsourcing: {
+          include: {
+            milestones: true,
+          },
+        },
+        productSales: {
+          include: {
+            lineItems: true,
+          },
+        },
+      },
+    });
+
+    return this.transformContract(fullContract);
+  }
+
+  /**
+   * 创建类型特定详情（里程碑、费率、产品清单等）
+   */
+  private async createTypeSpecificDetails(
+    contractId: string,
+    contractType: ContractType,
+    input: CreateContractInput
+  ): Promise<void> {
+    try {
+      switch (contractType) {
+        case ContractType.PROJECT_OUTSOURCING:
+          await this.createProjectOutsourcingDetails(contractId, input);
+          break;
+        case ContractType.STAFF_AUGMENTATION:
+          await this.createStaffAugmentationDetails(contractId, input);
+          break;
+        case ContractType.PRODUCT_SALES:
+          await this.createProductSalesDetails(contractId, input);
+          break;
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to create type-specific details: ${errorMessage}`);
+      // 不抛出错误，允许合同创建成功，只是详情创建失败
+    }
+  }
+
+  /**
+   * 创建项目外包详情和里程碑
+   */
+  private async createProjectOutsourcingDetails(
+    contractId: string,
+    input: CreateContractInput
+  ): Promise<void> {
+    const detailInput = input.projectOutsourcingDetail;
+    if (!detailInput) return;
+
+    const detail = await this.prisma.projectOutsourcingDetail.create({
+      data: {
+        contractId,
+        sowSummary: detailInput.sowSummary,
+        deliverables: detailInput.deliverables,
+        acceptanceCriteria: detailInput.acceptanceCriteria,
+        acceptanceFlow: detailInput.acceptanceFlow,
+        changeManagementFlow: detailInput.changeManagementFlow,
+      },
+    });
+
+    // 创建里程碑
+    if (detailInput.milestones && detailInput.milestones.length > 0) {
+      await this.prisma.projectMilestone.createMany({
+        data: detailInput.milestones.map((m) => ({
+          detailId: detail.id,
+          sequence: m.sequence,
+          name: m.name,
+          deliverables: m.deliverables,
+          amount: m.amount ? new Prisma.Decimal(m.amount) : null,
+          paymentPercentage: m.paymentPercentage ? new Prisma.Decimal(m.paymentPercentage) : null,
+          plannedDate: m.plannedDate,
+          actualDate: m.actualDate,
+          acceptanceCriteria: m.acceptanceCriteria,
+          status: m.status || 'PENDING',
+        })),
+      });
+      this.logger.log(`Created ${detailInput.milestones.length} milestones for contract ${contractId}`);
+    }
+  }
+
+  /**
+   * 人力框架详情和费率项
+   */
+  private async createStaffAugmentationDetails(
+    contractId: string,
+    input: CreateContractInput
+  ): Promise<void> {
+    const detailInput = input.staffAugmentationDetail;
+    if (!detailInput) return;
+
+    const detail = await this.prisma.staffAugmentationDetail.create({
+      data: {
+        contractId,
+        estimatedTotalHours: detailInput.estimatedTotalHours,
+        monthlyHoursCap: detailInput.monthlyHoursCap,
+        yearlyHoursCap: detailInput.yearlyHoursCap,
+        settlementCycle: detailInput.settlementCycle,
+        timesheetApprovalFlow: detailInput.timesheetApprovalFlow,
+        adjustmentMechanism: detailInput.adjustmentMechanism,
+        staffReplacementFlow: detailInput.staffReplacementFlow,
+      },
+    });
+
+    // 创建费率项
+    if (detailInput.rateItems && detailInput.rateItems.length > 0) {
+      await this.prisma.staffRateItem.createMany({
+        data: detailInput.rateItems.map((r) => ({
+          detailId: detail.id,
+          role: r.role,
+          rateType: r.rateType,
+          rate: new Prisma.Decimal(r.rate),
+          rateEffectiveFrom: r.rateEffectiveFrom,
+          rateEffectiveTo: r.rateEffectiveTo,
+        })),
+      });
+      this.logger.log(`Created ${detailInput.rateItems.length} rate items for contract ${contractId}`);
+    }
+  }
+
+  /**
+   * 创建产品购销详情和产品清单
+   */
+  private async createProductSalesDetails(
+    contractId: string,
+    input: CreateContractInput
+  ): Promise<void> {
+    const detailInput = input.productSalesDetail;
+    if (!detailInput) return;
+
+    const detail = await this.prisma.productSalesDetail.create({
+      data: {
+        contractId,
+        deliveryContent: detailInput.deliveryContent,
+        deliveryDate: detailInput.deliveryDate,
+        deliveryLocation: detailInput.deliveryLocation,
+        shippingResponsibility: detailInput.shippingResponsibility,
+        ipOwnership: detailInput.ipOwnership,
+        warrantyPeriod: detailInput.warrantyPeriod,
+        afterSalesTerms: detailInput.afterSalesTerms,
+      },
+    });
+
+    // 创建产品清单项
+    if (detailInput.lineItems && detailInput.lineItems.length > 0) {
+      await this.prisma.productLineItem.createMany({
+        data: detailInput.lineItems.map((item) => {
+          const unitPrice = new Prisma.Decimal(item.unitPriceWithTax);
+          const quantity = new Prisma.Decimal(item.quantity);
+          // 如果没有提供小计，自动计算：数量 * 单价
+          const calculatedSubtotal = item.subtotal
+            ? new Prisma.Decimal(item.subtotal)
+            : unitPrice.mul(quantity);
+          return {
+            detailId: detail.id,
+            productName: item.productName,
+            specification: item.specification,
+            quantity: item.quantity,
+            unit: item.unit || '套',
+            unitPriceWithTax: unitPrice,
+            unitPriceWithoutTax: item.unitPriceWithoutTax ? new Prisma.Decimal(item.unitPriceWithoutTax) : null,
+            subtotal: calculatedSubtotal,
+          };
+        }),
+      });
+      this.logger.log(`Created ${detailInput.lineItems.length} line items for contract ${contractId}`);
+    }
   }
 
   async update(id: string, input: UpdateContractInput) {
@@ -585,6 +776,10 @@ export class ContractService {
       supplements: contract.supplements || [],
       // Transform tags from ContractTag[] to TagDto[]
       tags: contract.tags?.map((ct: any) => ct.tag) || [],
+      // Map Prisma field names to GraphQL field names for type-specific details
+      staffAugmentationDetail: contract.staffAugmentation || null,
+      projectOutsourcingDetail: contract.projectOutsourcing || null,
+      productSalesDetail: contract.productSales || null,
     };
   }
 }

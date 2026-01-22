@@ -1,44 +1,5 @@
-query GetMilestones($filter: MilestoneFilterInput) {
-  milestones(filter: $filter) {
-    items {
-      id
-      sequence
-      name
-      deliverables
-      amount
-      paymentPercentage
-      plannedDate
-      actualDate
-      acceptanceCriteria
-      status
-      deliverableFileUrl
-      deliverableFileName
-      deliverableUploadedAt
-      acceptedAt
-      acceptedBy
-      acceptedByName
-      rejectedAt
-      rejectedBy
-      rejectedByName
-      rejectionReason
-      createdAt
-      updatedAt
-      contract {
-        id
-        contractNo
-        name
-        customer {
-          id
-          fullName
-        }
-      }
-    }
-    total
-  }
-}
-
-query GetMilestoneDetail($id: ID!) {
-  milestoneDetail(id: $id) {
+query GetProjectMilestones {
+  projectMilestones {
     id
     sequence
     name
@@ -59,77 +20,17 @@ query GetMilestoneDetail($id: ID!) {
     rejectedBy
     rejectedByName
     rejectionReason
-    statusHistory {
-      id
-      fromStatus
-      toStatus
-      changedBy
-      changedByName
-      changedAt
-      notes
-    }
     createdAt
     updatedAt
-  }
-}
-
-query GetMilestoneStatusHistory($milestoneId: ID!) {
-  milestoneStatusHistory(milestoneId: $milestoneId) {
-    id
-    fromStatus
-    toStatus
-    changedBy
-    changedByName
-    changedAt
-    notes
-  }
-}
-
-mutation UpdateMilestoneStatus($input: UpdateMilestoneStatusInput!) {
-  updateMilestoneStatus(input: $input) {
-    id
-    status
-    actualDate
-    updatedAt
-  }
-}
-
-mutation UploadDeliverable($input: UploadDeliverableInput!) {
-  uploadDeliverable(input: $input) {
-    id
-    status
-    deliverableFileUrl
-    deliverableFileName
-    deliverableUploadedAt
-    actualDate
-    updatedAt
-  }
-}
-
-mutation AcceptMilestone($input: AcceptMilestoneInput!) {
-  acceptMilestone(input: $input) {
-    id
-    status
-    acceptedAt
-    acceptedBy
-    acceptedByName
-    rejectedAt
-    rejectedBy
-    rejectionReason
-    updatedAt
-  }
-}
-
-mutation RejectMilestone($input: RejectMilestoneInput!) {
-  rejectMilestone(input: $input) {
-    id
-    status
-    rejectedAt
-    rejectedBy
-    rejectedByName
-    rejectionReason
-    acceptedAt
-    acceptedBy
-    updatedAt
+    contract {
+      id
+      contractNo
+      name
+      customerId
+      customer {
+        id
+        name
+      }
+    }
   }
 }

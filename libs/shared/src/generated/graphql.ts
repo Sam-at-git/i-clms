@@ -19,14 +19,15 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
-  /** DateTime custom scalar type */
   DateTime: { input: string; output: string; }
-  /** Decimal custom scalar type */
   Decimal: { input: string; output: string; }
-  /** JSON custom scalar type */
   JSON: { input: any; output: any; }
-  /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
   JSONObject: { input: any; output: any; }
+};
+
+export type AcceptMilestoneInput = {
+  id: Scalars['ID']['input'];
+  notes?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type AdditionalParty = {
@@ -47,6 +48,12 @@ export type AnalyticsMetrics = {
   avgValue: Scalars['Float']['output'];
   count: Scalars['Int']['output'];
   totalValue: Scalars['Float']['output'];
+};
+
+export type AsyncParseStartResponse = {
+  __typename?: 'AsyncParseStartResponse';
+  message: Scalars['String']['output'];
+  sessionId: Scalars['String']['output'];
 };
 
 export type AuditLog = {
@@ -116,6 +123,46 @@ export type BasicInfo = {
   status?: Maybe<Scalars['String']['output']>;
 };
 
+/** L2 向量嵌入缓存统计 */
+export type CacheLevel2Stats = {
+  __typename?: 'CacheLevel2Stats';
+  /** 嵌入缓存数量 */
+  count: Scalars['Int']['output'];
+};
+
+/** L3 LLM结果缓存统计 */
+export type CacheLevel3Stats = {
+  __typename?: 'CacheLevel3Stats';
+  /** LLM缓存数量 */
+  count: Scalars['Int']['output'];
+  /** 过期缓存数量 */
+  expiredCount: Scalars['Int']['output'];
+};
+
+/** L1 内存缓存统计 */
+export type CacheLevelStats = {
+  __typename?: 'CacheLevelStats';
+  /** 命中率 (0-1) */
+  hitRate: Scalars['Float']['output'];
+  /** 命中次数 */
+  hits: Scalars['Int']['output'];
+  /** 未命中次数 */
+  misses: Scalars['Int']['output'];
+  /** 缓存条目数量 */
+  size: Scalars['Int']['output'];
+};
+
+/** 多级缓存统计信息 */
+export type CacheStats = {
+  __typename?: 'CacheStats';
+  /** L1 内存缓存统计 */
+  level1: CacheLevelStats;
+  /** L2 向量嵌入缓存统计 */
+  level2: CacheLevel2Stats;
+  /** L3 LLM结果缓存统计 */
+  level3: CacheLevel3Stats;
+};
+
 export type CaseOverview = {
   __typename?: 'CaseOverview';
   byIndustry: Array<IndustryCases>;
@@ -171,6 +218,26 @@ export type ChangePasswordResult = {
   success: Scalars['Boolean']['output'];
 };
 
+export type ChunkProgressInfo = {
+  __typename?: 'ChunkProgressInfo';
+  chunkId: Scalars['String']['output'];
+  chunkIndex: Scalars['Int']['output'];
+  endTime?: Maybe<Scalars['Int']['output']>;
+  error?: Maybe<Scalars['String']['output']>;
+  purpose: Scalars['String']['output'];
+  startTime?: Maybe<Scalars['Int']['output']>;
+  status: ChunkStatus;
+  totalChunks: Scalars['Int']['output'];
+};
+
+/** 分块处理状态 */
+export enum ChunkStatus {
+  Completed = 'COMPLETED',
+  Failed = 'FAILED',
+  Pending = 'PENDING',
+  Processing = 'PROCESSING'
+}
+
 export type ClassificationResult = {
   __typename?: 'ClassificationResult';
   confidence: Scalars['Float']['output'];
@@ -221,6 +288,15 @@ export type ComplianceStats = {
   percentage: Scalars['Float']['output'];
 };
 
+export type ConcurrentParseInput = {
+  /** 需要提取的字段列表 */
+  fields: Array<Scalars['String']['input']>;
+  /** 最大并发数（默认3） */
+  maxConcurrent?: InputMaybe<Scalars['Int']['input']>;
+  /** 合同文本内容 */
+  text: Scalars['String']['input'];
+};
+
 export type ContactPerson = {
   __typename?: 'ContactPerson';
   email?: Maybe<Scalars['String']['output']>;
@@ -269,6 +345,17 @@ export type Contract = {
   type: ContractType;
   updatedAt: Scalars['DateTime']['output'];
   uploadedBy: User;
+};
+
+/** 合同段落信息 */
+export type ContractChunk = {
+  __typename?: 'ContractChunk';
+  /** 段落类型 */
+  chunkType: Scalars['String']['output'];
+  /** 段落内容 */
+  content: Scalars['String']['output'];
+  /** 段落索引 */
+  index: Scalars['Int']['output'];
 };
 
 export type ContractCompliance = {
@@ -474,8 +561,14 @@ export type CreateContractInput = {
   parentContractId?: InputMaybe<Scalars['String']['input']>;
   paymentMethod?: InputMaybe<Scalars['String']['input']>;
   paymentTerms?: InputMaybe<Scalars['String']['input']>;
+  /** 产品购销合同详情（产品清单等） */
+  productSalesDetail?: InputMaybe<ProductSalesDetailInput>;
+  /** 项目外包合同详情（里程碑等） */
+  projectOutsourcingDetail?: InputMaybe<ProjectOutsourcingDetailInput>;
   salesPerson?: InputMaybe<Scalars['String']['input']>;
   signedAt?: InputMaybe<Scalars['DateTime']['input']>;
+  /** 人力框架合同详情（费率等） */
+  staffAugmentationDetail?: InputMaybe<StaffAugmentationDetailInput>;
   status?: InputMaybe<ContractStatus>;
   taxAmount?: InputMaybe<Scalars['String']['input']>;
   taxRate?: InputMaybe<Scalars['String']['input']>;
@@ -622,6 +715,44 @@ export type Department = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type DoclingConvertOptions = {
+  ocr?: InputMaybe<Scalars['Boolean']['input']>;
+  withImages?: InputMaybe<Scalars['Boolean']['input']>;
+  withTables?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type DoclingConvertResult = {
+  __typename?: 'DoclingConvertResult';
+  error?: Maybe<Scalars['String']['output']>;
+  images: Array<DoclingImage>;
+  markdown: Scalars['String']['output'];
+  pages: Scalars['Int']['output'];
+  success: Scalars['Boolean']['output'];
+  tables: Array<DoclingTable>;
+};
+
+export type DoclingExtractResult = {
+  __typename?: 'DoclingExtractResult';
+  error?: Maybe<Scalars['String']['output']>;
+  /** Extracted fields as JSON string */
+  fields: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
+export type DoclingImage = {
+  __typename?: 'DoclingImage';
+  height: Scalars['Int']['output'];
+  page: Scalars['Int']['output'];
+  width: Scalars['Int']['output'];
+};
+
+export type DoclingTable = {
+  __typename?: 'DoclingTable';
+  cols: Scalars['Int']['output'];
+  markdown: Scalars['String']['output'];
+  rows: Scalars['Int']['output'];
+};
+
 export type DuplicateCheckResult = {
   __typename?: 'DuplicateCheckResult';
   existingContract?: Maybe<Contract>;
@@ -634,6 +765,30 @@ export type Duration = {
   unit: Scalars['String']['output'];
   value: Scalars['Int']['output'];
 };
+
+export type EmbeddingConfig = {
+  __typename?: 'EmbeddingConfig';
+  apiKey?: Maybe<Scalars['String']['output']>;
+  baseUrl?: Maybe<Scalars['String']['output']>;
+  dimensions: Scalars['Int']['output'];
+  model: Scalars['String']['output'];
+  provider: Scalars['String']['output'];
+};
+
+export type EmbeddingModelInfo = {
+  __typename?: 'EmbeddingModelInfo';
+  available: Scalars['Boolean']['output'];
+  dimensions: Scalars['Int']['output'];
+  model: Scalars['String']['output'];
+  provider: EmbeddingProvider;
+};
+
+/** Embedding model provider */
+export enum EmbeddingProvider {
+  Huggingface = 'HUGGINGFACE',
+  Ollama = 'OLLAMA',
+  Openai = 'OPENAI'
+}
 
 export type Evidence = {
   __typename?: 'Evidence';
@@ -656,6 +811,35 @@ export type EvidenceChain = {
   milestonesCovered: Scalars['Int']['output'];
   totalMilestones: Scalars['Int']['output'];
 };
+
+/** 导出文件格式 */
+export enum ExportFormat {
+  Csv = 'CSV',
+  Excel = 'EXCEL',
+  Pdf = 'PDF'
+}
+
+export type ExportResult = {
+  __typename?: 'ExportResult';
+  downloadUrl: Scalars['String']['output'];
+  fileName: Scalars['String']['output'];
+  fileSize: Scalars['Int']['output'];
+  format: Scalars['String']['output'];
+  generatedAt: Scalars['DateTime']['output'];
+  recordCount: Scalars['Int']['output'];
+};
+
+/** Contract information extraction topic types */
+export enum ExtractTopic {
+  BasicInfo = 'BASIC_INFO',
+  Deliverables = 'DELIVERABLES',
+  Financial = 'FINANCIAL',
+  LineItems = 'LINE_ITEMS',
+  Milestones = 'MILESTONES',
+  RateItems = 'RATE_ITEMS',
+  RiskClauses = 'RISK_CLAUSES',
+  TimeInfo = 'TIME_INFO'
+}
 
 export type ExtractedFields = {
   __typename?: 'ExtractedFields';
@@ -681,6 +865,16 @@ export type ExtractionMetadata = {
   __typename?: 'ExtractionMetadata';
   fieldConfidences?: Maybe<Scalars['JSON']['output']>;
   overallConfidence?: Maybe<Scalars['Float']['output']>;
+};
+
+export type ExtractionTaskResult = {
+  __typename?: 'ExtractionTaskResult';
+  chunkId: Scalars['String']['output'];
+  data?: Maybe<Scalars['JSONObject']['output']>;
+  error?: Maybe<Scalars['String']['output']>;
+  processingTimeMs: Scalars['Int']['output'];
+  success: Scalars['Boolean']['output'];
+  tokensUsed?: Maybe<Scalars['Int']['output']>;
 };
 
 export type FeatureScore = {
@@ -783,6 +977,18 @@ export type IndustryCount = {
   totalValue: Scalars['Float']['output'];
 };
 
+/** 信息提取类型 */
+export enum InfoType {
+  BasicInfo = 'BASIC_INFO',
+  Deliverables = 'DELIVERABLES',
+  Financial = 'FINANCIAL',
+  LineItems = 'LINE_ITEMS',
+  Milestones = 'MILESTONES',
+  RateItems = 'RATE_ITEMS',
+  RiskClauses = 'RISK_CLAUSES',
+  TimeInfo = 'TIME_INFO'
+}
+
 export type KpiCategory = {
   __typename?: 'KPICategory';
   category: Scalars['String']['output'];
@@ -800,6 +1006,17 @@ export type KpiMetric = {
   value: Scalars['Float']['output'];
 };
 
+export type LlmConfig = {
+  __typename?: 'LLMConfig';
+  apiKey?: Maybe<Scalars['String']['output']>;
+  baseUrl?: Maybe<Scalars['String']['output']>;
+  maxTokens: Scalars['Int']['output'];
+  model: Scalars['String']['output'];
+  provider: Scalars['String']['output'];
+  temperature: Scalars['Float']['output'];
+  timeout?: Maybe<Scalars['Int']['output']>;
+};
+
 export type LlmParseResult = {
   __typename?: 'LlmParseResult';
   completenessScore?: Maybe<CompletenessScore>;
@@ -814,6 +1031,7 @@ export type LlmParseResult = {
   pageCount?: Maybe<Scalars['Int']['output']>;
   processingTimeMs?: Maybe<Scalars['Int']['output']>;
   rawText?: Maybe<Scalars['String']['output']>;
+  sessionId?: Maybe<Scalars['String']['output']>;
   strategyUsed?: Maybe<ParseStrategy>;
   success: Scalars['Boolean']['output'];
   warnings?: Maybe<Array<Scalars['String']['output']>>;
@@ -829,6 +1047,58 @@ export type LlmValidationResult = {
 export type LoginInput = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
+};
+
+export type LoginRecord = {
+  __typename?: 'LoginRecord';
+  createdAt: Scalars['DateTime']['output'];
+  failureReason?: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  ipAddress?: Maybe<Scalars['String']['output']>;
+  success: Scalars['Boolean']['output'];
+  userAgent?: Maybe<Scalars['String']['output']>;
+};
+
+export type MilestoneContractInfo = {
+  __typename?: 'MilestoneContractInfo';
+  contractNo: Scalars['String']['output'];
+  customer: MilestoneCustomerInfo;
+  customerId: Scalars['ID']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
+
+export type MilestoneCustomerInfo = {
+  __typename?: 'MilestoneCustomerInfo';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
+
+export type MilestoneDetail = {
+  __typename?: 'MilestoneDetail';
+  acceptanceCriteria?: Maybe<Scalars['String']['output']>;
+  acceptedAt?: Maybe<Scalars['DateTime']['output']>;
+  acceptedBy?: Maybe<Scalars['ID']['output']>;
+  acceptedByName?: Maybe<Scalars['String']['output']>;
+  actualDate?: Maybe<Scalars['DateTime']['output']>;
+  amount?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  deliverableFileName?: Maybe<Scalars['String']['output']>;
+  deliverableFileUrl?: Maybe<Scalars['String']['output']>;
+  deliverableUploadedAt?: Maybe<Scalars['DateTime']['output']>;
+  deliverables?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  paymentPercentage?: Maybe<Scalars['String']['output']>;
+  plannedDate?: Maybe<Scalars['DateTime']['output']>;
+  rejectedAt?: Maybe<Scalars['DateTime']['output']>;
+  rejectedBy?: Maybe<Scalars['ID']['output']>;
+  rejectedByName?: Maybe<Scalars['String']['output']>;
+  rejectionReason?: Maybe<Scalars['String']['output']>;
+  sequence: Scalars['Float']['output'];
+  status: MilestoneStatus;
+  statusHistory: Array<MilestoneStatusHistory>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type MilestoneItem = {
@@ -863,6 +1133,24 @@ export enum MilestoneStatus {
   Rejected = 'REJECTED'
 }
 
+export type MilestoneStatusHistory = {
+  __typename?: 'MilestoneStatusHistory';
+  changedAt: Scalars['DateTime']['output'];
+  changedBy: Scalars['ID']['output'];
+  changedByName: Scalars['String']['output'];
+  fromStatus: MilestoneStatus;
+  id: Scalars['ID']['output'];
+  notes?: Maybe<Scalars['String']['output']>;
+  toStatus: MilestoneStatus;
+};
+
+export type ModelTestResult = {
+  __typename?: 'ModelTestResult';
+  latency?: Maybe<Scalars['Int']['output']>;
+  message?: Maybe<Scalars['String']['output']>;
+  success: Scalars['Boolean']['output'];
+};
+
 export type MonthlyRevenue = {
   __typename?: 'MonthlyRevenue';
   amount: Scalars['Float']['output'];
@@ -891,8 +1179,29 @@ export type MonthlyUtilization = {
   value: Scalars['Float']['output'];
 };
 
+export type MultiStrategyParseInput = {
+  content: Scalars['String']['input'];
+  options?: InputMaybe<Scalars['JSONObject']['input']>;
+  strategies: Array<Scalars['String']['input']>;
+  voteConfig?: InputMaybe<Scalars['JSONObject']['input']>;
+};
+
+export type MultiStrategyParseResult = {
+  __typename?: 'MultiStrategyParseResult';
+  conflicts: Array<Scalars['String']['output']>;
+  duration: Scalars['Int']['output'];
+  finalFields: Scalars['JSONObject']['output'];
+  overallConfidence: Scalars['Float']['output'];
+  results: Array<VotingStrategyResult>;
+  timestamp?: Maybe<Scalars['String']['output']>;
+  voteResults: Array<VoteResult>;
+  warnings: Array<Scalars['String']['output']>;
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
+  /** 验收通过里程碑 */
+  acceptMilestone: MilestoneDetail;
   addCustomerContact: CustomerContact;
   /** Assign a tag to a contract */
   assignTagToContract: Scalars['Boolean']['output'];
@@ -902,6 +1211,14 @@ export type Mutation = {
   autoClassifyContract: ClassificationResult;
   /** Change your own password */
   changePassword: ChangePasswordResult;
+  /** 对合同文本进行语义分段 - 返回分段的元数据和位置信息 */
+  chunkTextSemantically: SemanticChunkResult;
+  /** 清理过期缓存并返回清理数量 */
+  cleanExpiredCache: Scalars['String']['output'];
+  /** 清空所有缓存 */
+  clearAllCache: Scalars['Boolean']['output'];
+  /** 将文档转换为Markdown */
+  convertDocumentToMarkdown: DoclingConvertResult;
   /** Create a new contract */
   createContract: Contract;
   createCustomer: Customer;
@@ -909,6 +1226,8 @@ export type Mutation = {
   createDepartment: Department;
   /** Create a new contract or update existing one if duplicate */
   createOrUpdateContract: Contract;
+  /** 创建解析进度会话 - 返回sessionId，用于后续查询进度 */
+  createParseSession: Scalars['String']['output'];
   /** Create a new tag */
   createTag: Tag;
   /** Create a new user (Admin only) */
@@ -922,25 +1241,82 @@ export type Mutation = {
   deleteFile: Scalars['Boolean']['output'];
   /** Delete a tag (soft delete) */
   deleteTag: TagDeleteResult;
+  /** 导出合同列表 */
+  exportContracts: ExportResult;
+  /** 导出客户列表 */
+  exportCustomers: ExportResult;
+  /** 导出财务数据 */
+  exportFinancial: ExportResult;
+  /** 导出里程碑数据 */
+  exportMilestones: ExportResult;
+  /** 从文档中提取指定字段 */
+  extractDocumentFields: DoclingExtractResult;
+  /** 只提取里程碑信息 - 专门用于项目外包类合同 */
+  extractMilestones: Scalars['JSONObject']['output'];
   /** 提取标签 */
   extractTags: Array<ExtractedTag>;
+  /** Extract contract information using RAG */
+  extractWithRAG: Array<RagExtractResult>;
   /** 生成合同画像 */
   generateProfile: ContractProfile;
+  /** Generate vector index for a contract */
+  indexContract: Scalars['Boolean']['output'];
   /** Login with email and password */
   login: AuthResponse;
   /** Parse a document and extract contract fields */
   parseAndExtract: ParseResult;
+  /** 使用基于任务的策略解析合同 - 将信息提取分解为多个独立任务并行执行 */
+  parseByTasks: Scalars['JSONObject']['output'];
   /** Parse contract from uploaded file with hybrid strategy */
   parseContractWithLlm: LlmParseResult;
+  /** 使用并发模式解析合同 - Map-Reduce模式，适合大合同，大幅提升速度 */
+  parseWithConcurrent: OptimizedParseResult;
   /** Parse contract text with mixed strategy (programmatic + LLM) */
   parseWithLlm: LlmParseResult;
+  /** 使用多个策略解析合同并进行投票 */
+  parseWithMultiStrategies: MultiStrategyParseResult;
+  /** 使用优化策略解析合同 - 自动选择最佳解析模式（语义分段/RAG/并发） */
+  parseWithOptimized: OptimizedParseResult;
+  /** 使用RAG模式解析合同 - 只提取相关字段相关的内容，减少token消耗 */
+  parseWithRag: OptimizedParseResult;
+  /** 使用语义分段模式解析合同 - 适合中等大小合同 */
+  parseWithSemantic: OptimizedParseResult;
   /** Register a new user */
   register: User;
+  /** 拒绝里程碑 */
+  rejectMilestone: MilestoneDetail;
   removeCustomerContact: CustomerContact;
   /** Remove a tag from a contract */
   removeTagFromContract: Scalars['Boolean']['output'];
+  /** Request password reset email */
+  requestPasswordReset: Scalars['Boolean']['output'];
+  /** 重置嵌入模型配置为默认值 */
+  resetEmbeddingConfig: EmbeddingConfig;
+  /** 重置LLM配置为默认值 */
+  resetLLMConfig: LlmConfig;
+  /** Reset password with token */
+  resetPassword: Scalars['Boolean']['output'];
   /** Reset user password (Admin only) */
   resetUserPassword: ResetPasswordResult;
+  /** 解决多策略解析结果中的冲突 */
+  resolveConflicts: MultiStrategyParseResult;
+  /** 保存嵌入模型配置 */
+  saveEmbeddingConfig: EmbeddingConfig;
+  /** 保存LLM配置 */
+  saveLLMConfig: LlmConfig;
+  /** 发送通知 */
+  sendNotification: NotificationResult;
+  setPrimaryContact: CustomerContact;
+  /** 异步启动合同解析 - 立即返回sessionId，通过进度查询API获取进度 */
+  startParseContractAsync: AsyncParseStartResponse;
+  /** 测试嵌入模型连接 */
+  testEmbeddingConnection: ModelTestResult;
+  /** 测试LLM连接 */
+  testLLMConnection: ModelTestResult;
+  /** 测试SMTP连接 */
+  testSmtpConnection: Scalars['Boolean']['output'];
+  /** 测试指定策略的可用性 */
+  testStrategyAvailability: StrategyTestResult;
   /** Toggle user active status (Admin only) */
   toggleUserStatus: User;
   /** Update an existing contract */
@@ -949,10 +1325,23 @@ export type Mutation = {
   updateCustomerContact: CustomerContact;
   /** Update a department (Admin only) */
   updateDepartment: Department;
+  /** 更新里程碑状态 */
+  updateMilestoneStatus: MilestoneDetail;
+  /** 更新解析策略配置 */
+  updateStrategyConfig: ParseStrategyConfig;
+  /** 更新系统配置 */
+  updateSystemConfig: SystemConfig;
   /** Update a tag */
   updateTag: Tag;
   /** Update a user (Admin only) */
   updateUser: User;
+  /** 上传交付物 */
+  uploadDeliverable: MilestoneDetail;
+};
+
+
+export type MutationAcceptMilestoneArgs = {
+  input: AcceptMilestoneInput;
 };
 
 
@@ -984,6 +1373,17 @@ export type MutationChangePasswordArgs = {
 };
 
 
+export type MutationChunkTextSemanticallyArgs = {
+  input: SemanticChunkInput;
+};
+
+
+export type MutationConvertDocumentToMarkdownArgs = {
+  filePath: Scalars['String']['input'];
+  options?: InputMaybe<DoclingConvertOptions>;
+};
+
+
 export type MutationCreateContractArgs = {
   input: CreateContractInput;
 };
@@ -1003,6 +1403,11 @@ export type MutationCreateOrUpdateContractArgs = {
   forceUpdate?: InputMaybe<Scalars['Boolean']['input']>;
   input: CreateContractInput;
   operatorId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+
+export type MutationCreateParseSessionArgs = {
+  objectName: Scalars['String']['input'];
 };
 
 
@@ -1041,13 +1446,64 @@ export type MutationDeleteTagArgs = {
 };
 
 
+export type MutationExportContractsArgs = {
+  columns?: InputMaybe<Array<Scalars['String']['input']>>;
+  format?: InputMaybe<ExportFormat>;
+  title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationExportCustomersArgs = {
+  columns?: InputMaybe<Array<Scalars['String']['input']>>;
+  format?: InputMaybe<ExportFormat>;
+  title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationExportFinancialArgs = {
+  columns?: InputMaybe<Array<Scalars['String']['input']>>;
+  format?: InputMaybe<ExportFormat>;
+  title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationExportMilestonesArgs = {
+  columns?: InputMaybe<Array<Scalars['String']['input']>>;
+  format?: InputMaybe<ExportFormat>;
+  title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationExtractDocumentFieldsArgs = {
+  filePath: Scalars['String']['input'];
+  topics: Array<Scalars['String']['input']>;
+};
+
+
+export type MutationExtractMilestonesArgs = {
+  text: Scalars['String']['input'];
+};
+
+
 export type MutationExtractTagsArgs = {
   contractId: Scalars['String']['input'];
 };
 
 
+export type MutationExtractWithRagArgs = {
+  contractId: Scalars['Float']['input'];
+  queries: Array<TopicQueryDto>;
+};
+
+
 export type MutationGenerateProfileArgs = {
   contractId: Scalars['String']['input'];
+};
+
+
+export type MutationIndexContractArgs = {
+  content: Scalars['String']['input'];
+  contractId: Scalars['Float']['input'];
 };
 
 
@@ -1061,8 +1517,20 @@ export type MutationParseAndExtractArgs = {
 };
 
 
+export type MutationParseByTasksArgs = {
+  taskTypes?: InputMaybe<Array<Scalars['String']['input']>>;
+  text: Scalars['String']['input'];
+};
+
+
 export type MutationParseContractWithLlmArgs = {
   objectName: Scalars['String']['input'];
+  sessionId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationParseWithConcurrentArgs = {
+  input: ConcurrentParseInput;
 };
 
 
@@ -1071,8 +1539,34 @@ export type MutationParseWithLlmArgs = {
 };
 
 
+export type MutationParseWithMultiStrategiesArgs = {
+  input: MultiStrategyParseInput;
+};
+
+
+export type MutationParseWithOptimizedArgs = {
+  input: ParseWithOptimizedInput;
+};
+
+
+export type MutationParseWithRagArgs = {
+  input: RagParseInput;
+};
+
+
+export type MutationParseWithSemanticArgs = {
+  fields?: InputMaybe<Array<Scalars['String']['input']>>;
+  text: Scalars['String']['input'];
+};
+
+
 export type MutationRegisterArgs = {
   input: RegisterInput;
+};
+
+
+export type MutationRejectMilestoneArgs = {
+  input: RejectMilestoneInput;
 };
 
 
@@ -1087,8 +1581,59 @@ export type MutationRemoveTagFromContractArgs = {
 };
 
 
+export type MutationRequestPasswordResetArgs = {
+  email: Scalars['String']['input'];
+};
+
+
+export type MutationResetPasswordArgs = {
+  newPassword: Scalars['String']['input'];
+  token: Scalars['String']['input'];
+};
+
+
 export type MutationResetUserPasswordArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type MutationResolveConflictsArgs = {
+  documentText: Scalars['String']['input'];
+  input: ResolveConflictsInput;
+};
+
+
+export type MutationSaveEmbeddingConfigArgs = {
+  apiKey?: InputMaybe<Scalars['String']['input']>;
+  baseUrl?: InputMaybe<Scalars['String']['input']>;
+  dimensions?: InputMaybe<Scalars['Float']['input']>;
+  model?: InputMaybe<Scalars['String']['input']>;
+  provider?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationSaveLlmConfigArgs = {
+  config: UpdateSystemConfigInput;
+};
+
+
+export type MutationSendNotificationArgs = {
+  input: SendNotificationInput;
+};
+
+
+export type MutationSetPrimaryContactArgs = {
+  contactId: Scalars['ID']['input'];
+};
+
+
+export type MutationStartParseContractAsyncArgs = {
+  objectName: Scalars['String']['input'];
+};
+
+
+export type MutationTestStrategyAvailabilityArgs = {
+  strategy: ParseStrategyType;
 };
 
 
@@ -1121,6 +1666,21 @@ export type MutationUpdateDepartmentArgs = {
 };
 
 
+export type MutationUpdateMilestoneStatusArgs = {
+  input: UpdateMilestoneStatusInput;
+};
+
+
+export type MutationUpdateStrategyConfigArgs = {
+  input: UpdateParseStrategyConfigInput;
+};
+
+
+export type MutationUpdateSystemConfigArgs = {
+  config: UpdateSystemConfigInput;
+};
+
+
 export type MutationUpdateTagArgs = {
   id: Scalars['String']['input'];
   input: UpdateTagInput;
@@ -1130,6 +1690,37 @@ export type MutationUpdateTagArgs = {
 export type MutationUpdateUserArgs = {
   id: Scalars['String']['input'];
   input: UpdateUserInput;
+};
+
+
+export type MutationUploadDeliverableArgs = {
+  input: UploadDeliverableInput;
+};
+
+export type NotificationResult = {
+  __typename?: 'NotificationResult';
+  message?: Maybe<Scalars['String']['output']>;
+  messageId?: Maybe<Scalars['String']['output']>;
+  success: Scalars['Boolean']['output'];
+};
+
+export type OptimizedParseResult = {
+  __typename?: 'OptimizedParseResult';
+  chunks?: Maybe<SemanticChunkInfo>;
+  confidence?: Maybe<Scalars['Float']['output']>;
+  error?: Maybe<Scalars['String']['output']>;
+  extractedData?: Maybe<ContractExtractedData>;
+  extractedDataJson?: Maybe<Scalars['JSONObject']['output']>;
+  llmModel?: Maybe<Scalars['String']['output']>;
+  llmProvider?: Maybe<Scalars['String']['output']>;
+  mode: ParseMode;
+  processingTimeMs: Scalars['Int']['output'];
+  strategy?: Maybe<Scalars['String']['output']>;
+  success: Scalars['Boolean']['output'];
+  taskResults?: Maybe<Array<ExtractionTaskResult>>;
+  totalChunks?: Maybe<Scalars['Int']['output']>;
+  totalTokensUsed?: Maybe<Scalars['Int']['output']>;
+  warnings?: Maybe<Array<Scalars['String']['output']>>;
 };
 
 export type OtherInfo = {
@@ -1166,6 +1757,15 @@ export type PaginatedCustomers = {
   total: Scalars['Int']['output'];
 };
 
+/** 合同解析模式 */
+export enum ParseMode {
+  Auto = 'AUTO',
+  Concurrent = 'CONCURRENT',
+  Legacy = 'LEGACY',
+  Rag = 'RAG',
+  Semantic = 'SEMANTIC'
+}
+
 export type ParseResult = {
   __typename?: 'ParseResult';
   error?: Maybe<Scalars['String']['output']>;
@@ -1173,6 +1773,30 @@ export type ParseResult = {
   pageCount?: Maybe<Scalars['Int']['output']>;
   success: Scalars['Boolean']['output'];
   text?: Maybe<Scalars['String']['output']>;
+};
+
+export type ParseSessionProgressInfo = {
+  __typename?: 'ParseSessionProgressInfo';
+  chunks: Array<ChunkProgressInfo>;
+  completedChunks: Scalars['Int']['output'];
+  completedTasks: Scalars['Int']['output'];
+  currentChunkIndex: Scalars['Int']['output'];
+  currentStage: Scalars['String']['output'];
+  currentTaskInfo?: Maybe<Scalars['String']['output']>;
+  error?: Maybe<Scalars['String']['output']>;
+  estimatedEndTime?: Maybe<Scalars['Int']['output']>;
+  estimatedRemainingSeconds?: Maybe<Scalars['Int']['output']>;
+  extractedFieldsCount?: Maybe<Scalars['Int']['output']>;
+  objectName: Scalars['String']['output'];
+  processingTimeMs?: Maybe<Scalars['Int']['output']>;
+  progressPercentage: Scalars['Int']['output'];
+  resultData?: Maybe<Scalars['JSONObject']['output']>;
+  sessionId: Scalars['String']['output'];
+  startTime: Scalars['Int']['output'];
+  status: SessionStatus;
+  tasks: Array<TaskProgressInfo>;
+  totalChunks: Scalars['Int']['output'];
+  totalTasks: Scalars['Int']['output'];
 };
 
 /** Document parsing status */
@@ -1192,14 +1816,51 @@ export enum ParseStatus {
 /** Strategy for parsing contracts based on completeness score */
 export enum ParseStrategy {
   DirectUse = 'DIRECT_USE',
+  Docling = 'DOCLING',
   LlmFullExtraction = 'LLM_FULL_EXTRACTION',
-  LlmValidation = 'LLM_VALIDATION'
+  LlmValidation = 'LLM_VALIDATION',
+  Rag = 'RAG'
+}
+
+export type ParseStrategyConfig = {
+  __typename?: 'ParseStrategyConfig';
+  autoMultiStrategy: Scalars['Boolean']['output'];
+  defaultStrategy?: Maybe<ParseStrategyType>;
+  enabledStrategies: Array<ParseStrategyType>;
+  multiStrategyThreshold?: Maybe<Scalars['Int']['output']>;
+  multiStrategyVoters?: Maybe<Array<ParseStrategyType>>;
+};
+
+/** 合同解析策略类型 */
+export enum ParseStrategyType {
+  Docling = 'DOCLING',
+  Llm = 'LLM',
+  Multi = 'MULTI',
+  Rag = 'RAG',
+  Rule = 'RULE'
 }
 
 export type ParseWithLlmInput = {
   contractId?: InputMaybe<Scalars['String']['input']>;
   forceStrategy?: InputMaybe<ParseStrategy>;
   programmaticResult?: InputMaybe<Scalars['JSONObject']['input']>;
+  textContent: Scalars['String']['input'];
+};
+
+export type ParseWithOptimizedInput = {
+  /** 合同ID（可选） */
+  contractId?: InputMaybe<Scalars['String']['input']>;
+  /** 强制使用指定的解析策略（仅用于调试） */
+  forceStrategy?: InputMaybe<ParseStrategy>;
+  /** 每字段最大chunks数（仅用于RAG模式，默认3） */
+  maxChunksPerField?: InputMaybe<Scalars['Int']['input']>;
+  /** 最大并发数（仅用于CONCURRENT模式，默认3） */
+  maxConcurrent?: InputMaybe<Scalars['Int']['input']>;
+  /** 解析模式: AUTO-自动选择, SEMANTIC-语义分段, RAG-向量检索增强, CONCURRENT-并发处理, LEGACY-原有策略 */
+  mode?: ParseMode;
+  /** 目标字段列表（可选，未指定则提取所有字段） */
+  targetFields?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** 合同文本内容 */
   textContent: Scalars['String']['input'];
 };
 
@@ -1240,6 +1901,16 @@ export type ProductLineItem = {
   unitPriceWithoutTax?: Maybe<Scalars['String']['output']>;
 };
 
+export type ProductLineItemInput = {
+  productName: Scalars['String']['input'];
+  quantity: Scalars['Int']['input'];
+  specification?: InputMaybe<Scalars['String']['input']>;
+  subtotal?: InputMaybe<Scalars['String']['input']>;
+  unit?: InputMaybe<Scalars['String']['input']>;
+  unitPriceWithTax: Scalars['String']['input'];
+  unitPriceWithoutTax?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type ProductSalesDetail = {
   __typename?: 'ProductSalesDetail';
   afterSalesTerms?: Maybe<Scalars['String']['output']>;
@@ -1251,6 +1922,17 @@ export type ProductSalesDetail = {
   lineItems: Array<ProductLineItem>;
   shippingResponsibility?: Maybe<Scalars['String']['output']>;
   warrantyPeriod?: Maybe<Scalars['String']['output']>;
+};
+
+export type ProductSalesDetailInput = {
+  afterSalesTerms?: InputMaybe<Scalars['String']['input']>;
+  deliveryContent?: InputMaybe<Scalars['String']['input']>;
+  deliveryDate?: InputMaybe<Scalars['DateTime']['input']>;
+  deliveryLocation?: InputMaybe<Scalars['String']['input']>;
+  ipOwnership?: InputMaybe<Scalars['String']['input']>;
+  lineItems?: InputMaybe<Array<ProductLineItemInput>>;
+  shippingResponsibility?: InputMaybe<Scalars['String']['input']>;
+  warrantyPeriod?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type ProjectMilestone = {
@@ -1267,6 +1949,45 @@ export type ProjectMilestone = {
   status: MilestoneStatus;
 };
 
+export type ProjectMilestoneInput = {
+  acceptanceCriteria?: InputMaybe<Scalars['String']['input']>;
+  actualDate?: InputMaybe<Scalars['DateTime']['input']>;
+  amount?: InputMaybe<Scalars['String']['input']>;
+  deliverables?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
+  paymentPercentage?: InputMaybe<Scalars['String']['input']>;
+  plannedDate?: InputMaybe<Scalars['DateTime']['input']>;
+  sequence: Scalars['Int']['input'];
+  status?: InputMaybe<MilestoneStatus>;
+};
+
+export type ProjectMilestoneWithContract = {
+  __typename?: 'ProjectMilestoneWithContract';
+  acceptanceCriteria?: Maybe<Scalars['String']['output']>;
+  acceptedAt?: Maybe<Scalars['DateTime']['output']>;
+  acceptedBy?: Maybe<Scalars['ID']['output']>;
+  acceptedByName?: Maybe<Scalars['String']['output']>;
+  actualDate?: Maybe<Scalars['DateTime']['output']>;
+  amount?: Maybe<Scalars['String']['output']>;
+  contract: MilestoneContractInfo;
+  createdAt: Scalars['DateTime']['output'];
+  deliverableFileName?: Maybe<Scalars['String']['output']>;
+  deliverableFileUrl?: Maybe<Scalars['String']['output']>;
+  deliverableUploadedAt?: Maybe<Scalars['DateTime']['output']>;
+  deliverables?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  paymentPercentage?: Maybe<Scalars['String']['output']>;
+  plannedDate?: Maybe<Scalars['DateTime']['output']>;
+  rejectedAt?: Maybe<Scalars['DateTime']['output']>;
+  rejectedBy?: Maybe<Scalars['ID']['output']>;
+  rejectedByName?: Maybe<Scalars['String']['output']>;
+  rejectionReason?: Maybe<Scalars['String']['output']>;
+  sequence: Scalars['Int']['output'];
+  status: MilestoneStatus;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
 export type ProjectOutsourcingDetail = {
   __typename?: 'ProjectOutsourcingDetail';
   acceptanceCriteria?: Maybe<Scalars['String']['output']>;
@@ -1276,6 +1997,15 @@ export type ProjectOutsourcingDetail = {
   id: Scalars['ID']['output'];
   milestones: Array<ProjectMilestone>;
   sowSummary?: Maybe<Scalars['String']['output']>;
+};
+
+export type ProjectOutsourcingDetailInput = {
+  acceptanceCriteria?: InputMaybe<Scalars['String']['input']>;
+  acceptanceFlow?: InputMaybe<Scalars['String']['input']>;
+  changeManagementFlow?: InputMaybe<Scalars['String']['input']>;
+  deliverables?: InputMaybe<Scalars['String']['input']>;
+  milestones?: InputMaybe<Array<ProjectMilestoneInput>>;
+  sowSummary?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type ProjectOverview = {
@@ -1298,8 +2028,18 @@ export type Query = {
   auditEntityTypes: Array<Scalars['String']['output']>;
   /** Get paginated audit logs */
   auditLogs: AuditLogConnection;
+  /** Get all available embedding models */
+  availableEmbeddingModels: Array<EmbeddingModelInfo>;
+  /** 获取所有可用的解析策略及其信息 */
+  availableStrategies: Array<StrategyInfo>;
+  /** 批量评估多个字段的质量 */
+  batchEvaluateFields?: Maybe<Scalars['JSONObject']['output']>;
+  /** 获取缓存统计信息 */
+  cacheStats: CacheStats;
   /** Calculate completeness score for extracted fields */
   calculateCompleteness: CompletenessScore;
+  /** 计算主题完整性分数 */
+  calculateTopicCompleteness: TopicCompletenessScore;
   /** 获取案例库概览 */
   caseOverview: CaseOverview;
   /** 获取现金流预测 */
@@ -1308,12 +2048,16 @@ export type Query = {
   checkContractDuplicate: DuplicateCheckResult;
   /** 获取公司健康度 */
   companyHealth: CompanyHealth;
+  /** 比较两个解析会话的结果 */
+  compareParseSessions?: Maybe<Scalars['JSONObject']['output']>;
   /** 获取合规概览 */
   complianceOverview: ComplianceOverview;
   /** Get a single contract by ID */
   contract?: Maybe<Contract>;
   /** Get a contract by contract number */
   contractByNo?: Maybe<Contract>;
+  /** Get all chunks for a contract */
+  contractChunks: Array<RagContractChunk>;
   /** 获取合同合规扫描结果 */
   contractCompliance: ContractCompliance;
   /** 获取合同风险评分 */
@@ -1325,6 +2069,7 @@ export type Query = {
   customer: Customer;
   /** 获取客户360°视图 */
   customer360?: Maybe<Customer360>;
+  customerContacts: Array<CustomerContact>;
   /** 获取客户概览 */
   customerOverview: CustomerOverview;
   customerStats: CustomerStats;
@@ -1335,6 +2080,18 @@ export type Query = {
   departments: Array<Department>;
   /** 检测风险条款 */
   detectRiskClauses: Array<RiskClause>;
+  /** 检查Docling服务是否可用 */
+  doclingAvailable: Scalars['Boolean']['output'];
+  /** 获取Docling版本 */
+  doclingVersion?: Maybe<Scalars['String']['output']>;
+  /** 获取嵌入模型配置 */
+  embeddingConfig: EmbeddingConfig;
+  /** Get current embedding model configuration */
+  embeddingModel: EmbeddingModelInfo;
+  /** 评估单个字段值的提取质量 */
+  evaluateFieldQuality?: Maybe<Scalars['JSONObject']['output']>;
+  /** 评估两个值的相似度 */
+  evaluateValueSimilarity?: Maybe<Scalars['JSONObject']['output']>;
   /** 获取履约证据链 */
   evidenceChain: EvidenceChain;
   /** Extract basic contract fields (identification, parties, term) from text */
@@ -1347,22 +2104,48 @@ export type Query = {
   findSimilarContracts: Array<SimilarContract>;
   /** 预测分析 */
   forecast: ForecastResult;
+  /** 获取所有活跃的解析会话进度 */
+  getAllParseProgress: Array<ParseSessionProgressInfo>;
   /** 获取文件预签名URL */
   getFileUrl: PresignedUrl;
+  /** 获取主题缺失的必填字段 */
+  getMissingFields: Array<Scalars['String']['output']>;
+  /** 获取多策略解析结果（通过sessionId） */
+  getMultiStrategyParseResult?: Maybe<MultiStrategyParseResult>;
+  /** 查询LLM解析的实时进度 - 通过sessionId获取分块处理状态 */
+  getParseProgress?: Maybe<ParseSessionProgressInfo>;
+  /** 获取异步解析的结果 - 解析完成后调用此接口获取完整数据 */
+  getParseResult?: Maybe<Scalars['JSONObject']['output']>;
   /** 获取风险预警 */
   getRiskAlerts: Array<RiskAlert>;
+  /** 获取语义分段的示例（用于调试和测试） */
+  getSemanticChunkExample: Array<SemanticChunkInfo>;
+  /** 获取主题字段值（带元数据） */
+  getTopicFieldValues: Array<TopicFieldValue>;
   /** 趋势分析 */
   getTrend: Array<TrendPoint>;
   /** 健康检查 */
   health: HealthCheck;
+  /** 获取LLM配置 */
+  llmConfig: LlmConfig;
+  /** Get login history for current user */
+  loginHistory: Array<LoginRecord>;
   /** Get current authenticated user */
   me: User;
+  /** 获取里程碑详情（包含状态历史） */
+  milestoneDetail: MilestoneDetail;
   /** 获取里程碑概览 */
   milestoneOverview: MilestoneOverview;
+  /** 获取里程碑状态历史 */
+  milestoneStatusHistory: Array<MilestoneStatusHistory>;
   /** 获取逾期预警 */
   overdueAlerts: Array<OverdueAlert>;
   /** Parse a document from storage and extract text content */
   parseDocument: ParseResult;
+  /** 检查pgvector扩展是否可用 */
+  pgVectorStatus: Scalars['Boolean']['output'];
+  /** 获取所有项目里程碑（带合同信息） */
+  projectMilestones: Array<ProjectMilestoneWithContract>;
   /** 获取项目交付概览 */
   projectOverview: ProjectOverview;
   /** 获取续约看板 */
@@ -1381,6 +2164,12 @@ export type Query = {
   searchContracts: SearchResponse;
   /** 语义搜索合同 */
   semanticSearch: Array<SemanticSearchResult>;
+  /** 获取当前解析策略配置 */
+  strategyConfig: ParseStrategyConfig;
+  /** 获取系统配置 */
+  systemConfig: SystemConfig;
+  /** 获取系统健康状态 */
+  systemHealth: SystemHealth;
   /** Get a single tag by ID */
   tag?: Maybe<Tag>;
   /** Get all tag categories */
@@ -1389,10 +2178,22 @@ export type Query = {
   tagOverview: TagOverview;
   /** Get all tags */
   tags: Array<Tag>;
+  /** 测试所有策略的可用性 */
+  testAllStrategies: Array<StrategyTestResult>;
+  /** Test connection to an embedding model */
+  testEmbeddingConnection: Scalars['Boolean']['output'];
+  /** 获取单个主题定义 */
+  topic?: Maybe<TopicDefinition>;
+  /** 获取主题的字段定义 */
+  topicFields: Array<TopicField>;
+  /** 获取所有主题定义 */
+  topics: Array<TopicDefinition>;
   /** Get a single user by ID (Admin only) */
   user?: Maybe<User>;
   /** Get paginated users (Admin only) */
   users: UserConnection;
+  /** 获取向量缓存统计信息 */
+  vectorCacheStats: VectorCacheStats;
 };
 
 
@@ -1414,8 +2215,20 @@ export type QueryAuditLogsArgs = {
 };
 
 
+export type QueryBatchEvaluateFieldsArgs = {
+  documentText: Scalars['String']['input'];
+  fields: Scalars['JSONObject']['input'];
+  options?: InputMaybe<Scalars['JSONObject']['input']>;
+};
+
+
 export type QueryCalculateCompletenessArgs = {
   extractedFields: Scalars['JSONObject']['input'];
+};
+
+
+export type QueryCalculateTopicCompletenessArgs = {
+  results: Scalars['JSONObject']['input'];
 };
 
 
@@ -1429,6 +2242,12 @@ export type QueryCheckContractDuplicateArgs = {
 };
 
 
+export type QueryCompareParseSessionsArgs = {
+  sessionId1: Scalars['String']['input'];
+  sessionId2: Scalars['String']['input'];
+};
+
+
 export type QueryContractArgs = {
   id: Scalars['ID']['input'];
 };
@@ -1436,6 +2255,11 @@ export type QueryContractArgs = {
 
 export type QueryContractByNoArgs = {
   contractNo: Scalars['String']['input'];
+};
+
+
+export type QueryContractChunksArgs = {
+  contractId: Scalars['Float']['input'];
 };
 
 
@@ -1472,6 +2296,11 @@ export type QueryCustomer360Args = {
 };
 
 
+export type QueryCustomerContactsArgs = {
+  customerId: Scalars['ID']['input'];
+};
+
+
 export type QueryCustomerStatsArgs = {
   id: Scalars['ID']['input'];
 };
@@ -1494,6 +2323,21 @@ export type QueryDepartmentsArgs = {
 
 export type QueryDetectRiskClausesArgs = {
   contractId: Scalars['String']['input'];
+};
+
+
+export type QueryEvaluateFieldQualityArgs = {
+  documentText: Scalars['String']['input'];
+  fieldName: Scalars['String']['input'];
+  value: Scalars['JSONObject']['input'];
+};
+
+
+export type QueryEvaluateValueSimilarityArgs = {
+  documentText: Scalars['String']['input'];
+  fieldName: Scalars['String']['input'];
+  valueA: Scalars['JSONObject']['input'];
+  valueB: Scalars['JSONObject']['input'];
 };
 
 
@@ -1534,14 +2378,61 @@ export type QueryGetFileUrlArgs = {
 };
 
 
+export type QueryGetMissingFieldsArgs = {
+  data: Scalars['JSONObject']['input'];
+  topicName: Scalars['String']['input'];
+};
+
+
+export type QueryGetMultiStrategyParseResultArgs = {
+  sessionId: Scalars['String']['input'];
+};
+
+
+export type QueryGetParseProgressArgs = {
+  sessionId: Scalars['String']['input'];
+};
+
+
+export type QueryGetParseResultArgs = {
+  sessionId: Scalars['String']['input'];
+};
+
+
 export type QueryGetRiskAlertsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryGetSemanticChunkExampleArgs = {
+  text: Scalars['String']['input'];
+};
+
+
+export type QueryGetTopicFieldValuesArgs = {
+  data: Scalars['JSONObject']['input'];
+  topicName: Scalars['String']['input'];
 };
 
 
 export type QueryGetTrendArgs = {
   metric: Scalars['String']['input'];
   periods?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryLoginHistoryArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryMilestoneDetailArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryMilestoneStatusHistoryArgs = {
+  milestoneId: Scalars['String']['input'];
 };
 
 
@@ -1588,6 +2479,21 @@ export type QueryTagsArgs = {
 };
 
 
+export type QueryTestEmbeddingConnectionArgs = {
+  config: Scalars['JSONObject']['input'];
+};
+
+
+export type QueryTopicArgs = {
+  name: Scalars['String']['input'];
+};
+
+
+export type QueryTopicFieldsArgs = {
+  topicName: Scalars['String']['input'];
+};
+
+
 export type QueryUserArgs = {
   id: Scalars['String']['input'];
 };
@@ -1597,6 +2503,30 @@ export type QueryUsersArgs = {
   filter?: InputMaybe<UserFilterInput>;
   page?: Scalars['Int']['input'];
   pageSize?: Scalars['Int']['input'];
+};
+
+export type RagContractChunk = {
+  __typename?: 'RAGContractChunk';
+  chunkType: Scalars['String']['output'];
+  content: Scalars['String']['output'];
+  index: Scalars['Int']['output'];
+};
+
+export type RagExtractResult = {
+  __typename?: 'RAGExtractResult';
+  extractedData: Scalars['JSONObject']['output'];
+  query: Scalars['String']['output'];
+  retrievedChunks: Array<RetrievedChunk>;
+  topic: Scalars['String']['output'];
+};
+
+export type RagParseInput = {
+  /** 需要提取的字段列表 */
+  fields: Array<Scalars['String']['input']>;
+  /** 每字段最大chunks数（默认3） */
+  maxChunksPerField?: InputMaybe<Scalars['Int']['input']>;
+  /** 合同文本内容 */
+  text: Scalars['String']['input'];
 };
 
 /** 费率类型 */
@@ -1611,6 +2541,11 @@ export type RegisterInput = {
   email: Scalars['String']['input'];
   name: Scalars['String']['input'];
   password: Scalars['String']['input'];
+};
+
+export type RejectMilestoneInput = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
 };
 
 export type RenewalItem = {
@@ -1654,11 +2589,24 @@ export type ResetPasswordResult = {
   temporaryPassword: Scalars['String']['output'];
 };
 
+export type ResolveConflictsInput = {
+  fields: Array<Scalars['String']['input']>;
+  method: Scalars['String']['input'];
+  parseResultId: Scalars['String']['input'];
+  userChoices?: InputMaybe<Scalars['JSONObject']['input']>;
+};
+
 export type ResourceUtilization = {
   __typename?: 'ResourceUtilization';
   byRole: Array<RoleUtilization>;
   monthlyTrend: Array<MonthlyUtilization>;
   totalStaffContracts: Scalars['Int']['output'];
+};
+
+export type RetrievedChunk = {
+  __typename?: 'RetrievedChunk';
+  content: Scalars['String']['output'];
+  similarity: Scalars['Float']['output'];
 };
 
 export type RevenueFilterInput = {
@@ -1798,6 +2746,36 @@ export type SearchResponse = {
   total: Scalars['Int']['output'];
 };
 
+export type SemanticChunkInfo = {
+  __typename?: 'SemanticChunkInfo';
+  articleNumber?: Maybe<Scalars['String']['output']>;
+  endIndex: Scalars['Int']['output'];
+  fieldRelevance: Array<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  length: Scalars['Int']['output'];
+  pageHint?: Maybe<Scalars['Int']['output']>;
+  priority: Scalars['Int']['output'];
+  startIndex: Scalars['Int']['output'];
+  title?: Maybe<Scalars['String']['output']>;
+  type: Scalars['String']['output'];
+};
+
+export type SemanticChunkInput = {
+  /** 最小chunk大小（字符数，默认500） */
+  minChunkSize?: InputMaybe<Scalars['Int']['input']>;
+  /** 合同文本内容 */
+  text: Scalars['String']['input'];
+};
+
+export type SemanticChunkResult = {
+  __typename?: 'SemanticChunkResult';
+  chunks: Array<SemanticChunkInfo>;
+  strategy: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+  summary?: Maybe<Scalars['String']['output']>;
+  totalLength: Scalars['Int']['output'];
+};
+
 export type SemanticSearchResult = {
   __typename?: 'SemanticSearchResult';
   contractId: Scalars['String']['output'];
@@ -1806,6 +2784,25 @@ export type SemanticSearchResult = {
   name: Scalars['String']['output'];
   similarity: Scalars['Float']['output'];
 };
+
+export type SendNotificationInput = {
+  content: Scalars['String']['input'];
+  subject: Scalars['String']['input'];
+  to: Scalars['String']['input'];
+  type?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** 解析会话状态 */
+export enum SessionStatus {
+  Chunking = 'CHUNKING',
+  Completed = 'COMPLETED',
+  Failed = 'FAILED',
+  Initializing = 'INITIALIZING',
+  LlmProcessing = 'LLM_PROCESSING',
+  Merging = 'MERGING',
+  Parsing = 'PARSING',
+  Uploading = 'UPLOADING'
+}
 
 export type SimilarContract = {
   __typename?: 'SimilarContract';
@@ -1835,6 +2832,17 @@ export type StaffAugmentationDetail = {
   yearlyHoursCap?: Maybe<Scalars['String']['output']>;
 };
 
+export type StaffAugmentationDetailInput = {
+  adjustmentMechanism?: InputMaybe<Scalars['String']['input']>;
+  estimatedTotalHours?: InputMaybe<Scalars['Int']['input']>;
+  monthlyHoursCap?: InputMaybe<Scalars['Int']['input']>;
+  rateItems?: InputMaybe<Array<StaffRateItemInput>>;
+  settlementCycle?: InputMaybe<Scalars['String']['input']>;
+  staffReplacementFlow?: InputMaybe<Scalars['String']['input']>;
+  timesheetApprovalFlow?: InputMaybe<Scalars['String']['input']>;
+  yearlyHoursCap?: InputMaybe<Scalars['Int']['input']>;
+};
+
 export type StaffRateItem = {
   __typename?: 'StaffRateItem';
   id: Scalars['ID']['output'];
@@ -1845,10 +2853,98 @@ export type StaffRateItem = {
   role: Scalars['String']['output'];
 };
 
+export type StaffRateItemInput = {
+  rate: Scalars['String']['input'];
+  rateEffectiveFrom?: InputMaybe<Scalars['DateTime']['input']>;
+  rateEffectiveTo?: InputMaybe<Scalars['DateTime']['input']>;
+  rateType: RateType;
+  role: Scalars['String']['input'];
+};
+
 export type StatusCount = {
   __typename?: 'StatusCount';
   count: Scalars['Int']['output'];
   status: ContractStatus;
+};
+
+/** 策略成本级别 */
+export enum StrategyCost {
+  Free = 'FREE',
+  High = 'HIGH',
+  Low = 'LOW',
+  Medium = 'MEDIUM'
+}
+
+export type StrategyInfo = {
+  __typename?: 'StrategyInfo';
+  accuracy?: Maybe<Scalars['Int']['output']>;
+  available: Scalars['Boolean']['output'];
+  averageTime?: Maybe<Scalars['Int']['output']>;
+  cons: Array<Scalars['String']['output']>;
+  cost?: Maybe<StrategyCost>;
+  description?: Maybe<Scalars['String']['output']>;
+  errorMessage?: Maybe<Scalars['String']['output']>;
+  features: Array<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  pros: Array<Scalars['String']['output']>;
+  type: ParseStrategyType;
+};
+
+export type StrategyResult = {
+  __typename?: 'StrategyResult';
+  confidence?: Maybe<Scalars['Float']['output']>;
+  contractType?: Maybe<Scalars['String']['output']>;
+  error?: Maybe<Scalars['String']['output']>;
+  fieldsExtracted?: Maybe<Scalars['Int']['output']>;
+  processingTimeMs?: Maybe<Scalars['Int']['output']>;
+  strategy: ParseStrategyType;
+  success: Scalars['Boolean']['output'];
+};
+
+export type StrategyTestResult = {
+  __typename?: 'StrategyTestResult';
+  available: Scalars['Boolean']['output'];
+  latency?: Maybe<Scalars['Int']['output']>;
+  message?: Maybe<Scalars['String']['output']>;
+  strategy: ParseStrategyType;
+};
+
+export type StrategyVote = {
+  __typename?: 'StrategyVote';
+  strategy: Scalars['String']['output'];
+  value: Scalars['JSONObject']['output'];
+  weight: Scalars['Float']['output'];
+};
+
+export type SystemConfig = {
+  __typename?: 'SystemConfig';
+  llmApiKey?: Maybe<Scalars['String']['output']>;
+  llmBaseUrl?: Maybe<Scalars['String']['output']>;
+  llmMaxTokens?: Maybe<Scalars['Int']['output']>;
+  llmModel: Scalars['String']['output'];
+  llmProvider: Scalars['String']['output'];
+  llmTemperature?: Maybe<Scalars['Float']['output']>;
+  llmTimeout?: Maybe<Scalars['Int']['output']>;
+  minioBucket: Scalars['String']['output'];
+  minioEndpoint: Scalars['String']['output'];
+  minioPort: Scalars['Int']['output'];
+  smtpEnabled: Scalars['Boolean']['output'];
+  smtpHost?: Maybe<Scalars['String']['output']>;
+  smtpPort?: Maybe<Scalars['Int']['output']>;
+  smtpSecure?: Maybe<Scalars['Boolean']['output']>;
+  smtpUser?: Maybe<Scalars['String']['output']>;
+};
+
+export type SystemHealth = {
+  __typename?: 'SystemHealth';
+  api: Scalars['Boolean']['output'];
+  database: Scalars['Boolean']['output'];
+  databaseStatus?: Maybe<Scalars['String']['output']>;
+  storage: Scalars['Boolean']['output'];
+  storageStatus?: Maybe<Scalars['String']['output']>;
+  timestamp: Scalars['String']['output'];
+  uptime: Scalars['Int']['output'];
+  version: Scalars['String']['output'];
 };
 
 export type Tag = {
@@ -1886,12 +2982,126 @@ export type TagStats = {
   totalValue: Scalars['Float']['output'];
 };
 
+export type TaskProgressInfo = {
+  __typename?: 'TaskProgressInfo';
+  data?: Maybe<Scalars['JSONObject']['output']>;
+  endTime?: Maybe<Scalars['Int']['output']>;
+  error?: Maybe<Scalars['String']['output']>;
+  infoType: InfoType;
+  infoTypeName: Scalars['String']['output'];
+  startTime?: Maybe<Scalars['Int']['output']>;
+  status: TaskStatus;
+  taskId: Scalars['String']['output'];
+};
+
+/** 任务处理状态 */
+export enum TaskStatus {
+  Completed = 'COMPLETED',
+  Failed = 'FAILED',
+  Pending = 'PENDING',
+  Processing = 'PROCESSING'
+}
+
 export type TimeInfo = {
   __typename?: 'TimeInfo';
   duration?: Maybe<Scalars['String']['output']>;
   effectiveAt?: Maybe<Scalars['String']['output']>;
   expiresAt?: Maybe<Scalars['String']['output']>;
   signedAt?: Maybe<Scalars['String']['output']>;
+};
+
+/** Completeness score for extraction results */
+export type TopicCompletenessScore = {
+  __typename?: 'TopicCompletenessScore';
+  /** Maximum possible score */
+  maxScore: Scalars['Float']['output'];
+  /** Overall score (0-100) */
+  score: Scalars['Int']['output'];
+  /** Per-topic score breakdown */
+  topicScores?: Maybe<Array<TopicScoreBreakdown>>;
+  /** Total weighted score achieved */
+  total: Scalars['Float']['output'];
+};
+
+/** Definition of an extraction topic */
+export type TopicDefinition = {
+  __typename?: 'TopicDefinition';
+  /** Topic description */
+  description: Scalars['String']['output'];
+  /** Display name */
+  displayName: Scalars['String']['output'];
+  /** Fields in this topic */
+  fields: Array<TopicField>;
+  /** Topic unique identifier */
+  name: ExtractTopic;
+  /** Execution order */
+  order?: Maybe<Scalars['Int']['output']>;
+  /** LLM prompt template */
+  prompt?: Maybe<Scalars['String']['output']>;
+  /** RAG query template */
+  query?: Maybe<Scalars['String']['output']>;
+  /** Weight for completeness calculation */
+  weight?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Field definition within an extraction topic */
+export type TopicField = {
+  __typename?: 'TopicField';
+  /** Default value */
+  defaultValue?: Maybe<Scalars['String']['output']>;
+  /** Field description */
+  description?: Maybe<Scalars['String']['output']>;
+  /** Field name */
+  name: Scalars['String']['output'];
+  /** Whether this field is required */
+  required: Scalars['Boolean']['output'];
+  /** Field data type */
+  type: Scalars['String']['output'];
+};
+
+/** Field value with metadata */
+export type TopicFieldValue = {
+  __typename?: 'TopicFieldValue';
+  /** Field description */
+  description?: Maybe<Scalars['String']['output']>;
+  /** Whether field has a valid value */
+  hasValue: Scalars['Boolean']['output'];
+  /** Field name */
+  name: Scalars['String']['output'];
+  /** Field type */
+  type: Scalars['String']['output'];
+  /** Field value as JSON string */
+  value?: Maybe<Scalars['String']['output']>;
+};
+
+export type TopicQueryDto = {
+  /** Natural language query for the topic */
+  query: Scalars['String']['input'];
+  /** Similarity threshold (0-1) */
+  threshold?: InputMaybe<Scalars['Float']['input']>;
+  /** Number of chunks to retrieve */
+  topK?: InputMaybe<Scalars['Int']['input']>;
+  /** Topic name (e.g., BASIC_INFO, FINANCIAL) */
+  topic: Scalars['String']['input'];
+};
+
+/** Score breakdown for a single topic */
+export type TopicScoreBreakdown = {
+  __typename?: 'TopicScoreBreakdown';
+  /** Number of completed fields */
+  completedFields: Scalars['Int']['output'];
+  /** Topic display name */
+  displayName: Scalars['String']['output'];
+  /** Percentage complete (0-100) */
+  percentage: Scalars['Int']['output'];
+  /** Score achieved (weighted) */
+  score: Scalars['Float']['output'];
+  /** Topic name */
+  topicName: Scalars['String']['output'];
+  /** Total number of fields */
+  totalFields: Scalars['Int']['output'];
+  /** Weight used for this topic */
+  weight: Scalars['Float']['output'];
 };
 
 export type TrendPoint = {
@@ -1940,8 +3150,14 @@ export type UpdateContractInput = {
   parsedAt?: InputMaybe<Scalars['DateTime']['input']>;
   paymentMethod?: InputMaybe<Scalars['String']['input']>;
   paymentTerms?: InputMaybe<Scalars['String']['input']>;
+  /** 产品购销合同详情（产品清单等） */
+  productSalesDetail?: InputMaybe<ProductSalesDetailInput>;
+  /** 项目外包合同详情（里程碑等） */
+  projectOutsourcingDetail?: InputMaybe<ProjectOutsourcingDetailInput>;
   salesPerson?: InputMaybe<Scalars['String']['input']>;
   signedAt?: InputMaybe<Scalars['DateTime']['input']>;
+  /** 人力框架合同详情（费率等） */
+  staffAugmentationDetail?: InputMaybe<StaffAugmentationDetailInput>;
   status?: InputMaybe<ContractStatus>;
   taxAmount?: InputMaybe<Scalars['String']['input']>;
   taxRate?: InputMaybe<Scalars['String']['input']>;
@@ -1962,6 +3178,39 @@ export type UpdateDepartmentInput = {
   name?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type UpdateMilestoneStatusInput = {
+  id: Scalars['ID']['input'];
+  notes?: InputMaybe<Scalars['String']['input']>;
+  status: MilestoneStatus;
+};
+
+export type UpdateParseStrategyConfigInput = {
+  autoMultiStrategy?: InputMaybe<Scalars['Boolean']['input']>;
+  defaultStrategy?: InputMaybe<ParseStrategyType>;
+  enabledStrategies?: InputMaybe<Array<ParseStrategyType>>;
+  multiStrategyThreshold?: InputMaybe<Scalars['Int']['input']>;
+  multiStrategyVoters?: InputMaybe<Array<ParseStrategyType>>;
+};
+
+export type UpdateSystemConfigInput = {
+  llmApiKey?: InputMaybe<Scalars['String']['input']>;
+  llmBaseUrl?: InputMaybe<Scalars['String']['input']>;
+  llmMaxTokens?: InputMaybe<Scalars['Int']['input']>;
+  llmModel?: InputMaybe<Scalars['String']['input']>;
+  llmProvider?: InputMaybe<Scalars['String']['input']>;
+  llmTemperature?: InputMaybe<Scalars['Float']['input']>;
+  llmTimeout?: InputMaybe<Scalars['Int']['input']>;
+  minioBucket?: InputMaybe<Scalars['String']['input']>;
+  minioEndpoint?: InputMaybe<Scalars['String']['input']>;
+  minioPort?: InputMaybe<Scalars['Int']['input']>;
+  smtpEnabled?: InputMaybe<Scalars['Boolean']['input']>;
+  smtpHost?: InputMaybe<Scalars['String']['input']>;
+  smtpPassword?: InputMaybe<Scalars['String']['input']>;
+  smtpPort?: InputMaybe<Scalars['Int']['input']>;
+  smtpSecure?: InputMaybe<Scalars['Boolean']['input']>;
+  smtpUser?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type UpdateTagInput = {
   category?: InputMaybe<Scalars['String']['input']>;
   color?: InputMaybe<Scalars['String']['input']>;
@@ -1973,6 +3222,13 @@ export type UpdateUserInput = {
   email?: InputMaybe<Scalars['String']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   role?: InputMaybe<UserRole>;
+};
+
+export type UploadDeliverableInput = {
+  description?: InputMaybe<Scalars['String']['input']>;
+  fileName: Scalars['String']['input'];
+  fileUrl: Scalars['String']['input'];
+  milestoneId: Scalars['ID']['input'];
 };
 
 export type User = {
@@ -2018,12 +3274,53 @@ export enum UserRole {
   User = 'USER'
 }
 
+/** 向量缓存统计信息 */
+export type VectorCacheStats = {
+  __typename?: 'VectorCacheStats';
+  /** 合同段落数量 */
+  contractChunksCount: Scalars['Int']['output'];
+  /** 嵌入缓存数量 */
+  embeddingCacheCount: Scalars['Int']['output'];
+  /** LLM缓存数量 */
+  llmCacheCount: Scalars['Int']['output'];
+};
+
+export type VoteResult = {
+  __typename?: 'VoteResult';
+  agreedValue?: Maybe<Scalars['JSONObject']['output']>;
+  confidence: Scalars['Float']['output'];
+  fieldName: Scalars['String']['output'];
+  needsResolution: Scalars['Boolean']['output'];
+  resolutionMethod?: Maybe<Scalars['String']['output']>;
+  votes: Array<StrategyVote>;
+};
+
+export type VotingStrategyResult = {
+  __typename?: 'VotingStrategyResult';
+  confidence?: Maybe<Scalars['Float']['output']>;
+  error?: Maybe<Scalars['String']['output']>;
+  fields?: Maybe<Scalars['JSONObject']['output']>;
+  processingTimeMs?: Maybe<Scalars['Int']['output']>;
+  strategy: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
 export type LoginMutationVariables = Exact<{
   input: LoginInput;
 }>;
 
 
 export type LoginMutation = { __typename?: 'Mutation', login: { __typename?: 'AuthResponse', accessToken: string, user: { __typename?: 'User', id: string, email: string, name: string, role: UserRole, department: { __typename?: 'UserDepartment', id: string, name: string, code: string } } } };
+
+export type GetCustomersBasicQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetCustomersBasicQuery = { __typename?: 'Query', customers: { __typename?: 'PaginatedCustomers', items: Array<{ __typename?: 'Customer', id: string, name: string, shortName?: string | null }> } };
+
+export type GetDepartmentsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetDepartmentsQuery = { __typename?: 'Query', departments: Array<{ __typename?: 'Department', id: string, name: string, code: string }> };
 
 export type DeleteContractMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -2053,16 +3350,6 @@ export type UpdateContractMutationVariables = Exact<{
 
 
 export type UpdateContractMutation = { __typename?: 'Mutation', updateContract: { __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, signedAt?: string | null } };
-
-export type GetCustomersBasicQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type GetCustomersBasicQuery = { __typename?: 'Query', customers: { __typename?: 'PaginatedCustomers', items: Array<{ __typename?: 'Customer', id: string, name: string, shortName?: string | null }> } };
-
-export type GetDepartmentsQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type GetDepartmentsQuery = { __typename?: 'Query', departments: Array<{ __typename?: 'Department', id: string, name: string, code: string }> };
 
 export type GetContractAuditLogsQueryVariables = Exact<{
   page?: InputMaybe<Scalars['Int']['input']>;
@@ -2112,6 +3399,39 @@ export type CreateContractMutationVariables = Exact<{
 
 export type CreateContractMutation = { __typename?: 'Mutation', createContract: { __typename?: 'Contract', id: string, contractNo: string, name: string } };
 
+export type SemanticSearchQueryVariables = Exact<{
+  query: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type SemanticSearchQuery = { __typename?: 'Query', semanticSearch: Array<{ __typename?: 'SemanticSearchResult', contractId: string, contractNo: string, name: string, similarity: number, highlights: Array<string> }> };
+
+export type FindSimilarContractsQueryVariables = Exact<{
+  contractId: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type FindSimilarContractsQuery = { __typename?: 'Query', findSimilarContracts: Array<{ __typename?: 'SimilarContract', contractId: string, contractNo: string, name: string, customerName: string, similarity: number, matchReasons: Array<string> }> };
+
+export type GetAvailableStrategiesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAvailableStrategiesQuery = { __typename?: 'Query', availableStrategies: Array<{ __typename?: 'StrategyInfo', type: ParseStrategyType, name: string, description?: string | null, features: Array<string>, pros: Array<string>, cons: Array<string>, available: boolean, averageTime?: number | null, accuracy?: number | null, cost?: StrategyCost | null, errorMessage?: string | null }> };
+
+export type TestStrategyAvailabilityMutationVariables = Exact<{
+  strategy: ParseStrategyType;
+}>;
+
+
+export type TestStrategyAvailabilityMutation = { __typename?: 'Mutation', testStrategyAvailability: { __typename?: 'StrategyTestResult', strategy: ParseStrategyType, available: boolean, message?: string | null, latency?: number | null } };
+
+export type TestAllStrategiesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type TestAllStrategiesQuery = { __typename?: 'Query', testAllStrategies: Array<{ __typename?: 'StrategyTestResult', strategy: ParseStrategyType, available: boolean, message?: string | null, latency?: number | null }> };
+
 export type GetCustomerByIdQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
@@ -2151,12 +3471,33 @@ export type UpdateContractByIdMutationVariables = Exact<{
 
 export type UpdateContractByIdMutation = { __typename?: 'Mutation', updateContract: { __typename?: 'Contract', id: string, contractNo: string, name: string, status: ContractStatus } };
 
+export type CreateParseSessionMutationVariables = Exact<{
+  objectName: Scalars['String']['input'];
+}>;
+
+
+export type CreateParseSessionMutation = { __typename?: 'Mutation', createParseSession: string };
+
 export type ParseContractWithLlmMutationVariables = Exact<{
   objectName: Scalars['String']['input'];
 }>;
 
 
-export type ParseContractWithLlmMutation = { __typename?: 'Mutation', parseContractWithLlm: { __typename?: 'LlmParseResult', success: boolean, rawText?: string | null, pageCount?: number | null, llmModel?: string | null, llmProvider?: string | null, processingTimeMs?: number | null, error?: string | null, extractedData?: { __typename?: 'ContractExtractedData', contractType: ContractType, basicInfo: { __typename?: 'BasicInfo', contractNo?: string | null, contractName?: string | null, ourEntity?: string | null, customerName?: string | null, status?: string | null }, financialInfo?: { __typename?: 'FinancialInfo', amountWithTax?: string | null, amountWithoutTax?: string | null, taxRate?: string | null, currency?: string | null, paymentMethod?: string | null, paymentTerms?: string | null } | null, timeInfo?: { __typename?: 'TimeInfo', signedAt?: string | null, effectiveAt?: string | null, expiresAt?: string | null, duration?: string | null } | null, otherInfo?: { __typename?: 'OtherInfo', salesPerson?: string | null, industry?: string | null, signLocation?: string | null, copies?: number | null } | null } | null } };
+export type ParseContractWithLlmMutation = { __typename?: 'Mutation', parseContractWithLlm: { __typename?: 'LlmParseResult', success: boolean, rawText?: string | null, pageCount?: number | null, llmModel?: string | null, llmProvider?: string | null, processingTimeMs?: number | null, sessionId?: string | null, error?: string | null, extractedData?: { __typename?: 'ContractExtractedData', contractType: ContractType, typeSpecificDetails?: any | null, basicInfo: { __typename?: 'BasicInfo', contractNo?: string | null, contractName?: string | null, ourEntity?: string | null, customerName?: string | null, status?: string | null }, financialInfo?: { __typename?: 'FinancialInfo', amountWithTax?: string | null, amountWithoutTax?: string | null, taxRate?: string | null, currency?: string | null, paymentMethod?: string | null, paymentTerms?: string | null } | null, timeInfo?: { __typename?: 'TimeInfo', signedAt?: string | null, effectiveAt?: string | null, expiresAt?: string | null, duration?: string | null } | null, otherInfo?: { __typename?: 'OtherInfo', salesPerson?: string | null, industry?: string | null, signLocation?: string | null, copies?: number | null } | null } | null } };
+
+export type StartParseContractAsyncMutationVariables = Exact<{
+  objectName: Scalars['String']['input'];
+}>;
+
+
+export type StartParseContractAsyncMutation = { __typename?: 'Mutation', startParseContractAsync: { __typename?: 'AsyncParseStartResponse', sessionId: string, message: string } };
+
+export type GetParseProgressQueryVariables = Exact<{
+  sessionId: Scalars['String']['input'];
+}>;
+
+
+export type GetParseProgressQuery = { __typename?: 'Query', getParseProgress?: { __typename?: 'ParseSessionProgressInfo', sessionId: string, objectName: string, status: SessionStatus, currentStage: string, totalChunks: number, completedChunks: number, currentChunkIndex: number, progressPercentage: number, totalTasks: number, completedTasks: number, currentTaskInfo?: string | null, startTime: number, estimatedEndTime?: number | null, processingTimeMs?: number | null, error?: string | null, extractedFieldsCount?: number | null, estimatedRemainingSeconds?: number | null, resultData?: any | null, chunks: Array<{ __typename?: 'ChunkProgressInfo', chunkId: string, chunkIndex: number, totalChunks: number, purpose: string, status: ChunkStatus, startTime?: number | null, endTime?: number | null, error?: string | null }>, tasks: Array<{ __typename?: 'TaskProgressInfo', taskId: string, infoType: InfoType, infoTypeName: string, status: TaskStatus, startTime?: number | null, endTime?: number | null, error?: string | null, data?: any | null }> } | null };
 
 export type CheckContractDuplicateQueryVariables = Exact<{
   contractNo: Scalars['String']['input'];
@@ -2223,6 +3564,60 @@ export type HealthQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type HealthQuery = { __typename?: 'Query', health: { __typename?: 'HealthCheck', status: string, timestamp: string, version: string } };
+
+export type GetProjectMilestonesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetProjectMilestonesQuery = { __typename?: 'Query', projectMilestones: Array<{ __typename?: 'ProjectMilestoneWithContract', id: string, sequence: number, name: string, deliverables?: string | null, amount?: string | null, paymentPercentage?: string | null, plannedDate?: string | null, actualDate?: string | null, acceptanceCriteria?: string | null, status: MilestoneStatus, deliverableFileUrl?: string | null, deliverableFileName?: string | null, deliverableUploadedAt?: string | null, acceptedAt?: string | null, acceptedBy?: string | null, acceptedByName?: string | null, rejectedAt?: string | null, rejectedBy?: string | null, rejectedByName?: string | null, rejectionReason?: string | null, createdAt: string, updatedAt: string, contract: { __typename?: 'MilestoneContractInfo', id: string, contractNo: string, name: string, customerId: string, customer: { __typename?: 'MilestoneCustomerInfo', id: string, name: string } } }> };
+
+export type ParseWithMultiStrategiesMutationVariables = Exact<{
+  input: MultiStrategyParseInput;
+}>;
+
+
+export type ParseWithMultiStrategiesMutation = { __typename?: 'Mutation', parseWithMultiStrategies: { __typename?: 'MultiStrategyParseResult', finalFields: any, overallConfidence: number, conflicts: Array<string>, warnings: Array<string>, duration: number, timestamp?: string | null, results: Array<{ __typename?: 'VotingStrategyResult', strategy: string, success: boolean, fields?: any | null, confidence?: number | null, processingTimeMs?: number | null, error?: string | null }>, voteResults: Array<{ __typename?: 'VoteResult', fieldName: string, agreedValue?: any | null, confidence: number, needsResolution: boolean, resolutionMethod?: string | null, votes: Array<{ __typename?: 'StrategyVote', strategy: string, value: any, weight: number }> }> } };
+
+export type GetMultiStrategyParseResultQueryVariables = Exact<{
+  sessionId: Scalars['String']['input'];
+}>;
+
+
+export type GetMultiStrategyParseResultQuery = { __typename?: 'Query', getMultiStrategyParseResult?: { __typename?: 'MultiStrategyParseResult', finalFields: any, overallConfidence: number, conflicts: Array<string>, warnings: Array<string>, duration: number, timestamp?: string | null, results: Array<{ __typename?: 'VotingStrategyResult', strategy: string, success: boolean, fields?: any | null, confidence?: number | null, processingTimeMs?: number | null, error?: string | null }>, voteResults: Array<{ __typename?: 'VoteResult', fieldName: string, agreedValue?: any | null, confidence: number, needsResolution: boolean, resolutionMethod?: string | null, votes: Array<{ __typename?: 'StrategyVote', strategy: string, value: any, weight: number }> }> } | null };
+
+export type ResolveConflictsMutationVariables = Exact<{
+  input: ResolveConflictsInput;
+  documentText: Scalars['String']['input'];
+}>;
+
+
+export type ResolveConflictsMutation = { __typename?: 'Mutation', resolveConflicts: { __typename?: 'MultiStrategyParseResult', finalFields: any, overallConfidence: number, conflicts: Array<string>, warnings: Array<string>, duration: number, timestamp?: string | null, results: Array<{ __typename?: 'VotingStrategyResult', strategy: string, success: boolean, fields?: any | null, confidence?: number | null, processingTimeMs?: number | null, error?: string | null }>, voteResults: Array<{ __typename?: 'VoteResult', fieldName: string, agreedValue?: any | null, confidence: number, needsResolution: boolean, resolutionMethod?: string | null, votes: Array<{ __typename?: 'StrategyVote', strategy: string, value: any, weight: number }> }> } };
+
+export type CompareParseSessionsQueryVariables = Exact<{
+  sessionId1: Scalars['String']['input'];
+  sessionId2: Scalars['String']['input'];
+}>;
+
+
+export type CompareParseSessionsQuery = { __typename?: 'Query', compareParseSessions?: any | null };
+
+export type GetStrategyConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetStrategyConfigQuery = { __typename?: 'Query', strategyConfig: { __typename?: 'ParseStrategyConfig', defaultStrategy?: ParseStrategyType | null, enabledStrategies: Array<ParseStrategyType>, autoMultiStrategy: boolean, multiStrategyThreshold?: number | null, multiStrategyVoters?: Array<ParseStrategyType> | null } };
+
+export type UpdateStrategyConfigMutationVariables = Exact<{
+  input: UpdateParseStrategyConfigInput;
+}>;
+
+
+export type UpdateStrategyConfigMutation = { __typename?: 'Mutation', updateStrategyConfig: { __typename?: 'ParseStrategyConfig', defaultStrategy?: ParseStrategyType | null, enabledStrategies: Array<ParseStrategyType>, autoMultiStrategy: boolean, multiStrategyThreshold?: number | null, multiStrategyVoters?: Array<ParseStrategyType> | null } };
+
+export type TestStrategyAvailabilityInputMutationVariables = Exact<{
+  strategy: ParseStrategyType;
+}>;
+
+
+export type TestStrategyAvailabilityInputMutation = { __typename?: 'Mutation', testStrategyAvailability: { __typename?: 'StrategyTestResult', strategy: ParseStrategyType, available: boolean, message?: string | null, latency?: number | null } };
 
 export type GetTagsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2407,6 +3802,13 @@ export type TagOverviewQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type TagOverviewQuery = { __typename?: 'Query', tagOverview: { __typename?: 'TagOverview', totalTags: number, topTags: Array<{ __typename?: 'TagStats', tagId: string, tagName: string, category?: string | null, color?: string | null, count: number, totalValue: number }>, byCategory: Array<{ __typename?: 'CategoryTags', category: string, tags: Array<{ __typename?: 'TagStats', tagId: string, tagName: string, count: number, totalValue: number }> }> } };
 
+export type GetRiskAlertsQueryVariables = Exact<{
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetRiskAlertsQuery = { __typename?: 'Query', getRiskAlerts: Array<{ __typename?: 'RiskAlert', id: string, contractId: string, alertType: string, severity: string, message: string, createdAt: string }> };
+
 export type CustomerOverviewQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -2424,12 +3826,89 @@ export type SalesPerformanceQueryVariables = Exact<{
 
 export type SalesPerformanceQuery = { __typename?: 'Query', salesPerformance: { __typename?: 'SalesPerformance', totalSalesValue: number, newSignValue: number, renewalValue: number, monthlyTrend: Array<{ __typename?: 'MonthlySales', month: string, newSignValue: number, renewalValue: number, totalValue: number }>, bySalesPerson: Array<{ __typename?: 'SalesPersonPerformance', salesPerson: string, totalContracts: number, totalValue: number, newSignValue: number, renewalValue: number }> } };
 
+export type GetLlmConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetLlmConfigQuery = { __typename?: 'Query', llmConfig: { __typename?: 'LLMConfig', provider: string, model: string, baseUrl?: string | null, temperature: number, maxTokens: number } };
+
+export type GetEmbeddingConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetEmbeddingConfigQuery = { __typename?: 'Query', embeddingConfig: { __typename?: 'EmbeddingConfig', provider: string, model: string, baseUrl?: string | null, dimensions: number } };
+
+export type SaveLlmConfigMutationVariables = Exact<{
+  config: UpdateSystemConfigInput;
+}>;
+
+
+export type SaveLlmConfigMutation = { __typename?: 'Mutation', saveLLMConfig: { __typename?: 'LLMConfig', provider: string, model: string, baseUrl?: string | null, temperature: number, maxTokens: number } };
+
+export type SaveEmbeddingConfigMutationVariables = Exact<{
+  provider?: InputMaybe<Scalars['String']['input']>;
+  model?: InputMaybe<Scalars['String']['input']>;
+  baseUrl?: InputMaybe<Scalars['String']['input']>;
+  apiKey?: InputMaybe<Scalars['String']['input']>;
+  dimensions?: InputMaybe<Scalars['Float']['input']>;
+}>;
+
+
+export type SaveEmbeddingConfigMutation = { __typename?: 'Mutation', saveEmbeddingConfig: { __typename?: 'EmbeddingConfig', provider: string, model: string, baseUrl?: string | null, dimensions: number } };
+
+export type TestLlmConnectionMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type TestLlmConnectionMutation = { __typename?: 'Mutation', testLLMConnection: { __typename?: 'ModelTestResult', success: boolean, message?: string | null, latency?: number | null } };
+
+export type TestEmbeddingConnectionMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type TestEmbeddingConnectionMutation = { __typename?: 'Mutation', testEmbeddingConnection: { __typename?: 'ModelTestResult', success: boolean, message?: string | null, latency?: number | null } };
+
+export type ResetLlmConfigMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ResetLlmConfigMutation = { __typename?: 'Mutation', resetLLMConfig: { __typename?: 'LLMConfig', provider: string, model: string, baseUrl?: string | null, temperature: number, maxTokens: number } };
+
+export type ResetEmbeddingConfigMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ResetEmbeddingConfigMutation = { __typename?: 'Mutation', resetEmbeddingConfig: { __typename?: 'EmbeddingConfig', provider: string, model: string, baseUrl?: string | null, dimensions: number } };
+
 export type ChangePasswordMutationVariables = Exact<{
   input: ChangePasswordInput;
 }>;
 
 
 export type ChangePasswordMutation = { __typename?: 'Mutation', changePassword: { __typename?: 'ChangePasswordResult', success: boolean, message?: string | null } };
+
+export type GetSystemConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetSystemConfigQuery = { __typename?: 'Query', systemConfig: { __typename?: 'SystemConfig', llmProvider: string, llmModel: string, llmBaseUrl?: string | null, llmApiKey?: string | null, llmTemperature?: number | null, llmMaxTokens?: number | null, llmTimeout?: number | null, smtpEnabled: boolean, smtpHost?: string | null, smtpPort?: number | null, smtpUser?: string | null, smtpSecure?: boolean | null, minioEndpoint: string, minioPort: number, minioBucket: string } };
+
+export type GetSystemHealthQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetSystemHealthQuery = { __typename?: 'Query', systemHealth: { __typename?: 'SystemHealth', api: boolean, database: boolean, storage: boolean, uptime: number, version: string, timestamp: string, databaseStatus?: string | null, storageStatus?: string | null } };
+
+export type UpdateSystemConfigMutationVariables = Exact<{
+  config: UpdateSystemConfigInput;
+}>;
+
+
+export type UpdateSystemConfigMutation = { __typename?: 'Mutation', updateSystemConfig: { __typename?: 'SystemConfig', llmProvider: string, llmModel: string, llmBaseUrl?: string | null, llmApiKey?: string | null, llmTemperature?: number | null, llmMaxTokens?: number | null, llmTimeout?: number | null, smtpEnabled: boolean, smtpHost?: string | null, smtpPort?: number | null, smtpSecure?: boolean | null, minioEndpoint: string, minioPort: number, minioBucket: string } };
+
+export type TestSmtpConnectionMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type TestSmtpConnectionMutation = { __typename?: 'Mutation', testSmtpConnection: boolean };
+
+export type SendNotificationMutationVariables = Exact<{
+  input: SendNotificationInput;
+}>;
+
+
+export type SendNotificationMutation = { __typename?: 'Mutation', sendNotification: { __typename?: 'NotificationResult', success: boolean, message?: string | null, messageId?: string | null } };
 
 export type GetUsersQueryVariables = Exact<{
   page: Scalars['Int']['input'];
@@ -2496,6 +3975,64 @@ export function useLoginMutation(baseOptions?: ApolloReactHooks.MutationHookOpti
 export type LoginMutationHookResult = ReturnType<typeof useLoginMutation>;
 export type LoginMutationResult = ApolloReactCommon.MutationResult<LoginMutation>;
 export type LoginMutationOptions = ApolloReactCommon.BaseMutationOptions<LoginMutation, LoginMutationVariables>;
+export const GetCustomersBasicDocument = gql`
+    query GetCustomersBasic {
+  customers {
+    items {
+      id
+      name
+      shortName
+    }
+  }
+}
+    `;
+export function useGetCustomersBasicQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>(GetCustomersBasicDocument, options);
+      }
+export function useGetCustomersBasicLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>(GetCustomersBasicDocument, options);
+        }
+// @ts-ignore
+export function useGetCustomersBasicSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>;
+export function useGetCustomersBasicSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomersBasicQuery | undefined, GetCustomersBasicQueryVariables>;
+export function useGetCustomersBasicSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>(GetCustomersBasicDocument, options);
+        }
+export type GetCustomersBasicQueryHookResult = ReturnType<typeof useGetCustomersBasicQuery>;
+export type GetCustomersBasicLazyQueryHookResult = ReturnType<typeof useGetCustomersBasicLazyQuery>;
+export type GetCustomersBasicSuspenseQueryHookResult = ReturnType<typeof useGetCustomersBasicSuspenseQuery>;
+export type GetCustomersBasicQueryResult = ApolloReactCommon.QueryResult<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>;
+export const GetDepartmentsDocument = gql`
+    query GetDepartments {
+  departments {
+    id
+    name
+    code
+  }
+}
+    `;
+export function useGetDepartmentsQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
+      }
+export function useGetDepartmentsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
+        }
+// @ts-ignore
+export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetDepartmentsQuery, GetDepartmentsQueryVariables>;
+export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetDepartmentsQuery | undefined, GetDepartmentsQueryVariables>;
+export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
+        }
+export type GetDepartmentsQueryHookResult = ReturnType<typeof useGetDepartmentsQuery>;
+export type GetDepartmentsLazyQueryHookResult = ReturnType<typeof useGetDepartmentsLazyQuery>;
+export type GetDepartmentsSuspenseQueryHookResult = ReturnType<typeof useGetDepartmentsSuspenseQuery>;
+export type GetDepartmentsQueryResult = ApolloReactCommon.QueryResult<GetDepartmentsQuery, GetDepartmentsQueryVariables>;
 export const DeleteContractDocument = gql`
     mutation DeleteContract($id: ID!) {
   deleteContract(id: $id)
@@ -2742,64 +4279,6 @@ export function useUpdateContractMutation(baseOptions?: ApolloReactHooks.Mutatio
 export type UpdateContractMutationHookResult = ReturnType<typeof useUpdateContractMutation>;
 export type UpdateContractMutationResult = ApolloReactCommon.MutationResult<UpdateContractMutation>;
 export type UpdateContractMutationOptions = ApolloReactCommon.BaseMutationOptions<UpdateContractMutation, UpdateContractMutationVariables>;
-export const GetCustomersBasicDocument = gql`
-    query GetCustomersBasic {
-  customers {
-    items {
-      id
-      name
-      shortName
-    }
-  }
-}
-    `;
-export function useGetCustomersBasicQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return ApolloReactHooks.useQuery<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>(GetCustomersBasicDocument, options);
-      }
-export function useGetCustomersBasicLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>) {
-          const options = {...defaultOptions, ...baseOptions}
-          return ApolloReactHooks.useLazyQuery<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>(GetCustomersBasicDocument, options);
-        }
-// @ts-ignore
-export function useGetCustomersBasicSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>;
-export function useGetCustomersBasicSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetCustomersBasicQuery | undefined, GetCustomersBasicQueryVariables>;
-export function useGetCustomersBasicSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>) {
-          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
-          return ApolloReactHooks.useSuspenseQuery<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>(GetCustomersBasicDocument, options);
-        }
-export type GetCustomersBasicQueryHookResult = ReturnType<typeof useGetCustomersBasicQuery>;
-export type GetCustomersBasicLazyQueryHookResult = ReturnType<typeof useGetCustomersBasicLazyQuery>;
-export type GetCustomersBasicSuspenseQueryHookResult = ReturnType<typeof useGetCustomersBasicSuspenseQuery>;
-export type GetCustomersBasicQueryResult = ApolloReactCommon.QueryResult<GetCustomersBasicQuery, GetCustomersBasicQueryVariables>;
-export const GetDepartmentsDocument = gql`
-    query GetDepartments {
-  departments {
-    id
-    name
-    code
-  }
-}
-    `;
-export function useGetDepartmentsQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return ApolloReactHooks.useQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
-      }
-export function useGetDepartmentsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
-          const options = {...defaultOptions, ...baseOptions}
-          return ApolloReactHooks.useLazyQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
-        }
-// @ts-ignore
-export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetDepartmentsQuery, GetDepartmentsQueryVariables>;
-export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetDepartmentsQuery | undefined, GetDepartmentsQueryVariables>;
-export function useGetDepartmentsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetDepartmentsQuery, GetDepartmentsQueryVariables>) {
-          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
-          return ApolloReactHooks.useSuspenseQuery<GetDepartmentsQuery, GetDepartmentsQueryVariables>(GetDepartmentsDocument, options);
-        }
-export type GetDepartmentsQueryHookResult = ReturnType<typeof useGetDepartmentsQuery>;
-export type GetDepartmentsLazyQueryHookResult = ReturnType<typeof useGetDepartmentsLazyQuery>;
-export type GetDepartmentsSuspenseQueryHookResult = ReturnType<typeof useGetDepartmentsSuspenseQuery>;
-export type GetDepartmentsQueryResult = ApolloReactCommon.QueryResult<GetDepartmentsQuery, GetDepartmentsQueryVariables>;
 export const GetContractAuditLogsDocument = gql`
     query GetContractAuditLogs($page: Int, $pageSize: Int) {
   auditLogs(filter: {entityType: "Contract"}, page: $page, pageSize: $pageSize) {
@@ -3027,6 +4506,150 @@ export function useCreateContractMutation(baseOptions?: ApolloReactHooks.Mutatio
 export type CreateContractMutationHookResult = ReturnType<typeof useCreateContractMutation>;
 export type CreateContractMutationResult = ApolloReactCommon.MutationResult<CreateContractMutation>;
 export type CreateContractMutationOptions = ApolloReactCommon.BaseMutationOptions<CreateContractMutation, CreateContractMutationVariables>;
+export const SemanticSearchDocument = gql`
+    query SemanticSearch($query: String!, $limit: Int) {
+  semanticSearch(query: $query, limit: $limit) {
+    contractId
+    contractNo
+    name
+    similarity
+    highlights
+  }
+}
+    `;
+export function useSemanticSearchQuery(baseOptions: ApolloReactHooks.QueryHookOptions<SemanticSearchQuery, SemanticSearchQueryVariables> & ({ variables: SemanticSearchQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<SemanticSearchQuery, SemanticSearchQueryVariables>(SemanticSearchDocument, options);
+      }
+export function useSemanticSearchLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<SemanticSearchQuery, SemanticSearchQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<SemanticSearchQuery, SemanticSearchQueryVariables>(SemanticSearchDocument, options);
+        }
+// @ts-ignore
+export function useSemanticSearchSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<SemanticSearchQuery, SemanticSearchQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<SemanticSearchQuery, SemanticSearchQueryVariables>;
+export function useSemanticSearchSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<SemanticSearchQuery, SemanticSearchQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<SemanticSearchQuery | undefined, SemanticSearchQueryVariables>;
+export function useSemanticSearchSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<SemanticSearchQuery, SemanticSearchQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<SemanticSearchQuery, SemanticSearchQueryVariables>(SemanticSearchDocument, options);
+        }
+export type SemanticSearchQueryHookResult = ReturnType<typeof useSemanticSearchQuery>;
+export type SemanticSearchLazyQueryHookResult = ReturnType<typeof useSemanticSearchLazyQuery>;
+export type SemanticSearchSuspenseQueryHookResult = ReturnType<typeof useSemanticSearchSuspenseQuery>;
+export type SemanticSearchQueryResult = ApolloReactCommon.QueryResult<SemanticSearchQuery, SemanticSearchQueryVariables>;
+export const FindSimilarContractsDocument = gql`
+    query FindSimilarContracts($contractId: String!, $limit: Int) {
+  findSimilarContracts(contractId: $contractId, limit: $limit) {
+    contractId
+    contractNo
+    name
+    customerName
+    similarity
+    matchReasons
+  }
+}
+    `;
+export function useFindSimilarContractsQuery(baseOptions: ApolloReactHooks.QueryHookOptions<FindSimilarContractsQuery, FindSimilarContractsQueryVariables> & ({ variables: FindSimilarContractsQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<FindSimilarContractsQuery, FindSimilarContractsQueryVariables>(FindSimilarContractsDocument, options);
+      }
+export function useFindSimilarContractsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<FindSimilarContractsQuery, FindSimilarContractsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<FindSimilarContractsQuery, FindSimilarContractsQueryVariables>(FindSimilarContractsDocument, options);
+        }
+// @ts-ignore
+export function useFindSimilarContractsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<FindSimilarContractsQuery, FindSimilarContractsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<FindSimilarContractsQuery, FindSimilarContractsQueryVariables>;
+export function useFindSimilarContractsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<FindSimilarContractsQuery, FindSimilarContractsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<FindSimilarContractsQuery | undefined, FindSimilarContractsQueryVariables>;
+export function useFindSimilarContractsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<FindSimilarContractsQuery, FindSimilarContractsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<FindSimilarContractsQuery, FindSimilarContractsQueryVariables>(FindSimilarContractsDocument, options);
+        }
+export type FindSimilarContractsQueryHookResult = ReturnType<typeof useFindSimilarContractsQuery>;
+export type FindSimilarContractsLazyQueryHookResult = ReturnType<typeof useFindSimilarContractsLazyQuery>;
+export type FindSimilarContractsSuspenseQueryHookResult = ReturnType<typeof useFindSimilarContractsSuspenseQuery>;
+export type FindSimilarContractsQueryResult = ApolloReactCommon.QueryResult<FindSimilarContractsQuery, FindSimilarContractsQueryVariables>;
+export const GetAvailableStrategiesDocument = gql`
+    query GetAvailableStrategies {
+  availableStrategies {
+    type
+    name
+    description
+    features
+    pros
+    cons
+    available
+    averageTime
+    accuracy
+    cost
+    errorMessage
+  }
+}
+    `;
+export function useGetAvailableStrategiesQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>(GetAvailableStrategiesDocument, options);
+      }
+export function useGetAvailableStrategiesLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>(GetAvailableStrategiesDocument, options);
+        }
+// @ts-ignore
+export function useGetAvailableStrategiesSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>;
+export function useGetAvailableStrategiesSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetAvailableStrategiesQuery | undefined, GetAvailableStrategiesQueryVariables>;
+export function useGetAvailableStrategiesSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>(GetAvailableStrategiesDocument, options);
+        }
+export type GetAvailableStrategiesQueryHookResult = ReturnType<typeof useGetAvailableStrategiesQuery>;
+export type GetAvailableStrategiesLazyQueryHookResult = ReturnType<typeof useGetAvailableStrategiesLazyQuery>;
+export type GetAvailableStrategiesSuspenseQueryHookResult = ReturnType<typeof useGetAvailableStrategiesSuspenseQuery>;
+export type GetAvailableStrategiesQueryResult = ApolloReactCommon.QueryResult<GetAvailableStrategiesQuery, GetAvailableStrategiesQueryVariables>;
+export const TestStrategyAvailabilityDocument = gql`
+    mutation TestStrategyAvailability($strategy: ParseStrategyType!) {
+  testStrategyAvailability(strategy: $strategy) {
+    strategy
+    available
+    message
+    latency
+  }
+}
+    `;
+export type TestStrategyAvailabilityMutationFn = ApolloReactCommon.MutationFunction<TestStrategyAvailabilityMutation, TestStrategyAvailabilityMutationVariables>;
+export function useTestStrategyAvailabilityMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<TestStrategyAvailabilityMutation, TestStrategyAvailabilityMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<TestStrategyAvailabilityMutation, TestStrategyAvailabilityMutationVariables>(TestStrategyAvailabilityDocument, options);
+      }
+export type TestStrategyAvailabilityMutationHookResult = ReturnType<typeof useTestStrategyAvailabilityMutation>;
+export type TestStrategyAvailabilityMutationResult = ApolloReactCommon.MutationResult<TestStrategyAvailabilityMutation>;
+export type TestStrategyAvailabilityMutationOptions = ApolloReactCommon.BaseMutationOptions<TestStrategyAvailabilityMutation, TestStrategyAvailabilityMutationVariables>;
+export const TestAllStrategiesDocument = gql`
+    query TestAllStrategies {
+  testAllStrategies {
+    strategy
+    available
+    message
+    latency
+  }
+}
+    `;
+export function useTestAllStrategiesQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>(TestAllStrategiesDocument, options);
+      }
+export function useTestAllStrategiesLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>(TestAllStrategiesDocument, options);
+        }
+// @ts-ignore
+export function useTestAllStrategiesSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>;
+export function useTestAllStrategiesSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<TestAllStrategiesQuery | undefined, TestAllStrategiesQueryVariables>;
+export function useTestAllStrategiesSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>(TestAllStrategiesDocument, options);
+        }
+export type TestAllStrategiesQueryHookResult = ReturnType<typeof useTestAllStrategiesQuery>;
+export type TestAllStrategiesLazyQueryHookResult = ReturnType<typeof useTestAllStrategiesLazyQuery>;
+export type TestAllStrategiesSuspenseQueryHookResult = ReturnType<typeof useTestAllStrategiesSuspenseQuery>;
+export type TestAllStrategiesQueryResult = ApolloReactCommon.QueryResult<TestAllStrategiesQuery, TestAllStrategiesQueryVariables>;
 export const GetCustomerByIdDocument = gql`
     query GetCustomerById($id: ID!) {
   customer(id: $id) {
@@ -3228,6 +4851,19 @@ export function useUpdateContractByIdMutation(baseOptions?: ApolloReactHooks.Mut
 export type UpdateContractByIdMutationHookResult = ReturnType<typeof useUpdateContractByIdMutation>;
 export type UpdateContractByIdMutationResult = ApolloReactCommon.MutationResult<UpdateContractByIdMutation>;
 export type UpdateContractByIdMutationOptions = ApolloReactCommon.BaseMutationOptions<UpdateContractByIdMutation, UpdateContractByIdMutationVariables>;
+export const CreateParseSessionDocument = gql`
+    mutation CreateParseSession($objectName: String!) {
+  createParseSession(objectName: $objectName)
+}
+    `;
+export type CreateParseSessionMutationFn = ApolloReactCommon.MutationFunction<CreateParseSessionMutation, CreateParseSessionMutationVariables>;
+export function useCreateParseSessionMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<CreateParseSessionMutation, CreateParseSessionMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<CreateParseSessionMutation, CreateParseSessionMutationVariables>(CreateParseSessionDocument, options);
+      }
+export type CreateParseSessionMutationHookResult = ReturnType<typeof useCreateParseSessionMutation>;
+export type CreateParseSessionMutationResult = ApolloReactCommon.MutationResult<CreateParseSessionMutation>;
+export type CreateParseSessionMutationOptions = ApolloReactCommon.BaseMutationOptions<CreateParseSessionMutation, CreateParseSessionMutationVariables>;
 export const ParseContractWithLlmDocument = gql`
     mutation ParseContractWithLlm($objectName: String!) {
   parseContractWithLlm(objectName: $objectName) {
@@ -3261,12 +4897,14 @@ export const ParseContractWithLlmDocument = gql`
         signLocation
         copies
       }
+      typeSpecificDetails
     }
     rawText
     pageCount
     llmModel
     llmProvider
     processingTimeMs
+    sessionId
     error
   }
 }
@@ -3279,6 +4917,85 @@ export function useParseContractWithLlmMutation(baseOptions?: ApolloReactHooks.M
 export type ParseContractWithLlmMutationHookResult = ReturnType<typeof useParseContractWithLlmMutation>;
 export type ParseContractWithLlmMutationResult = ApolloReactCommon.MutationResult<ParseContractWithLlmMutation>;
 export type ParseContractWithLlmMutationOptions = ApolloReactCommon.BaseMutationOptions<ParseContractWithLlmMutation, ParseContractWithLlmMutationVariables>;
+export const StartParseContractAsyncDocument = gql`
+    mutation StartParseContractAsync($objectName: String!) {
+  startParseContractAsync(objectName: $objectName) {
+    sessionId
+    message
+  }
+}
+    `;
+export type StartParseContractAsyncMutationFn = ApolloReactCommon.MutationFunction<StartParseContractAsyncMutation, StartParseContractAsyncMutationVariables>;
+export function useStartParseContractAsyncMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<StartParseContractAsyncMutation, StartParseContractAsyncMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<StartParseContractAsyncMutation, StartParseContractAsyncMutationVariables>(StartParseContractAsyncDocument, options);
+      }
+export type StartParseContractAsyncMutationHookResult = ReturnType<typeof useStartParseContractAsyncMutation>;
+export type StartParseContractAsyncMutationResult = ApolloReactCommon.MutationResult<StartParseContractAsyncMutation>;
+export type StartParseContractAsyncMutationOptions = ApolloReactCommon.BaseMutationOptions<StartParseContractAsyncMutation, StartParseContractAsyncMutationVariables>;
+export const GetParseProgressDocument = gql`
+    query GetParseProgress($sessionId: String!) {
+  getParseProgress(sessionId: $sessionId) {
+    sessionId
+    objectName
+    status
+    currentStage
+    totalChunks
+    completedChunks
+    currentChunkIndex
+    progressPercentage
+    chunks {
+      chunkId
+      chunkIndex
+      totalChunks
+      purpose
+      status
+      startTime
+      endTime
+      error
+    }
+    totalTasks
+    completedTasks
+    currentTaskInfo
+    tasks {
+      taskId
+      infoType
+      infoTypeName
+      status
+      startTime
+      endTime
+      error
+      data
+    }
+    startTime
+    estimatedEndTime
+    processingTimeMs
+    error
+    extractedFieldsCount
+    estimatedRemainingSeconds
+    resultData
+  }
+}
+    `;
+export function useGetParseProgressQuery(baseOptions: ApolloReactHooks.QueryHookOptions<GetParseProgressQuery, GetParseProgressQueryVariables> & ({ variables: GetParseProgressQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetParseProgressQuery, GetParseProgressQueryVariables>(GetParseProgressDocument, options);
+      }
+export function useGetParseProgressLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetParseProgressQuery, GetParseProgressQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetParseProgressQuery, GetParseProgressQueryVariables>(GetParseProgressDocument, options);
+        }
+// @ts-ignore
+export function useGetParseProgressSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetParseProgressQuery, GetParseProgressQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetParseProgressQuery, GetParseProgressQueryVariables>;
+export function useGetParseProgressSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetParseProgressQuery, GetParseProgressQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetParseProgressQuery | undefined, GetParseProgressQueryVariables>;
+export function useGetParseProgressSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetParseProgressQuery, GetParseProgressQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetParseProgressQuery, GetParseProgressQueryVariables>(GetParseProgressDocument, options);
+        }
+export type GetParseProgressQueryHookResult = ReturnType<typeof useGetParseProgressQuery>;
+export type GetParseProgressLazyQueryHookResult = ReturnType<typeof useGetParseProgressLazyQuery>;
+export type GetParseProgressSuspenseQueryHookResult = ReturnType<typeof useGetParseProgressSuspenseQuery>;
+export type GetParseProgressQueryResult = ApolloReactCommon.QueryResult<GetParseProgressQuery, GetParseProgressQueryVariables>;
 export const CheckContractDuplicateDocument = gql`
     query CheckContractDuplicate($contractNo: String!) {
   checkContractDuplicate(contractNo: $contractNo) {
@@ -3495,6 +5212,285 @@ export type HealthQueryHookResult = ReturnType<typeof useHealthQuery>;
 export type HealthLazyQueryHookResult = ReturnType<typeof useHealthLazyQuery>;
 export type HealthSuspenseQueryHookResult = ReturnType<typeof useHealthSuspenseQuery>;
 export type HealthQueryResult = ApolloReactCommon.QueryResult<HealthQuery, HealthQueryVariables>;
+export const GetProjectMilestonesDocument = gql`
+    query GetProjectMilestones {
+  projectMilestones {
+    id
+    sequence
+    name
+    deliverables
+    amount
+    paymentPercentage
+    plannedDate
+    actualDate
+    acceptanceCriteria
+    status
+    deliverableFileUrl
+    deliverableFileName
+    deliverableUploadedAt
+    acceptedAt
+    acceptedBy
+    acceptedByName
+    rejectedAt
+    rejectedBy
+    rejectedByName
+    rejectionReason
+    createdAt
+    updatedAt
+    contract {
+      id
+      contractNo
+      name
+      customerId
+      customer {
+        id
+        name
+      }
+    }
+  }
+}
+    `;
+export function useGetProjectMilestonesQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>(GetProjectMilestonesDocument, options);
+      }
+export function useGetProjectMilestonesLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>(GetProjectMilestonesDocument, options);
+        }
+// @ts-ignore
+export function useGetProjectMilestonesSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>;
+export function useGetProjectMilestonesSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetProjectMilestonesQuery | undefined, GetProjectMilestonesQueryVariables>;
+export function useGetProjectMilestonesSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>(GetProjectMilestonesDocument, options);
+        }
+export type GetProjectMilestonesQueryHookResult = ReturnType<typeof useGetProjectMilestonesQuery>;
+export type GetProjectMilestonesLazyQueryHookResult = ReturnType<typeof useGetProjectMilestonesLazyQuery>;
+export type GetProjectMilestonesSuspenseQueryHookResult = ReturnType<typeof useGetProjectMilestonesSuspenseQuery>;
+export type GetProjectMilestonesQueryResult = ApolloReactCommon.QueryResult<GetProjectMilestonesQuery, GetProjectMilestonesQueryVariables>;
+export const ParseWithMultiStrategiesDocument = gql`
+    mutation ParseWithMultiStrategies($input: MultiStrategyParseInput!) {
+  parseWithMultiStrategies(input: $input) {
+    results {
+      strategy
+      success
+      fields
+      confidence
+      processingTimeMs
+      error
+    }
+    finalFields
+    voteResults {
+      fieldName
+      agreedValue
+      confidence
+      votes {
+        strategy
+        value
+        weight
+      }
+      needsResolution
+      resolutionMethod
+    }
+    overallConfidence
+    conflicts
+    warnings
+    duration
+    timestamp
+  }
+}
+    `;
+export type ParseWithMultiStrategiesMutationFn = ApolloReactCommon.MutationFunction<ParseWithMultiStrategiesMutation, ParseWithMultiStrategiesMutationVariables>;
+export function useParseWithMultiStrategiesMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<ParseWithMultiStrategiesMutation, ParseWithMultiStrategiesMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<ParseWithMultiStrategiesMutation, ParseWithMultiStrategiesMutationVariables>(ParseWithMultiStrategiesDocument, options);
+      }
+export type ParseWithMultiStrategiesMutationHookResult = ReturnType<typeof useParseWithMultiStrategiesMutation>;
+export type ParseWithMultiStrategiesMutationResult = ApolloReactCommon.MutationResult<ParseWithMultiStrategiesMutation>;
+export type ParseWithMultiStrategiesMutationOptions = ApolloReactCommon.BaseMutationOptions<ParseWithMultiStrategiesMutation, ParseWithMultiStrategiesMutationVariables>;
+export const GetMultiStrategyParseResultDocument = gql`
+    query GetMultiStrategyParseResult($sessionId: String!) {
+  getMultiStrategyParseResult(sessionId: $sessionId) {
+    results {
+      strategy
+      success
+      fields
+      confidence
+      processingTimeMs
+      error
+    }
+    finalFields
+    voteResults {
+      fieldName
+      agreedValue
+      confidence
+      votes {
+        strategy
+        value
+        weight
+      }
+      needsResolution
+      resolutionMethod
+    }
+    overallConfidence
+    conflicts
+    warnings
+    duration
+    timestamp
+  }
+}
+    `;
+export function useGetMultiStrategyParseResultQuery(baseOptions: ApolloReactHooks.QueryHookOptions<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables> & ({ variables: GetMultiStrategyParseResultQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables>(GetMultiStrategyParseResultDocument, options);
+      }
+export function useGetMultiStrategyParseResultLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables>(GetMultiStrategyParseResultDocument, options);
+        }
+// @ts-ignore
+export function useGetMultiStrategyParseResultSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables>;
+export function useGetMultiStrategyParseResultSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetMultiStrategyParseResultQuery | undefined, GetMultiStrategyParseResultQueryVariables>;
+export function useGetMultiStrategyParseResultSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables>(GetMultiStrategyParseResultDocument, options);
+        }
+export type GetMultiStrategyParseResultQueryHookResult = ReturnType<typeof useGetMultiStrategyParseResultQuery>;
+export type GetMultiStrategyParseResultLazyQueryHookResult = ReturnType<typeof useGetMultiStrategyParseResultLazyQuery>;
+export type GetMultiStrategyParseResultSuspenseQueryHookResult = ReturnType<typeof useGetMultiStrategyParseResultSuspenseQuery>;
+export type GetMultiStrategyParseResultQueryResult = ApolloReactCommon.QueryResult<GetMultiStrategyParseResultQuery, GetMultiStrategyParseResultQueryVariables>;
+export const ResolveConflictsDocument = gql`
+    mutation ResolveConflicts($input: ResolveConflictsInput!, $documentText: String!) {
+  resolveConflicts(input: $input, documentText: $documentText) {
+    results {
+      strategy
+      success
+      fields
+      confidence
+      processingTimeMs
+      error
+    }
+    finalFields
+    voteResults {
+      fieldName
+      agreedValue
+      confidence
+      votes {
+        strategy
+        value
+        weight
+      }
+      needsResolution
+      resolutionMethod
+    }
+    overallConfidence
+    conflicts
+    warnings
+    duration
+    timestamp
+  }
+}
+    `;
+export type ResolveConflictsMutationFn = ApolloReactCommon.MutationFunction<ResolveConflictsMutation, ResolveConflictsMutationVariables>;
+export function useResolveConflictsMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<ResolveConflictsMutation, ResolveConflictsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<ResolveConflictsMutation, ResolveConflictsMutationVariables>(ResolveConflictsDocument, options);
+      }
+export type ResolveConflictsMutationHookResult = ReturnType<typeof useResolveConflictsMutation>;
+export type ResolveConflictsMutationResult = ApolloReactCommon.MutationResult<ResolveConflictsMutation>;
+export type ResolveConflictsMutationOptions = ApolloReactCommon.BaseMutationOptions<ResolveConflictsMutation, ResolveConflictsMutationVariables>;
+export const CompareParseSessionsDocument = gql`
+    query CompareParseSessions($sessionId1: String!, $sessionId2: String!) {
+  compareParseSessions(sessionId1: $sessionId1, sessionId2: $sessionId2)
+}
+    `;
+export function useCompareParseSessionsQuery(baseOptions: ApolloReactHooks.QueryHookOptions<CompareParseSessionsQuery, CompareParseSessionsQueryVariables> & ({ variables: CompareParseSessionsQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<CompareParseSessionsQuery, CompareParseSessionsQueryVariables>(CompareParseSessionsDocument, options);
+      }
+export function useCompareParseSessionsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<CompareParseSessionsQuery, CompareParseSessionsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<CompareParseSessionsQuery, CompareParseSessionsQueryVariables>(CompareParseSessionsDocument, options);
+        }
+// @ts-ignore
+export function useCompareParseSessionsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<CompareParseSessionsQuery, CompareParseSessionsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<CompareParseSessionsQuery, CompareParseSessionsQueryVariables>;
+export function useCompareParseSessionsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<CompareParseSessionsQuery, CompareParseSessionsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<CompareParseSessionsQuery | undefined, CompareParseSessionsQueryVariables>;
+export function useCompareParseSessionsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<CompareParseSessionsQuery, CompareParseSessionsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<CompareParseSessionsQuery, CompareParseSessionsQueryVariables>(CompareParseSessionsDocument, options);
+        }
+export type CompareParseSessionsQueryHookResult = ReturnType<typeof useCompareParseSessionsQuery>;
+export type CompareParseSessionsLazyQueryHookResult = ReturnType<typeof useCompareParseSessionsLazyQuery>;
+export type CompareParseSessionsSuspenseQueryHookResult = ReturnType<typeof useCompareParseSessionsSuspenseQuery>;
+export type CompareParseSessionsQueryResult = ApolloReactCommon.QueryResult<CompareParseSessionsQuery, CompareParseSessionsQueryVariables>;
+export const GetStrategyConfigDocument = gql`
+    query GetStrategyConfig {
+  strategyConfig {
+    defaultStrategy
+    enabledStrategies
+    autoMultiStrategy
+    multiStrategyThreshold
+    multiStrategyVoters
+  }
+}
+    `;
+export function useGetStrategyConfigQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>(GetStrategyConfigDocument, options);
+      }
+export function useGetStrategyConfigLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>(GetStrategyConfigDocument, options);
+        }
+// @ts-ignore
+export function useGetStrategyConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>;
+export function useGetStrategyConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetStrategyConfigQuery | undefined, GetStrategyConfigQueryVariables>;
+export function useGetStrategyConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>(GetStrategyConfigDocument, options);
+        }
+export type GetStrategyConfigQueryHookResult = ReturnType<typeof useGetStrategyConfigQuery>;
+export type GetStrategyConfigLazyQueryHookResult = ReturnType<typeof useGetStrategyConfigLazyQuery>;
+export type GetStrategyConfigSuspenseQueryHookResult = ReturnType<typeof useGetStrategyConfigSuspenseQuery>;
+export type GetStrategyConfigQueryResult = ApolloReactCommon.QueryResult<GetStrategyConfigQuery, GetStrategyConfigQueryVariables>;
+export const UpdateStrategyConfigDocument = gql`
+    mutation UpdateStrategyConfig($input: UpdateParseStrategyConfigInput!) {
+  updateStrategyConfig(input: $input) {
+    defaultStrategy
+    enabledStrategies
+    autoMultiStrategy
+    multiStrategyThreshold
+    multiStrategyVoters
+  }
+}
+    `;
+export type UpdateStrategyConfigMutationFn = ApolloReactCommon.MutationFunction<UpdateStrategyConfigMutation, UpdateStrategyConfigMutationVariables>;
+export function useUpdateStrategyConfigMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<UpdateStrategyConfigMutation, UpdateStrategyConfigMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<UpdateStrategyConfigMutation, UpdateStrategyConfigMutationVariables>(UpdateStrategyConfigDocument, options);
+      }
+export type UpdateStrategyConfigMutationHookResult = ReturnType<typeof useUpdateStrategyConfigMutation>;
+export type UpdateStrategyConfigMutationResult = ApolloReactCommon.MutationResult<UpdateStrategyConfigMutation>;
+export type UpdateStrategyConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<UpdateStrategyConfigMutation, UpdateStrategyConfigMutationVariables>;
+export const TestStrategyAvailabilityInputDocument = gql`
+    mutation TestStrategyAvailabilityInput($strategy: ParseStrategyType!) {
+  testStrategyAvailability(strategy: $strategy) {
+    strategy
+    available
+    message
+    latency
+  }
+}
+    `;
+export type TestStrategyAvailabilityInputMutationFn = ApolloReactCommon.MutationFunction<TestStrategyAvailabilityInputMutation, TestStrategyAvailabilityInputMutationVariables>;
+export function useTestStrategyAvailabilityInputMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<TestStrategyAvailabilityInputMutation, TestStrategyAvailabilityInputMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<TestStrategyAvailabilityInputMutation, TestStrategyAvailabilityInputMutationVariables>(TestStrategyAvailabilityInputDocument, options);
+      }
+export type TestStrategyAvailabilityInputMutationHookResult = ReturnType<typeof useTestStrategyAvailabilityInputMutation>;
+export type TestStrategyAvailabilityInputMutationResult = ApolloReactCommon.MutationResult<TestStrategyAvailabilityInputMutation>;
+export type TestStrategyAvailabilityInputMutationOptions = ApolloReactCommon.BaseMutationOptions<TestStrategyAvailabilityInputMutation, TestStrategyAvailabilityInputMutationVariables>;
 export const GetTagsDocument = gql`
     query GetTags {
   tags {
@@ -4406,6 +6402,37 @@ export type TagOverviewQueryHookResult = ReturnType<typeof useTagOverviewQuery>;
 export type TagOverviewLazyQueryHookResult = ReturnType<typeof useTagOverviewLazyQuery>;
 export type TagOverviewSuspenseQueryHookResult = ReturnType<typeof useTagOverviewSuspenseQuery>;
 export type TagOverviewQueryResult = ApolloReactCommon.QueryResult<TagOverviewQuery, TagOverviewQueryVariables>;
+export const GetRiskAlertsDocument = gql`
+    query GetRiskAlerts($limit: Int) {
+  getRiskAlerts(limit: $limit) {
+    id
+    contractId
+    alertType
+    severity
+    message
+    createdAt
+  }
+}
+    `;
+export function useGetRiskAlertsQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>(GetRiskAlertsDocument, options);
+      }
+export function useGetRiskAlertsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>(GetRiskAlertsDocument, options);
+        }
+// @ts-ignore
+export function useGetRiskAlertsSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>;
+export function useGetRiskAlertsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetRiskAlertsQuery | undefined, GetRiskAlertsQueryVariables>;
+export function useGetRiskAlertsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>(GetRiskAlertsDocument, options);
+        }
+export type GetRiskAlertsQueryHookResult = ReturnType<typeof useGetRiskAlertsQuery>;
+export type GetRiskAlertsLazyQueryHookResult = ReturnType<typeof useGetRiskAlertsLazyQuery>;
+export type GetRiskAlertsSuspenseQueryHookResult = ReturnType<typeof useGetRiskAlertsSuspenseQuery>;
+export type GetRiskAlertsQueryResult = ApolloReactCommon.QueryResult<GetRiskAlertsQuery, GetRiskAlertsQueryVariables>;
 export const CustomerOverviewDocument = gql`
     query CustomerOverview {
   customerOverview {
@@ -4527,6 +6554,179 @@ export type SalesPerformanceQueryHookResult = ReturnType<typeof useSalesPerforma
 export type SalesPerformanceLazyQueryHookResult = ReturnType<typeof useSalesPerformanceLazyQuery>;
 export type SalesPerformanceSuspenseQueryHookResult = ReturnType<typeof useSalesPerformanceSuspenseQuery>;
 export type SalesPerformanceQueryResult = ApolloReactCommon.QueryResult<SalesPerformanceQuery, SalesPerformanceQueryVariables>;
+export const GetLlmConfigDocument = gql`
+    query GetLLMConfig {
+  llmConfig {
+    provider
+    model
+    baseUrl
+    temperature
+    maxTokens
+  }
+}
+    `;
+export function useGetLlmConfigQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetLlmConfigQuery, GetLlmConfigQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetLlmConfigQuery, GetLlmConfigQueryVariables>(GetLlmConfigDocument, options);
+      }
+export function useGetLlmConfigLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetLlmConfigQuery, GetLlmConfigQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetLlmConfigQuery, GetLlmConfigQueryVariables>(GetLlmConfigDocument, options);
+        }
+// @ts-ignore
+export function useGetLlmConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetLlmConfigQuery, GetLlmConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetLlmConfigQuery, GetLlmConfigQueryVariables>;
+export function useGetLlmConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetLlmConfigQuery, GetLlmConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetLlmConfigQuery | undefined, GetLlmConfigQueryVariables>;
+export function useGetLlmConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetLlmConfigQuery, GetLlmConfigQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetLlmConfigQuery, GetLlmConfigQueryVariables>(GetLlmConfigDocument, options);
+        }
+export type GetLlmConfigQueryHookResult = ReturnType<typeof useGetLlmConfigQuery>;
+export type GetLlmConfigLazyQueryHookResult = ReturnType<typeof useGetLlmConfigLazyQuery>;
+export type GetLlmConfigSuspenseQueryHookResult = ReturnType<typeof useGetLlmConfigSuspenseQuery>;
+export type GetLlmConfigQueryResult = ApolloReactCommon.QueryResult<GetLlmConfigQuery, GetLlmConfigQueryVariables>;
+export const GetEmbeddingConfigDocument = gql`
+    query GetEmbeddingConfig {
+  embeddingConfig {
+    provider
+    model
+    baseUrl
+    dimensions
+  }
+}
+    `;
+export function useGetEmbeddingConfigQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>(GetEmbeddingConfigDocument, options);
+      }
+export function useGetEmbeddingConfigLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>(GetEmbeddingConfigDocument, options);
+        }
+// @ts-ignore
+export function useGetEmbeddingConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>;
+export function useGetEmbeddingConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetEmbeddingConfigQuery | undefined, GetEmbeddingConfigQueryVariables>;
+export function useGetEmbeddingConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>(GetEmbeddingConfigDocument, options);
+        }
+export type GetEmbeddingConfigQueryHookResult = ReturnType<typeof useGetEmbeddingConfigQuery>;
+export type GetEmbeddingConfigLazyQueryHookResult = ReturnType<typeof useGetEmbeddingConfigLazyQuery>;
+export type GetEmbeddingConfigSuspenseQueryHookResult = ReturnType<typeof useGetEmbeddingConfigSuspenseQuery>;
+export type GetEmbeddingConfigQueryResult = ApolloReactCommon.QueryResult<GetEmbeddingConfigQuery, GetEmbeddingConfigQueryVariables>;
+export const SaveLlmConfigDocument = gql`
+    mutation SaveLLMConfig($config: UpdateSystemConfigInput!) {
+  saveLLMConfig(config: $config) {
+    provider
+    model
+    baseUrl
+    temperature
+    maxTokens
+  }
+}
+    `;
+export type SaveLlmConfigMutationFn = ApolloReactCommon.MutationFunction<SaveLlmConfigMutation, SaveLlmConfigMutationVariables>;
+export function useSaveLlmConfigMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<SaveLlmConfigMutation, SaveLlmConfigMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<SaveLlmConfigMutation, SaveLlmConfigMutationVariables>(SaveLlmConfigDocument, options);
+      }
+export type SaveLlmConfigMutationHookResult = ReturnType<typeof useSaveLlmConfigMutation>;
+export type SaveLlmConfigMutationResult = ApolloReactCommon.MutationResult<SaveLlmConfigMutation>;
+export type SaveLlmConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<SaveLlmConfigMutation, SaveLlmConfigMutationVariables>;
+export const SaveEmbeddingConfigDocument = gql`
+    mutation SaveEmbeddingConfig($provider: String, $model: String, $baseUrl: String, $apiKey: String, $dimensions: Float) {
+  saveEmbeddingConfig(
+    provider: $provider
+    model: $model
+    baseUrl: $baseUrl
+    apiKey: $apiKey
+    dimensions: $dimensions
+  ) {
+    provider
+    model
+    baseUrl
+    dimensions
+  }
+}
+    `;
+export type SaveEmbeddingConfigMutationFn = ApolloReactCommon.MutationFunction<SaveEmbeddingConfigMutation, SaveEmbeddingConfigMutationVariables>;
+export function useSaveEmbeddingConfigMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<SaveEmbeddingConfigMutation, SaveEmbeddingConfigMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<SaveEmbeddingConfigMutation, SaveEmbeddingConfigMutationVariables>(SaveEmbeddingConfigDocument, options);
+      }
+export type SaveEmbeddingConfigMutationHookResult = ReturnType<typeof useSaveEmbeddingConfigMutation>;
+export type SaveEmbeddingConfigMutationResult = ApolloReactCommon.MutationResult<SaveEmbeddingConfigMutation>;
+export type SaveEmbeddingConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<SaveEmbeddingConfigMutation, SaveEmbeddingConfigMutationVariables>;
+export const TestLlmConnectionDocument = gql`
+    mutation TestLLMConnection {
+  testLLMConnection {
+    success
+    message
+    latency
+  }
+}
+    `;
+export type TestLlmConnectionMutationFn = ApolloReactCommon.MutationFunction<TestLlmConnectionMutation, TestLlmConnectionMutationVariables>;
+export function useTestLlmConnectionMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<TestLlmConnectionMutation, TestLlmConnectionMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<TestLlmConnectionMutation, TestLlmConnectionMutationVariables>(TestLlmConnectionDocument, options);
+      }
+export type TestLlmConnectionMutationHookResult = ReturnType<typeof useTestLlmConnectionMutation>;
+export type TestLlmConnectionMutationResult = ApolloReactCommon.MutationResult<TestLlmConnectionMutation>;
+export type TestLlmConnectionMutationOptions = ApolloReactCommon.BaseMutationOptions<TestLlmConnectionMutation, TestLlmConnectionMutationVariables>;
+export const TestEmbeddingConnectionDocument = gql`
+    mutation TestEmbeddingConnection {
+  testEmbeddingConnection {
+    success
+    message
+    latency
+  }
+}
+    `;
+export type TestEmbeddingConnectionMutationFn = ApolloReactCommon.MutationFunction<TestEmbeddingConnectionMutation, TestEmbeddingConnectionMutationVariables>;
+export function useTestEmbeddingConnectionMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<TestEmbeddingConnectionMutation, TestEmbeddingConnectionMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<TestEmbeddingConnectionMutation, TestEmbeddingConnectionMutationVariables>(TestEmbeddingConnectionDocument, options);
+      }
+export type TestEmbeddingConnectionMutationHookResult = ReturnType<typeof useTestEmbeddingConnectionMutation>;
+export type TestEmbeddingConnectionMutationResult = ApolloReactCommon.MutationResult<TestEmbeddingConnectionMutation>;
+export type TestEmbeddingConnectionMutationOptions = ApolloReactCommon.BaseMutationOptions<TestEmbeddingConnectionMutation, TestEmbeddingConnectionMutationVariables>;
+export const ResetLlmConfigDocument = gql`
+    mutation ResetLLMConfig {
+  resetLLMConfig {
+    provider
+    model
+    baseUrl
+    temperature
+    maxTokens
+  }
+}
+    `;
+export type ResetLlmConfigMutationFn = ApolloReactCommon.MutationFunction<ResetLlmConfigMutation, ResetLlmConfigMutationVariables>;
+export function useResetLlmConfigMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<ResetLlmConfigMutation, ResetLlmConfigMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<ResetLlmConfigMutation, ResetLlmConfigMutationVariables>(ResetLlmConfigDocument, options);
+      }
+export type ResetLlmConfigMutationHookResult = ReturnType<typeof useResetLlmConfigMutation>;
+export type ResetLlmConfigMutationResult = ApolloReactCommon.MutationResult<ResetLlmConfigMutation>;
+export type ResetLlmConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<ResetLlmConfigMutation, ResetLlmConfigMutationVariables>;
+export const ResetEmbeddingConfigDocument = gql`
+    mutation ResetEmbeddingConfig {
+  resetEmbeddingConfig {
+    provider
+    model
+    baseUrl
+    dimensions
+  }
+}
+    `;
+export type ResetEmbeddingConfigMutationFn = ApolloReactCommon.MutationFunction<ResetEmbeddingConfigMutation, ResetEmbeddingConfigMutationVariables>;
+export function useResetEmbeddingConfigMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<ResetEmbeddingConfigMutation, ResetEmbeddingConfigMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<ResetEmbeddingConfigMutation, ResetEmbeddingConfigMutationVariables>(ResetEmbeddingConfigDocument, options);
+      }
+export type ResetEmbeddingConfigMutationHookResult = ReturnType<typeof useResetEmbeddingConfigMutation>;
+export type ResetEmbeddingConfigMutationResult = ApolloReactCommon.MutationResult<ResetEmbeddingConfigMutation>;
+export type ResetEmbeddingConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<ResetEmbeddingConfigMutation, ResetEmbeddingConfigMutationVariables>;
 export const ChangePasswordDocument = gql`
     mutation ChangePassword($input: ChangePasswordInput!) {
   changePassword(input: $input) {
@@ -4543,6 +6743,137 @@ export function useChangePasswordMutation(baseOptions?: ApolloReactHooks.Mutatio
 export type ChangePasswordMutationHookResult = ReturnType<typeof useChangePasswordMutation>;
 export type ChangePasswordMutationResult = ApolloReactCommon.MutationResult<ChangePasswordMutation>;
 export type ChangePasswordMutationOptions = ApolloReactCommon.BaseMutationOptions<ChangePasswordMutation, ChangePasswordMutationVariables>;
+export const GetSystemConfigDocument = gql`
+    query GetSystemConfig {
+  systemConfig {
+    llmProvider
+    llmModel
+    llmBaseUrl
+    llmApiKey
+    llmTemperature
+    llmMaxTokens
+    llmTimeout
+    smtpEnabled
+    smtpHost
+    smtpPort
+    smtpUser
+    smtpSecure
+    minioEndpoint
+    minioPort
+    minioBucket
+  }
+}
+    `;
+export function useGetSystemConfigQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetSystemConfigQuery, GetSystemConfigQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetSystemConfigQuery, GetSystemConfigQueryVariables>(GetSystemConfigDocument, options);
+      }
+export function useGetSystemConfigLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetSystemConfigQuery, GetSystemConfigQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetSystemConfigQuery, GetSystemConfigQueryVariables>(GetSystemConfigDocument, options);
+        }
+// @ts-ignore
+export function useGetSystemConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetSystemConfigQuery, GetSystemConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetSystemConfigQuery, GetSystemConfigQueryVariables>;
+export function useGetSystemConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetSystemConfigQuery, GetSystemConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetSystemConfigQuery | undefined, GetSystemConfigQueryVariables>;
+export function useGetSystemConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetSystemConfigQuery, GetSystemConfigQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetSystemConfigQuery, GetSystemConfigQueryVariables>(GetSystemConfigDocument, options);
+        }
+export type GetSystemConfigQueryHookResult = ReturnType<typeof useGetSystemConfigQuery>;
+export type GetSystemConfigLazyQueryHookResult = ReturnType<typeof useGetSystemConfigLazyQuery>;
+export type GetSystemConfigSuspenseQueryHookResult = ReturnType<typeof useGetSystemConfigSuspenseQuery>;
+export type GetSystemConfigQueryResult = ApolloReactCommon.QueryResult<GetSystemConfigQuery, GetSystemConfigQueryVariables>;
+export const GetSystemHealthDocument = gql`
+    query GetSystemHealth {
+  systemHealth {
+    api
+    database
+    storage
+    uptime
+    version
+    timestamp
+    databaseStatus
+    storageStatus
+  }
+}
+    `;
+export function useGetSystemHealthQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetSystemHealthQuery, GetSystemHealthQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetSystemHealthQuery, GetSystemHealthQueryVariables>(GetSystemHealthDocument, options);
+      }
+export function useGetSystemHealthLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetSystemHealthQuery, GetSystemHealthQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetSystemHealthQuery, GetSystemHealthQueryVariables>(GetSystemHealthDocument, options);
+        }
+// @ts-ignore
+export function useGetSystemHealthSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetSystemHealthQuery, GetSystemHealthQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetSystemHealthQuery, GetSystemHealthQueryVariables>;
+export function useGetSystemHealthSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetSystemHealthQuery, GetSystemHealthQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetSystemHealthQuery | undefined, GetSystemHealthQueryVariables>;
+export function useGetSystemHealthSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetSystemHealthQuery, GetSystemHealthQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetSystemHealthQuery, GetSystemHealthQueryVariables>(GetSystemHealthDocument, options);
+        }
+export type GetSystemHealthQueryHookResult = ReturnType<typeof useGetSystemHealthQuery>;
+export type GetSystemHealthLazyQueryHookResult = ReturnType<typeof useGetSystemHealthLazyQuery>;
+export type GetSystemHealthSuspenseQueryHookResult = ReturnType<typeof useGetSystemHealthSuspenseQuery>;
+export type GetSystemHealthQueryResult = ApolloReactCommon.QueryResult<GetSystemHealthQuery, GetSystemHealthQueryVariables>;
+export const UpdateSystemConfigDocument = gql`
+    mutation UpdateSystemConfig($config: UpdateSystemConfigInput!) {
+  updateSystemConfig(config: $config) {
+    llmProvider
+    llmModel
+    llmBaseUrl
+    llmApiKey
+    llmTemperature
+    llmMaxTokens
+    llmTimeout
+    smtpEnabled
+    smtpHost
+    smtpPort
+    smtpSecure
+    minioEndpoint
+    minioPort
+    minioBucket
+  }
+}
+    `;
+export type UpdateSystemConfigMutationFn = ApolloReactCommon.MutationFunction<UpdateSystemConfigMutation, UpdateSystemConfigMutationVariables>;
+export function useUpdateSystemConfigMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<UpdateSystemConfigMutation, UpdateSystemConfigMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<UpdateSystemConfigMutation, UpdateSystemConfigMutationVariables>(UpdateSystemConfigDocument, options);
+      }
+export type UpdateSystemConfigMutationHookResult = ReturnType<typeof useUpdateSystemConfigMutation>;
+export type UpdateSystemConfigMutationResult = ApolloReactCommon.MutationResult<UpdateSystemConfigMutation>;
+export type UpdateSystemConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<UpdateSystemConfigMutation, UpdateSystemConfigMutationVariables>;
+export const TestSmtpConnectionDocument = gql`
+    mutation TestSmtpConnection {
+  testSmtpConnection
+}
+    `;
+export type TestSmtpConnectionMutationFn = ApolloReactCommon.MutationFunction<TestSmtpConnectionMutation, TestSmtpConnectionMutationVariables>;
+export function useTestSmtpConnectionMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<TestSmtpConnectionMutation, TestSmtpConnectionMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<TestSmtpConnectionMutation, TestSmtpConnectionMutationVariables>(TestSmtpConnectionDocument, options);
+      }
+export type TestSmtpConnectionMutationHookResult = ReturnType<typeof useTestSmtpConnectionMutation>;
+export type TestSmtpConnectionMutationResult = ApolloReactCommon.MutationResult<TestSmtpConnectionMutation>;
+export type TestSmtpConnectionMutationOptions = ApolloReactCommon.BaseMutationOptions<TestSmtpConnectionMutation, TestSmtpConnectionMutationVariables>;
+export const SendNotificationDocument = gql`
+    mutation SendNotification($input: SendNotificationInput!) {
+  sendNotification(input: $input) {
+    success
+    message
+    messageId
+  }
+}
+    `;
+export type SendNotificationMutationFn = ApolloReactCommon.MutationFunction<SendNotificationMutation, SendNotificationMutationVariables>;
+export function useSendNotificationMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<SendNotificationMutation, SendNotificationMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<SendNotificationMutation, SendNotificationMutationVariables>(SendNotificationDocument, options);
+      }
+export type SendNotificationMutationHookResult = ReturnType<typeof useSendNotificationMutation>;
+export type SendNotificationMutationResult = ApolloReactCommon.MutationResult<SendNotificationMutation>;
+export type SendNotificationMutationOptions = ApolloReactCommon.BaseMutationOptions<SendNotificationMutation, SendNotificationMutationVariables>;
 export const GetUsersDocument = gql`
     query GetUsers($page: Int!, $pageSize: Int!, $filter: UserFilterInput) {
   users(page: $page, pageSize: $pageSize, filter: $filter) {

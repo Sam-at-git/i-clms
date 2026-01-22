@@ -1,4 +1,4 @@
-import { ObjectType, Field, ID, InputType, registerEnumType } from '@nestjs/graphql';
+import { ObjectType, Field, ID, InputType, registerEnumType, Int } from '@nestjs/graphql';
 import { MilestoneStatus } from '../../graphql/types/enums';
 
 // 里程碑状态历史
@@ -146,4 +146,105 @@ export class RejectMilestoneInput {
 
   @Field()
   reason!: string;
+}
+
+// ==================== 项目里程碑列表查询 ====================
+
+@ObjectType()
+export class MilestoneCustomerInfo {
+  @Field(() => ID)
+  id!: string;
+
+  @Field()
+  name!: string;
+}
+
+@ObjectType()
+export class MilestoneContractInfo {
+  @Field(() => ID)
+  id!: string;
+
+  @Field()
+  contractNo!: string;
+
+  @Field()
+  name!: string;
+
+  @Field(() => ID)
+  customerId!: string;
+
+  @Field(() => MilestoneCustomerInfo)
+  customer!: MilestoneCustomerInfo;
+}
+
+@ObjectType()
+export class ProjectMilestoneWithContract {
+  @Field(() => ID)
+  id!: string;
+
+  @Field(() => Int)
+  sequence!: number;
+
+  @Field()
+  name!: string;
+
+  @Field(() => String, { nullable: true })
+  deliverables?: string | null;
+
+  @Field(() => String, { nullable: true })
+  amount?: string | null;
+
+  @Field(() => String, { nullable: true })
+  paymentPercentage?: string | null;
+
+  @Field(() => Date, { nullable: true })
+  plannedDate?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  actualDate?: Date | null;
+
+  @Field(() => String, { nullable: true })
+  acceptanceCriteria?: string | null;
+
+  @Field(() => MilestoneStatus)
+  status!: MilestoneStatus;
+
+  @Field(() => String, { nullable: true })
+  deliverableFileUrl?: string | null;
+
+  @Field(() => String, { nullable: true })
+  deliverableFileName?: string | null;
+
+  @Field(() => Date, { nullable: true })
+  deliverableUploadedAt?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  acceptedAt?: Date | null;
+
+  @Field(() => ID, { nullable: true })
+  acceptedBy?: string | null;
+
+  @Field(() => String, { nullable: true })
+  acceptedByName?: string | null;
+
+  @Field(() => Date, { nullable: true })
+  rejectedAt?: Date | null;
+
+  @Field(() => ID, { nullable: true })
+  rejectedBy?: string | null;
+
+  @Field(() => String, { nullable: true })
+  rejectedByName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  rejectionReason?: string | null;
+
+  @Field()
+  createdAt!: Date;
+
+  @Field()
+  updatedAt!: Date;
+
+  @Field(() => MilestoneContractInfo)
+  contract!: MilestoneContractInfo;
 }

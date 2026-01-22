@@ -1,53 +1,54 @@
-query GetSystemConfig {
-  systemConfig {
-    llmProvider
-    llmModel
-    smtpEnabled
-    smtpHost
-    smtpPort
-    smtpUser
-    smtpSecure
-    minioEndpoint
-    minioPort
-    minioBucket
-  }
-}
-
-query GetSystemHealth {
-  systemHealth {
-    api
-    database
-    storage
-    uptime
-    version
-    timestamp
-    databaseStatus
-    storageStatus
-  }
-}
-
-mutation UpdateSystemConfig($config: UpdateSystemConfigInput!) {
-  updateSystemConfig(config: $config) {
-    llmProvider
-    llmModel
-    smtpEnabled
-    smtpHost
-    smtpPort
-    smtpSecure
-    minioEndpoint
-    minioPort
-    minioBucket
-  }
-}
-
-mutation SendNotification($input: SendNotificationInput!) {
-  sendNotification(input: $input) {
-    success
-    message
-    messageId
-  }
-}
-
-mutation TestSmtpConnection {
-  testSmtpConnection
-}
+# Temporarily commented out - these queries don't exist in the backend yet
+# query GetSystemConfig {
+#   systemConfig {
+#     llmProvider
+#     llmModel
+#     smtpEnabled
+#     smtpHost
+#     smtpPort
+#     smtpUser
+#     smtpSecure
+#     minioEndpoint
+#     minioPort
+#     minioBucket
+#   }
+# }
+#
+# query GetSystemHealth {
+#   systemHealth {
+#     api
+#     database
+#     storage
+#     uptime
+#     version
+#     timestamp
+#     databaseStatus
+#     storageStatus
+#   }
+# }
+#
+# mutation UpdateSystemConfig($config: UpdateSystemConfigInput!) {
+#   updateSystemConfig(config: $config) {
+#     llmProvider
+#     llmModel
+#     smtpEnabled
+#     smtpHost
+#     smtpPort
+#     smtpSecure
+#     minioEndpoint
+#     minioPort
+#     minioBucket
+#   }
+# }
+#
+# mutation SendNotification($input: SendNotificationInput!) {
+#   sendNotification(input: $input) {
+#     success
+#     message
+#     messageId
+#   }
+# }
+#
+# mutation TestSmtpConnection {
+#   testSmtpConnection
+# }

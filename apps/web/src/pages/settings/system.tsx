@@ -9,6 +9,11 @@ const GET_SYSTEM_CONFIG = gql`
     systemConfig {
       llmProvider
       llmModel
+      llmBaseUrl
+      llmApiKey
+      llmTemperature
+      llmMaxTokens
+      llmTimeout
       smtpEnabled
       smtpHost
       smtpPort
@@ -41,6 +46,11 @@ const UPDATE_SYSTEM_CONFIG = gql`
     updateSystemConfig(config: $config) {
       llmProvider
       llmModel
+      llmBaseUrl
+      llmApiKey
+      llmTemperature
+      llmMaxTokens
+      llmTimeout
       smtpEnabled
       smtpHost
       smtpPort
@@ -68,6 +78,7 @@ const SEND_NOTIFICATION = gql`
   }
 `;
 
+// Placeholder types for when the backend is implemented
 interface SystemConfigResponse {
   systemConfig: {
     llmProvider: string;
@@ -100,6 +111,11 @@ interface UpdateSystemConfigResponse {
   updateSystemConfig: {
     llmProvider: string;
     llmModel: string;
+    llmBaseUrl?: string | null;
+    llmApiKey?: string | null;
+    llmTemperature?: number | null;
+    llmMaxTokens?: number | null;
+    llmTimeout?: number | null;
     smtpEnabled: boolean;
     smtpHost: string | null;
     smtpPort: number | null;
@@ -118,6 +134,39 @@ interface SendNotificationResponse {
   };
 }
 
+interface SystemConfigResponse {
+  systemConfig: {
+    llmProvider: string;
+    llmModel: string;
+    llmBaseUrl?: string | null;
+    llmApiKey?: string | null;
+    llmTemperature?: number | null;
+    llmMaxTokens?: number | null;
+    llmTimeout?: number | null;
+    smtpEnabled: boolean;
+    smtpHost: string | null;
+    smtpPort: number | null;
+    smtpUser: string | null;
+    smtpSecure: boolean | null;
+    minioEndpoint: string | null;
+    minioPort: number | null;
+    minioBucket: string | null;
+  };
+}
+
+interface SystemHealthResponse {
+  systemHealth: {
+    api: boolean;
+    database: boolean;
+    storage: boolean;
+    uptime: number;
+    version: string;
+    timestamp: string;
+    databaseStatus: string | null;
+    storageStatus: string | null;
+  };
+}
+
 export function SystemSettingsPage() {
   const user = useAuthStore((state) => state.user);
 
@@ -129,6 +178,11 @@ export function SystemSettingsPage() {
   const [llmConfig, setLlmConfig] = useState({
     llmProvider: 'ollama',
     llmModel: 'gemma3:27b',
+    llmBaseUrl: '',
+    llmApiKey: '',
+    llmTemperature: 0.1,
+    llmMaxTokens: 4000,
+    llmTimeout: 120000,
   });
   const [smtpConfig, setSmtpConfig] = useState({
     smtpEnabled: false,
@@ -164,6 +218,11 @@ export function SystemSettingsPage() {
       setLlmConfig({
         llmProvider: configData.systemConfig.llmProvider || 'ollama',
         llmModel: configData.systemConfig.llmModel || 'gemma3:27b',
+        llmBaseUrl: configData.systemConfig.llmBaseUrl || '',
+        llmApiKey: configData.systemConfig.llmApiKey || '',
+        llmTemperature: configData.systemConfig.llmTemperature || 0.1,
+        llmMaxTokens: configData.systemConfig.llmMaxTokens || 4000,
+        llmTimeout: configData.systemConfig.llmTimeout || 120000,
       });
       setSmtpConfig((prev) => ({
         ...prev,
@@ -190,7 +249,20 @@ export function SystemSettingsPage() {
   );
 
   const [updateSystemConfig] = useMutation<UpdateSystemConfigResponse>(UPDATE_SYSTEM_CONFIG, {
-    onCompleted: () => {
+    onCompleted: (data) => {
+      // 更新本地状态以反映保存后的值
+      if (data.updateSystemConfig) {
+        setLlmConfig((prev) => ({
+          ...prev,
+          llmProvider: data.updateSystemConfig.llmProvider,
+          llmModel: data.updateSystemConfig.llmModel,
+          llmBaseUrl: data.updateSystemConfig.llmBaseUrl || '',
+          llmApiKey: data.updateSystemConfig.llmApiKey || '',
+          llmTemperature: data.updateSystemConfig.llmTemperature || 0.1,
+          llmMaxTokens: data.updateSystemConfig.llmMaxTokens || 4000,
+          llmTimeout: data.updateSystemConfig.llmTimeout || 120000,
+        }));
+      }
       setSuccess('配置保存成功');
       setTimeout(() => setSuccess(''), 3000);
     },
@@ -382,6 +454,63 @@ export function SystemSettingsPage() {
               </div>
             </div>
 
+            {/* OpenAI 专用配置 */}
+            {llmConfig.llmProvider === 'openai' && (
+              <>
+                <div style={styles.field}>
+                  <label style={styles.label}>API Base URL</label>
+                  <input
+                    type="text"
+                    style={styles.input}
+                    value={llmConfig.llmBaseUrl}
+                    onChange={(e) =>
+                      setLlmConfig({ ...llmConfig, llmBaseUrl: e.target.value })
+                    }
+                    placeholder="例如: https://api.openai.com/v1"
+                  />
+                  <div style={styles.help}>
+                    OpenAI API 的 Base URL，官方为 https://api.openai.com/v1
+                  </div>
+                </div>
+
+                <div style={styles.field}>
+                  <label style={styles.label}>API Key</label>
+                  <input
+                    type="password"
+                    style={styles.input}
+                    value={llmConfig.llmApiKey}
+                    onChange={(e) =>
+                      setLlmConfig({ ...llmConfig, llmApiKey: e.target.value })
+                    }
+                    placeholder="sk-..."
+                  />
+                  <div style={styles.help}>
+                    OpenAI API 密钥，以 sk- 开头
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Ollama 专用配置 */}
+            {llmConfig.llmProvider === 'ollama' && (
+              <div style={styles.field}>
+                <label style={styles.label}>服务地址 (可选)</label>
+                <input
+                  type="text"
+                  style={styles.input}
+                  value={llmConfig.llmBaseUrl}
+                  onChange={(e) =>
+                    setLlmConfig({ ...llmConfig, llmBaseUrl: e.target.value })
+                  }
+                  placeholder="例如: http://localhost:11434/v1"
+                />
+                <div style={styles.help}>
+                  Ollama 服务的 Base URL，留空使用默认值 http://localhost:11434/v1
+                </div>
+              </div>
+            )}
+
+            {/* 通用配置 */}
             <div style={styles.field}>
               <label style={styles.label}>模型名称</label>
               <input
@@ -391,12 +520,72 @@ export function SystemSettingsPage() {
                 onChange={(e) =>
                   setLlmConfig({ ...llmConfig, llmModel: e.target.value })
                 }
-                placeholder="例如: gemma3:27b 或 gpt-4o"
+                placeholder={llmConfig.llmProvider === 'openai' ? '例如: gpt-4o, gpt-4o-mini' : '例如: gemma3:27b, llama3, qwen2.5'}
               />
               <div style={styles.help}>
-                Ollama常用模型: gemma3:27b, llama3, qwen2.5；OpenAI: gpt-4o, gpt-4o-mini
+                {llmConfig.llmProvider === 'openai'
+                  ? 'OpenAI 模型: gpt-4o, gpt-4o-mini, gpt-4-turbo 等'
+                  : 'Ollama 常用模型: gemma3:27b, llama3, qwen2.5, deepseek-r1 等'}
               </div>
             </div>
+
+            {/* 高级配置（可折叠） */}
+            <details style={{ ...styles.field, marginTop: '20px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#374151' }}>
+                高级配置 ⚙️
+              </summary>
+              <div style={{ marginTop: '16px' }}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Temperature (0-1)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="1"
+                    style={styles.input}
+                    value={llmConfig.llmTemperature}
+                    onChange={(e) =>
+                      setLlmConfig({ ...llmConfig, llmTemperature: parseFloat(e.target.value) })
+                    }
+                  />
+                  <div style={styles.help}>
+                    控制输出的随机性，越低越确定，越高越随机
+                  </div>
+                </div>
+
+                <div style={styles.field}>
+                  <label style={styles.label}>Max Tokens</label>
+                  <input
+                    type="number"
+                    min="1"
+                    style={styles.input}
+                    value={llmConfig.llmMaxTokens}
+                    onChange={(e) =>
+                      setLlmConfig({ ...llmConfig, llmMaxTokens: parseInt(e.target.value) })
+                    }
+                  />
+                  <div style={styles.help}>
+                    单次请求最大输出 Token 数量
+                  </div>
+                </div>
+
+                <div style={styles.field}>
+                  <label style={styles.label}>超时时间 (毫秒)</label>
+                  <input
+                    type="number"
+                    min="1000"
+                    style={styles.input}
+                    value={llmConfig.llmTimeout}
+                    onChange={(e) =>
+                      setLlmConfig({ ...llmConfig, llmTimeout: parseInt(e.target.value) })
+                    }
+                  />
+                  <div style={styles.help}>
+                    请求超时时间，本地模型可能需要更长的时间
+                  </div>
+                </div>
+              </div>
+            </details>
 
             <div style={styles.actions}>
               <button onClick={handleSaveLlmConfig} style={styles.saveButton}>

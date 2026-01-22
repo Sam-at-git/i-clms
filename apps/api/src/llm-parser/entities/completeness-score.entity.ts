@@ -4,6 +4,8 @@ export enum ParseStrategy {
   DIRECT_USE = 'DIRECT_USE',
   LLM_VALIDATION = 'LLM_VALIDATION',
   LLM_FULL_EXTRACTION = 'LLM_FULL_EXTRACTION',
+  RAG = 'RAG',
+  DOCLING = 'DOCLING',
 }
 
 registerEnumType(ParseStrategy, {

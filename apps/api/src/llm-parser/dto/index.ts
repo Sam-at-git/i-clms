@@ -6,3 +6,5 @@ export * from './validation-result.dto';
 export * from './parse-with-llm.input';
 export * from './parse-optimized.input';
 export * from './optimized-parse-result.dto';
+export * from './parse-strategy.dto';
+export * from './voting.dto';

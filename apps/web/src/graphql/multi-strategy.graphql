@@ -1,0 +1,96 @@
+mutation ParseWithMultiStrategies($input: MultiStrategyParseInput!) {
+  parseWithMultiStrategies(input: $input) {
+    results {
+      strategy
+      success
+      fields
+      confidence
+      processingTimeMs
+      error
+    }
+    finalFields
+    voteResults {
+      fieldName
+      agreedValue
+      confidence
+      votes {
+        strategy
+        value
+        weight
+      }
+      needsResolution
+      resolutionMethod
+    }
+    overallConfidence
+    conflicts
+    warnings
+    duration
+    timestamp
+  }
+}
+
+query GetMultiStrategyParseResult($sessionId: String!) {
+  getMultiStrategyParseResult(sessionId: $sessionId) {
+    results {
+      strategy
+      success
+      fields
+      confidence
+      processingTimeMs
+      error
+    }
+    finalFields
+    voteResults {
+      fieldName
+      agreedValue
+      confidence
+      votes {
+        strategy
+        value
+        weight
+      }
+      needsResolution
+      resolutionMethod
+    }
+    overallConfidence
+    conflicts
+    warnings
+    duration
+    timestamp
+  }
+}
+
+mutation ResolveConflicts($input: ResolveConflictsInput!, $documentText: String!) {
+  resolveConflicts(input: $input, documentText: $documentText) {
+    results {
+      strategy
+      success
+      fields
+      confidence
+      processingTimeMs
+      error
+    }
+    finalFields
+    voteResults {
+      fieldName
+      agreedValue
+      confidence
+      votes {
+        strategy
+        value
+        weight
+      }
+      needsResolution
+      resolutionMethod
+    }
+    overallConfidence
+    conflicts
+    warnings
+    duration
+    timestamp
+  }
+}
+
+query CompareParseSessions($sessionId1: String!, $sessionId2: String!) {
+  compareParseSessions(sessionId1: $sessionId1, sessionId2: $sessionId2)
+}

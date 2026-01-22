@@ -1,0 +1,28 @@
+query GetStrategyConfig {
+  strategyConfig {
+    defaultStrategy
+    enabledStrategies
+    autoMultiStrategy
+    multiStrategyThreshold
+    multiStrategyVoters
+  }
+}
+
+mutation UpdateStrategyConfig($input: UpdateParseStrategyConfigInput!) {
+  updateStrategyConfig(input: $input) {
+    defaultStrategy
+    enabledStrategies
+    autoMultiStrategy
+    multiStrategyThreshold
+    multiStrategyVoters
+  }
+}
+
+mutation TestStrategyAvailabilityInput($strategy: ParseStrategyType!) {
+  testStrategyAvailability(strategy: $strategy) {
+    strategy
+    available
+    message
+    latency
+  }
+}

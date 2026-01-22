@@ -5,6 +5,7 @@ import { ContractService } from './contract.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaClient } from '@prisma/client';
 import { ContractType, ContractStatus, ParseStatus } from './models';
+import { MilestoneStatus } from '../graphql/types/enums';
 
 describe('ContractService', () => {
   let service: ContractService;
@@ -174,12 +175,130 @@ describe('ContractService', () => {
     };
 
     it('should create contract successfully', async () => {
+      // Mock create to return basic contract
       prismaService.contract.create.mockResolvedValue(mockContract as any);
+
+      // Mock findUnique to return full contract with relations
+      const fullContract = {
+        ...mockContract,
+        customer: mockContract.customer,
+        department: mockContract.department,
+        uploadedBy: mockContract.uploadedBy,
+        parentContract: null,
+        supplements: [],
+        staffAugmentation: null,
+        projectOutsourcing: null,
+        productSales: null,
+      };
+      prismaService.contract.findUnique.mockResolvedValue(fullContract as any);
 
       const result = await service.create(createInput);
 
       expect(result).toBeDefined();
       expect(prismaService.contract.create).toHaveBeenCalled();
+      expect(prismaService.contract.findUnique).toHaveBeenCalled();
+    });
+
+    it('should create contract with milestones for PROJECT_OUTSOURCING type', async () => {
+      const createWithMilestones = {
+        contractNo: 'CT-2024-003',
+        name: 'Project Outsourcing Contract',
+        type: ContractType.PROJECT_OUTSOURCING,
+        status: ContractStatus.DRAFT,
+        ourEntity: 'Test Company',
+        customerId: 'customer-1',
+        amountWithTax: '1200000',
+        currency: 'CNY',
+        departmentId: 'dept-1',
+        uploadedById: 'user-1',
+        fileUrl: 'https://example.com/project-contract.pdf',
+        projectOutsourcingDetail: {
+          sowSummary: 'Software development project',
+          deliverables: 'Source code, documentation',
+          acceptanceCriteria: 'User acceptance test passed',
+          milestones: [
+            {
+              sequence: 1,
+              name: 'Contract Signing',
+              deliverables: 'Signed contract',
+              amount: '360000',
+              paymentPercentage: '30',
+              plannedDate: new Date('2024-01-20'),
+              status: MilestoneStatus.PENDING,
+            },
+            {
+              sequence: 2,
+              name: 'Requirements Confirmation',
+              deliverables: 'Requirements document',
+              amount: '240000',
+              paymentPercentage: '20',
+              plannedDate: new Date('2024-03-15'),
+              status: MilestoneStatus.PENDING,
+            },
+          ],
+        },
+      };
+
+      const mockCreatedContract = {
+        id: 'contract-3',
+        ...createWithMilestones,
+        amountWithTax: 1200000,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Mock contract.create
+      prismaService.contract.create.mockResolvedValue(mockCreatedContract as any);
+
+      // Mock projectOutsourcingDetail.create
+      const mockDetail = {
+        id: 'detail-1',
+        contractId: 'contract-3',
+        sowSummary: 'Software development project',
+        deliverables: 'Source code, documentation',
+        acceptanceCriteria: 'User acceptance test passed',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      prismaService.projectOutsourcingDetail.create.mockResolvedValue(mockDetail as any);
+
+      // Mock projectMilestone.createMany
+      prismaService.projectMilestone.createMany.mockResolvedValue({ count: 2 } as any);
+
+      // Mock findUnique to return full contract
+      const fullContract = {
+        ...mockCreatedContract,
+        customer: mockContract.customer,
+        department: mockContract.department,
+        uploadedBy: mockContract.uploadedBy,
+        parentContract: null,
+        supplements: [],
+        staffAugmentation: null,
+        projectOutsourcing: mockDetail as any,
+        productSales: null,
+      };
+      prismaService.contract.findUnique.mockResolvedValue(fullContract as any);
+
+      const result = await service.create(createWithMilestones);
+
+      expect(result).toBeDefined();
+      expect(prismaService.projectOutsourcingDetail.create).toHaveBeenCalled();
+      expect(prismaService.projectMilestone.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            detailId: 'detail-1',
+            sequence: 1,
+            name: 'Contract Signing',
+            status: 'PENDING',
+          }),
+          expect.objectContaining({
+            detailId: 'detail-1',
+            sequence: 2,
+            name: 'Requirements Confirmation',
+            status: 'PENDING',
+          }),
+        ]),
+      });
     });
   });
 

@@ -21,6 +21,9 @@ import {
   UploadDeliverableInput,
   AcceptMilestoneInput,
   RejectMilestoneInput,
+  ProjectMilestoneWithContract,
+  MilestoneContractInfo,
+  MilestoneCustomerInfo,
 } from './dto/milestone-status.dto';
 import { ContractStatus, MilestoneStatus, UserRole } from '../graphql/types/enums';
 
@@ -690,6 +693,75 @@ export class DeliveryService {
       })),
       createdAt: milestone.createdAt,
       updatedAt: milestone.updatedAt,
+    };
+  }
+
+  /**
+   * 获取所有项目里程碑（带合同信息）
+   */
+  async getAllProjectMilestones(): Promise<ProjectMilestoneWithContract[]> {
+    const milestones = await this.prisma.projectMilestone.findMany({
+      include: {
+        detail: {
+          include: {
+            contract: {
+              include: {
+                customer: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        plannedDate: 'asc',
+      },
+    });
+
+    return milestones.map((m) => this.mapToProjectMilestoneWithContract(m));
+  }
+
+  /**
+   * 将Prisma模型映射为ProjectMilestoneWithContract DTO
+   */
+  private mapToProjectMilestoneWithContract(
+    milestone: any
+  ): ProjectMilestoneWithContract {
+    const contract = milestone.detail.contract;
+    const customerInfo: MilestoneCustomerInfo = {
+      id: contract.customer.id,
+      name: contract.customer.name,
+    };
+    const contractInfo: MilestoneContractInfo = {
+      id: contract.id,
+      contractNo: contract.contractNo,
+      name: contract.name,
+      customerId: contract.customerId,
+      customer: customerInfo,
+    };
+    return {
+      id: milestone.id,
+      sequence: milestone.sequence,
+      name: milestone.name,
+      deliverables: milestone.deliverables,
+      amount: milestone.amount?.toString() || null,
+      paymentPercentage: milestone.paymentPercentage?.toString() || null,
+      plannedDate: milestone.plannedDate,
+      actualDate: milestone.actualDate,
+      acceptanceCriteria: milestone.acceptanceCriteria,
+      status: milestone.status as MilestoneStatus,
+      deliverableFileUrl: milestone.deliverableFileUrl,
+      deliverableFileName: milestone.deliverableFileName,
+      deliverableUploadedAt: milestone.deliverableUploadedAt,
+      acceptedAt: milestone.acceptedAt,
+      acceptedBy: milestone.acceptedBy,
+      acceptedByName: null, // Could fetch from statusHistory if needed
+      rejectedAt: milestone.rejectedAt,
+      rejectedBy: milestone.rejectedBy,
+      rejectedByName: null, // Could fetch from statusHistory if needed
+      rejectionReason: milestone.rejectionReason,
+      createdAt: milestone.createdAt,
+      updatedAt: milestone.updatedAt,
+      contract: contractInfo,
     };
   }
 }

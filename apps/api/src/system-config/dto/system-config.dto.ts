@@ -8,6 +8,21 @@ export class SystemConfig {
   @Field(() => String)
   llmModel!: string;
 
+  @Field(() => String, { nullable: true })
+  llmBaseUrl?: string;
+
+  @Field(() => String, { nullable: true })
+  llmApiKey?: string;
+
+  @Field(() => Number, { nullable: true })
+  llmTemperature?: number;
+
+  @Field(() => Int, { nullable: true })
+  llmMaxTokens?: number;
+
+  @Field(() => Int, { nullable: true })
+  llmTimeout?: number;
+
   @Field(() => Boolean)
   smtpEnabled!: boolean;
 
@@ -23,14 +38,14 @@ export class SystemConfig {
   @Field(() => Boolean, { nullable: true })
   smtpSecure?: boolean;
 
-  @Field(() => String, { nullable: true })
-  minioEndpoint?: string;
+  @Field(() => String)
+  minioEndpoint!: string;
 
-  @Field(() => Int, { nullable: true })
-  minioPort?: number;
+  @Field(() => Int)
+  minioPort!: number;
 
-  @Field(() => String, { nullable: true })
-  minioBucket?: string;
+  @Field(() => String)
+  minioBucket!: string;
 }
 
 @InputType()
@@ -41,6 +56,21 @@ export class UpdateSystemConfigInput {
   @Field(() => String, { nullable: true })
   llmModel?: string;
 
+  @Field(() => String, { nullable: true })
+  llmBaseUrl?: string;
+
+  @Field(() => String, { nullable: true })
+  llmApiKey?: string;
+
+  @Field(() => Number, { nullable: true })
+  llmTemperature?: number;
+
+  @Field(() => Int, { nullable: true })
+  llmMaxTokens?: number;
+
+  @Field(() => Int, { nullable: true })
+  llmTimeout?: number;
+
   @Field(() => Boolean, { nullable: true })
   smtpEnabled?: boolean;
 
@@ -49,6 +79,9 @@ export class UpdateSystemConfigInput {
 
   @Field(() => Int, { nullable: true })
   smtpPort?: number;
+
+  @Field(() => String, { nullable: true })
+  smtpUser?: string;
 
   @Field(() => String, { nullable: true })
   smtpPassword?: string;

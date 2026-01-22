@@ -104,6 +104,32 @@ mutation DeleteContract($id: ID!) {
   deleteContract(id: $id)
 }
 
+mutation ParseAndExtract($objectName: String!) {
+  parseAndExtract(objectName: $objectName) {
+    success
+    text
+    pageCount
+    extractedFields {
+      contractNumber
+      contractName
+      partyA
+      partyB
+      signDate
+      amount
+      validPeriod
+      rawMatches {
+        field
+        value
+        confidence
+      }
+    }
+  }
+}
+
+mutation CreateParseSession($objectName: String!) {
+  createParseSession(objectName: $objectName)
+}
+
 mutation ParseContractWithLlm($objectName: String!) {
   parseContractWithLlm(objectName: $objectName) {
     success
@@ -136,13 +162,65 @@ mutation ParseContractWithLlm($objectName: String!) {
         signLocation
         copies
       }
+      typeSpecificDetails
     }
     rawText
     pageCount
     llmModel
     llmProvider
     processingTimeMs
+    sessionId
     error
+  }
+}
+
+mutation StartParseContractAsync($objectName: String!) {
+  startParseContractAsync(objectName: $objectName) {
+    sessionId
+    message
+  }
+}
+
+query GetParseProgress($sessionId: String!) {
+  getParseProgress(sessionId: $sessionId) {
+    sessionId
+    objectName
+    status
+    currentStage
+    totalChunks
+    completedChunks
+    currentChunkIndex
+    progressPercentage
+    chunks {
+      chunkId
+      chunkIndex
+      totalChunks
+      purpose
+      status
+      startTime
+      endTime
+      error
+    }
+    totalTasks
+    completedTasks
+    currentTaskInfo
+    tasks {
+      taskId
+      infoType
+      infoTypeName
+      status
+      startTime
+      endTime
+      error
+      data
+    }
+    startTime
+    estimatedEndTime
+    processingTimeMs
+    error
+    extractedFieldsCount
+    estimatedRemainingSeconds
+    resultData
   }
 }
 

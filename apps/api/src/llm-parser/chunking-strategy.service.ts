@@ -25,7 +25,7 @@ export class ChunkingStrategyService {
   private readonly logger = new Logger(ChunkingStrategyService.name);
 
   // 阈值配置
-  private readonly SINGLE_CALL_MAX_LENGTH = 10000; // 单次调用最大字符数
+  private readonly SINGLE_CALL_MAX_LENGTH = 3000; // 单次调用最大字符数
   private readonly CHUNK_SIZE = 8000; // 分段大小
   private readonly CHUNK_OVERLAP = 500; // 重叠区域，防止信息被截断
 

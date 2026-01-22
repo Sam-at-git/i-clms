@@ -10,10 +10,31 @@ import { SemanticChunkerService } from './semantic-chunker.service';
 import { RagEnhancedParserService } from './rag-enhanced-parser.service';
 import { ConcurrentParserService } from './concurrent-parser.service';
 import { OptimizedParserService } from './optimized-parser.service';
+import { ParseProgressService } from './parse-progress.service';
+import { TaskBasedParserService } from './task-based-parser.service';
+import { TopicRegistryService } from './topics/topic-registry.service';
+import { DoclingStrategyService } from './strategies/docling-strategy.service';
+import { DoclingParseStrategy } from './strategies/docling-parse.strategy';
+import { StrategyManagerService } from './strategies/strategy-manager.service';
+import { ParseStrategyService } from './parse-strategy.service';
+import { VotingService } from './voting.service';
+import { LLMEvaluatorService } from './evaluation/llm-evaluator.service';
+import { MultiStrategyService } from './multi-strategy.service';
 import { ParserModule } from '../parser/parser.module';
+import { DoclingModule } from '../docling/docling.module';
+import { VectorStoreModule } from '../vector-store/vector-store.module';
+import { CacheModule } from '../cache/cache.module';
+import { RAGModule } from '../rag/rag.module';
 
 @Module({
-  imports: [ConfigModule, ParserModule],
+  imports: [
+    ConfigModule,
+    ParserModule,
+    DoclingModule,
+    VectorStoreModule,
+    CacheModule,
+    RAGModule,
+  ],
   providers: [
     LlmConfigService,
     LlmClientService,
@@ -26,6 +47,22 @@ import { ParserModule } from '../parser/parser.module';
     RagEnhancedParserService,
     ConcurrentParserService,
     OptimizedParserService,
+    TaskBasedParserService,
+    // 进度追踪服务
+    ParseProgressService,
+    // 主题注册服务
+    TopicRegistryService,
+    // Docling策略服务
+    DoclingStrategyService,
+    // 策略执行器 (SPEC-25)
+    DoclingParseStrategy,
+    StrategyManagerService,
+    // 策略选择服务 (SPEC-28)
+    ParseStrategyService,
+    // 投票和LLM评估服务 (SPEC-29)
+    VotingService,
+    LLMEvaluatorService,
+    MultiStrategyService,
   ],
   exports: [
     LlmConfigService,
@@ -36,6 +73,16 @@ import { ParserModule } from '../parser/parser.module';
     RagEnhancedParserService,
     ConcurrentParserService,
     OptimizedParserService,
+    TaskBasedParserService,
+    ParseProgressService,
+    TopicRegistryService,
+    DoclingStrategyService,
+    DoclingParseStrategy,
+    StrategyManagerService,
+    ParseStrategyService,
+    VotingService,
+    LLMEvaluatorService,
+    MultiStrategyService,
   ],
 })
 export class LlmParserModule {}

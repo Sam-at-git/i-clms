@@ -1,7 +1,9 @@
 import type { CodegenConfig } from '@graphql-codegen/cli';
 
+// For local development, fetch from running API or use source schema (JSON introspection)
+// For CI/CD, use: schema: 'apps/api/src/schema.gql' after building API
 const config: CodegenConfig = {
-  schema: 'apps/api/src/schema.gql',
+  schema: process.env.CI ? 'json:apps/api/src/schema.gql' : 'http://localhost:3000/graphql',
   documents: [
     'apps/web/src/**/*.graphql',
     'apps/web/src/**/*.tsx',

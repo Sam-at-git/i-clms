@@ -177,6 +177,12 @@ export class CompletenessCheckerService {
         return `Completeness score ${score}/100 between ${LLM_VALIDATION_THRESHOLD}-${DIRECT_USE_THRESHOLD - 1}, using LLM validation mode`;
       case ParseStrategy.LLM_FULL_EXTRACTION:
         return `Completeness score ${score}/100 < ${LLM_VALIDATION_THRESHOLD}, using LLM full extraction mode`;
+      case ParseStrategy.RAG:
+        return `Using RAG (Retrieval-Augmented Generation) vector search strategy`;
+      case ParseStrategy.DOCLING:
+        return `Using Docling document parsing strategy`;
+      default:
+        return `Using ${strategy} strategy`;
     }
   }
 

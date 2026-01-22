@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { Link } from 'react-router-dom';
-import { ContractUpload } from './ContractUpload';
+import { ContractUploadUnified } from './ContractUploadUnified';
 import { ContractDelete } from './ContractDelete';
 import { ContractFilter } from './ContractFilter';
 import { ContractSearch } from './ContractSearch';
@@ -334,7 +334,7 @@ export function ContractListEnhanced() {
 
       {/* Modals */}
       {showUpload && (
-        <ContractUpload
+        <ContractUploadUnified
           onClose={() => setShowUpload(false)}
           onSuccess={() => {
             setShowUpload(false);

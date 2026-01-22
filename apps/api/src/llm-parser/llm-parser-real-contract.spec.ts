@@ -14,6 +14,24 @@ jest.mock('openai', () => ({
   })),
 }));
 
+// Mock parse-strategy.dto to avoid decorator issues
+jest.mock('./dto/parse-strategy.dto', () => ({
+  ParseStrategyType: {
+    RULE: 'RULE',
+    LLM: 'LLM',
+    DOCLING: 'DOCLING',
+    RAG: 'RAG',
+    MULTI: 'MULTI',
+  },
+  StrategyCost: {
+    FREE: 'free',
+    LOW: 'low',
+    MEDIUM: 'medium',
+    HIGH: 'high',
+  },
+  registerEnumType: jest.fn(),
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { SemanticChunkerService } from './semantic-chunker.service';

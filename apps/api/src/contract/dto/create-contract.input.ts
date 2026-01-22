@@ -1,5 +1,10 @@
 import { InputType, Field } from '@nestjs/graphql';
 import { ContractType, ContractStatus } from '../models';
+import {
+  ProjectOutsourcingDetailInput,
+  StaffAugmentationDetailInput,
+  ProductSalesDetailInput,
+} from './type-specific-inputs.dto';
 
 @InputType()
 export class CreateContractInput {
@@ -77,4 +82,15 @@ export class CreateContractInput {
 
   @Field(() => String, { nullable: true })
   parentContractId?: string;
+
+  // ==================== 类型特定详情（LLM解析的扩展字段） ====================
+
+  @Field(() => ProjectOutsourcingDetailInput, { nullable: true, description: '项目外包合同详情（里程碑等）' })
+  projectOutsourcingDetail?: ProjectOutsourcingDetailInput;
+
+  @Field(() => StaffAugmentationDetailInput, { nullable: true, description: '人力框架合同详情（费率等）' })
+  staffAugmentationDetail?: StaffAugmentationDetailInput;
+
+  @Field(() => ProductSalesDetailInput, { nullable: true, description: '产品购销合同详情（产品清单等）' })
+  productSalesDetail?: ProductSalesDetailInput;
 }
