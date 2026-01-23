@@ -7,9 +7,9 @@ import { FieldExtractor } from './extractors/field.extractor';
 import { ParseResult, ExtractedFields } from './dto';
 import { fileTypeFromBuffer } from 'file-type';
 import { writeFile, unlink, mkdir } from 'fs/promises';
+import { mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { existsSync } from 'fs';
 import { tmpdir } from 'os';
 
 const PDF_MIME_TYPE = 'application/pdf';
@@ -39,9 +39,12 @@ export class ParserService {
    */
   private ensureTempDir(): void {
     if (!existsSync(this.tempDir)) {
-      mkdir(this.tempDir, { recursive: true })
-        .then(() => this.logger.debug(`Created temp directory: ${this.tempDir}`))
-        .catch((err) => this.logger.warn(`Failed to create temp directory: ${err.message}`));
+      try {
+        mkdirSync(this.tempDir, { recursive: true });
+        this.logger.debug(`Created temp directory: ${this.tempDir}`);
+      } catch (err) {
+        this.logger.warn(`Failed to create temp directory: ${err}`);
+      }
     }
   }
 

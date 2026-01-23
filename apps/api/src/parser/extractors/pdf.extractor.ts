@@ -14,27 +14,37 @@ export interface PdfExtractResult {
 @Injectable()
 export class PdfExtractor {
   private readonly logger = new Logger(PdfExtractor.name);
-  private workerDisabled = false;
+  private initialized = false;
 
   constructor() {
-    // Disable worker to avoid DataCloneError in newer Node.js
+    this.initializeWorker();
+  }
+
+  private initializeWorker(): void {
+    if (this.initialized) return;
+
     try {
-      PDFParse.setWorker('');
-      this.workerDisabled = true;
-      this.logger.debug('PDF.js worker disabled for Node.js environment');
-    } catch {
-      this.logger.warn('Could not disable PDF.js worker');
+      // Set workerSrc to the actual worker file path for Node.js
+      // The legacy build needs the worker.mjs file path
+      const workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+      PDFParse.setWorker(workerSrc);
+      this.initialized = true;
+      this.logger.debug(`PDF.js worker configured: ${workerSrc}`);
+    } catch (err) {
+      this.logger.warn(`Could not configure PDF.js worker: ${err}`);
+      // Continue anyway - the library might still work
     }
   }
 
   async extract(buffer: Buffer): Promise<PdfExtractResult> {
     let parser: PDFParse | null = null;
     try {
-      const options: any = { data: buffer };
-      // Explicitly set verbosity to errors only
-      if (!this.workerDisabled) {
-        options.verbosity = 0; // ERROR level
-      }
+      // Create parser with options
+      const options: any = {
+        data: buffer,
+        // Set verbosity to ERRORS only (0)
+        verbosity: 0,
+      };
 
       parser = new PDFParse(options);
 
