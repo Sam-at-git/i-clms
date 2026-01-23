@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { StorageModule } from '../storage';
+import { DoclingModule } from '../docling/docling.module';
 import { ParserService } from './parser.service';
 import { ParserResolver } from './parser.resolver';
 import { PdfExtractor } from './extractors/pdf.extractor';
@@ -11,7 +12,7 @@ import { PartiesExtractor } from './extractors/basic/parties.extractor';
 import { TermExtractor } from './extractors/basic/term.extractor';
 
 @Module({
-  imports: [StorageModule],
+  imports: [StorageModule, DoclingModule],
   providers: [
     ParserService,
     ParserResolver,
