@@ -37,7 +37,7 @@ def convert_to_markdown(file_path: str, options: dict = None) -> dict:
 
     Args:
         file_path: Path to the document file
-        options: Conversion options (ocr, withTables, withImages)
+        options: Conversion options (ocr, withTables, withImages, preserveHeaders)
 
     Returns:
         dict with markdown, tables, pages, images, success
@@ -62,6 +62,10 @@ def convert_to_markdown(file_path: str, options: dict = None) -> dict:
 
         # Export to Markdown
         markdown = doc.document.export_to_markdown()
+
+        # Post-process markdown to preserve chapter headers if requested
+        if opts.get("preserveHeaders", False):
+            markdown = enhance_chapter_headers(markdown)
 
         # Extract tables
         tables = []
@@ -95,6 +99,63 @@ def convert_to_markdown(file_path: str, options: dict = None) -> dict:
         return error_response(f"File not found: {file_path}")
     except Exception as e:
         return error_response(f"Conversion failed: {str(e)}")
+
+
+def enhance_chapter_headers(markdown: str) -> str:
+    """
+    增强Markdown中的章节标题识别
+
+    将常见的合同章节标题格式转换为标准的Markdown标题格式（# ## ###），
+    以便后续语义分段能够正确识别章节结构。
+
+    识别的格式包括：
+    - 第X章/第X条/第X款
+    - 一、二、三、中文数字
+    - 1. 2. 3. 阿拉伯数字编号
+    - （一）（二）带括号的中文数字
+    """
+    import re
+
+    lines = markdown.split('\n')
+    result = []
+
+    # 章节标题模式（按优先级排序）
+    patterns = [
+        # 第X章 - 一级标题
+        (r'^(第[一二三四五六七八九十百千\d]+章)\s*(.*)$', r'# \1 \2'),
+        # 第X条 - 二级标题
+        (r'^(第[一二三四五六七八九十百千\d]+条)\s*(.*)$', r'## \1 \2'),
+        # 第X款 - 三级标题
+        (r'^(第[一二三四五六七八九十百千\d]+款)\s*(.*)$', r'### \1 \2'),
+        # 中文数字带顿号 （一）- 二级标题
+        (r'^([（(][一二三四五六七八九十]+[）)])\s*(.*)$', r'## \1 \2'),
+        # 中文数字顿号 一、- 二级标题
+        (r'^([一二三四五六七八九十]+)[、.]\s*(.*)$', r'## \1、\2'),
+        # 阿拉伯数字点号 1. - 三级标题
+        (r'^(\d+)\.\s+(.{5,50})$', r'### \1. \2'),
+    ]
+
+    for line in lines:
+        stripped = line.strip()
+        matched = False
+
+        # 跳过已经是Markdown标题的行
+        if stripped.startswith('#'):
+            result.append(line)
+            continue
+
+        # 尝试匹配章节模式
+        for pattern, replacement in patterns:
+            match = re.match(pattern, stripped)
+            if match:
+                result.append(replacement.format(*match.groups()))
+                matched = True
+                break
+
+        if not matched:
+            result.append(line)
+
+    return '\n'.join(result)
 
 
 def extract_fields(file_path: str, topics: list) -> dict:

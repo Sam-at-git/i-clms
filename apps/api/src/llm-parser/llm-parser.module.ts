@@ -15,6 +15,7 @@ import { TaskBasedParserService } from './task-based-parser.service';
 import { TopicRegistryService } from './topics/topic-registry.service';
 import { DoclingStrategyService } from './strategies/docling-strategy.service';
 import { DoclingParseStrategy } from './strategies/docling-parse.strategy';
+import { ComprehensiveLLMStrategy } from './strategies/comprehensive-llm.strategy';
 import { StrategyManagerService } from './strategies/strategy-manager.service';
 import { ParseStrategyService } from './parse-strategy.service';
 import { VotingService } from './voting.service';
@@ -56,6 +57,7 @@ import { RAGModule } from '../rag/rag.module';
     DoclingStrategyService,
     // 策略执行器 (SPEC-25)
     DoclingParseStrategy,
+    ComprehensiveLLMStrategy,  // 综合LLM策略 (Docling + SemanticChunker + LLM)
     StrategyManagerService,
     // 策略选择服务 (SPEC-28)
     ParseStrategyService,
@@ -78,6 +80,7 @@ import { RAGModule } from '../rag/rag.module';
     TopicRegistryService,
     DoclingStrategyService,
     DoclingParseStrategy,
+    ComprehensiveLLMStrategy,  // 综合LLM策略
     StrategyManagerService,
     ParseStrategyService,
     VotingService,

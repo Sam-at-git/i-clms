@@ -119,7 +119,35 @@ function InfoTypeCard({
   const [isExpanded, setIsExpanded] = useState(true);
   const config = INFO_TYPE_CONFIG[infoType];
 
-  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+  if (!data) {
+    return null;
+  }
+
+  // 处理字符串类型数据（如交付物描述）
+  if (typeof data === 'string') {
+    if (!data.trim()) return null;
+    return (
+      <div style={styles.infoTypeCard}>
+        <div
+          style={styles.infoTypeCardHeader}
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <span style={styles.infoTypeIcon}>{config.icon}</span>
+          <span style={styles.infoTypeName}>{config.name}</span>
+          <span style={styles.expandIcon}>{isExpanded ? '▼' : '▶'}</span>
+        </div>
+        {isExpanded && (
+          <div style={styles.infoTypeCardContent}>
+            <div style={styles.textFieldContainer}>
+              <span style={styles.textFieldContent}>{data}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (typeof data === 'object' && Object.keys(data).length === 0) {
     return null;
   }
 
@@ -146,12 +174,20 @@ function InfoTypeCard({
                   <span style={styles.arrayItemIndex}>#{index + 1}</span>
                 </div>
                 <div style={styles.arrayItemContent}>
-                  {Object.entries(item).map(([key, value]) => (
-                    <div key={key} style={styles.fieldRow}>
-                      <span style={styles.fieldLabel}>{getFieldLabel(key)}:</span>
-                      <span style={styles.fieldValue}>{formatFieldValue(key, value)}</span>
+                  {typeof item === 'object' && item !== null ? (
+                    // 对象类型：显示所有字段
+                    Object.entries(item).map(([key, value]) => (
+                      <div key={key} style={styles.fieldRow}>
+                        <span style={styles.fieldLabel}>{getFieldLabel(key)}:</span>
+                        <span style={styles.fieldValue}>{formatFieldValue(key, value)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    // 字符串或其他类型：直接显示内容
+                    <div style={styles.textFieldContainer}>
+                      <span style={styles.textFieldContent}>{String(item)}</span>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             ))}
@@ -779,6 +815,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     textAlign: 'right',
     wordBreak: 'break-word',
+  },
+  textFieldContainer: {
+    padding: '8px 0',
+  },
+  textFieldContent: {
+    fontSize: '14px',
+    color: '#374151',
+    lineHeight: '1.6',
+    whiteSpace: 'pre-wrap' as const,
+    wordBreak: 'break-word' as const,
   },
   arrayItem: {
     marginBottom: '12px',

@@ -740,94 +740,47 @@ export function ContractUploadUnified({
               {parseProgress?.currentStage || 'AI正在智能解析合同内容...'}
             </p>
 
-            {/* 进度条 */}
-            {parseProgress && parseProgress.totalChunks > 0 && (
+            {/* 进度条 - 横向100%进度条 */}
+            {parseProgress ? (
               <div style={styles.progressContainer}>
-                <div style={styles.progressInfo}>
-                  <span>进度: {parseProgress.completedChunks}/{parseProgress.totalChunks} 分块</span>
-                  {parseProgress.estimatedRemainingSeconds !== undefined && (
-                    <span>预计剩余: {parseProgress.estimatedRemainingSeconds}秒</span>
-                  )}
-                </div>
-                <div style={styles.progressBar}>
-                  <div
-                    style={{
-                      ...styles.progressFill,
-                      width: `${parseProgress.progressPercentage}%`,
-                    }}
-                  />
-                </div>
-                <div style={styles.progressPercentage}>
-                  {parseProgress.progressPercentage}%
-                </div>
-
-                {/* 任务进度详情 - 优先显示 */}
-                {parseProgress.totalTasks > 0 && (
-                  <div style={styles.tasksList}>
-                    <div style={styles.taskListHeader}>
-                      <span>📋 信息提取进度 ({parseProgress.completedTasks}/{parseProgress.totalTasks})</span>
-                    </div>
-                    {parseProgress.tasks.map((task) => (
-                      <div
-                        key={task.taskId}
-                        style={{
-                          ...styles.taskItem,
-                          ...(task.status === 'completed' ? styles.taskCompleted :
-                            task.status === 'processing' ? styles.taskProcessing :
-                            task.status === 'failed' ? styles.taskFailed :
-                            styles.taskPending),
-                        }}
-                      >
-                        <span style={styles.taskIcon}>
-                          {task.status === 'completed' && '✓'}
-                          {task.status === 'processing' && '⏳'}
-                          {task.status === 'pending' && '○'}
-                          {task.status === 'failed' && '✗'}
-                        </span>
-                        <span style={styles.taskName}>{task.infoTypeName}</span>
-                        {task.status === 'processing' && (
-                          <span style={styles.taskProcessingIndicator}>处理中...</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 {/* 当前任务信息 */}
                 {parseProgress.currentTaskInfo && (
-                  <div style={styles.currentTaskBanner}>
-                    🔸 正在提取: {parseProgress.currentTaskInfo}
+                  <div style={styles.currentTaskInfo}>
+                    🔸 {parseProgress.currentTaskInfo}
                   </div>
                 )}
 
-                {/* 分块详情 - 如果有分块进度，显示在任务进度之后 */}
-                {parseProgress.totalChunks > 0 && parseProgress.totalChunks > 0 && parseProgress.chunks.length > 0 && (
-                  <div style={styles.chunksList}>
-                    <div style={styles.taskListHeader}>
-                      <span>📄 文档分块处理 ({parseProgress.completedChunks}/{parseProgress.totalChunks})</span>
-                    </div>
-                    {parseProgress.chunks.map((chunk) => (
-                      <div
-                        key={chunk.chunkId}
-                        style={{
-                          ...styles.chunkItem,
-                          ...(chunk.status === 'completed' ? styles.chunkCompleted :
-                            chunk.status === 'processing' ? styles.chunkProcessing :
-                            styles.chunkPending),
-                        }}
-                      >
-                        <span style={styles.chunkIndex}>{chunk.chunkIndex + 1}. </span>
-                        <span style={styles.chunkPurpose}>{chunk.purpose}</span>
-                        <span style={styles.chunkStatus}>
-                          {chunk.status === 'completed' && '✓'}
-                          {chunk.status === 'processing' && '⏳'}
-                          {chunk.status === 'pending' && '○'}
-                          {chunk.status === 'failed' && '✗'}
-                        </span>
-                      </div>
-                    ))}
+                {/* 进度文字 */}
+                <div style={styles.progressInfo}>
+                  {parseProgress.totalTasks > 0 ? (
+                    <span>任务进度: {parseProgress.completedTasks}/{parseProgress.totalTasks}</span>
+                  ) : (
+                    <span>处理中...</span>
+                  )}
+                  {parseProgress.estimatedRemainingSeconds !== undefined && (
+                    <span>预计剩余: {Math.ceil(parseProgress.estimatedRemainingSeconds)}秒</span>
+                  )}
+                </div>
+
+                {/* 横向进度条 */}
+                <div style={styles.progressBarWrapper}>
+                  <div style={styles.progressBarBackground}>
+                    <div
+                      style={{
+                        ...styles.progressBarFill,
+                        width: `${parseProgress.progressPercentage || 0}%`,
+                      }}
+                    />
                   </div>
-                )}
+                  <span style={styles.progressPercentageText}>
+                    {Math.round(parseProgress.progressPercentage || 0)}%
+                  </span>
+                </div>
+              </div>
+            ) : (
+              // 没有进度数据时显示简单加载动画
+              <div style={styles.simpleProgressWrapper}>
+                <div style={styles.simpleProgressBar}></div>
               </div>
             )}
 
@@ -1241,6 +1194,7 @@ const styles: Record<string, React.CSSProperties> = {
   loadingIcon: {
     fontSize: '48px',
     marginBottom: '16px',
+    animation: 'bounce 1.5s ease-in-out infinite',
   },
   reviewContainer: {
     padding: '24px',
@@ -1355,13 +1309,22 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6b7280',
     fontSize: '14px',
   },
-  // 进度条相关样式
+  // 横向进度条样式
   progressContainer: {
-    marginTop: '24px',
-    padding: '16px',
-    backgroundColor: '#f9fafb',
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb',
+    marginTop: '20px',
+    width: '100%',
+    maxWidth: '400px',
+    margin: '20px auto 0',
+  },
+  currentTaskInfo: {
+    textAlign: 'center',
+    fontSize: '14px',
+    color: '#3b82f6',
+    fontWeight: 500,
+    marginBottom: '12px',
+    padding: '8px 12px',
+    backgroundColor: '#eff6ff',
+    borderRadius: '6px',
   },
   progressInfo: {
     display: 'flex',
@@ -1370,123 +1333,56 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '13px',
     color: '#6b7280',
   },
-  progressBar: {
-    height: '8px',
+  progressBarWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  progressBarBackground: {
+    flex: 1,
+    height: '12px',
     backgroundColor: '#e5e7eb',
-    borderRadius: '4px',
+    borderRadius: '6px',
     overflow: 'hidden',
-    marginBottom: '8px',
+    position: 'relative' as const,
   },
-  progressFill: {
+  progressBarFill: {
     height: '100%',
-    backgroundColor: '#3b82f6',
-    transition: 'width 0.3s ease',
-    borderRadius: '4px',
-  },
-  progressPercentage: {
-    textAlign: 'center',
-    fontSize: '14px',
-    fontWeight: 600,
-    color: '#3b82f6',
-  },
-  chunksList: {
-    marginTop: '16px',
-    maxHeight: '150px',
-    overflowY: 'auto',
-  },
-  chunkItem: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '8px 12px',
-    marginBottom: '4px',
-    borderRadius: '4px',
-    fontSize: '13px',
-  },
-  chunkCompleted: {
-    backgroundColor: '#ecfdf5',
-    color: '#059669',
-  },
-  chunkProcessing: {
-    backgroundColor: '#eff6ff',
-    color: '#3b82f6',
-  },
-  chunkPending: {
-    backgroundColor: '#f9fafb',
-    color: '#9ca3af',
-  },
-  chunkIndex: {
-    fontWeight: 600,
-    marginRight: '8px',
-    minWidth: '24px',
-  },
-  chunkPurpose: {
-    flex: 1,
-  },
-  chunkStatus: {
-    marginLeft: '8px',
-    fontSize: '14px',
-  },
-  // 任务进度样式
-  tasksList: {
-    marginTop: '16px',
-  },
-  taskListHeader: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#374151',
-    marginBottom: '8px',
-  },
-  taskItem: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '10px 12px',
-    marginBottom: '4px',
+    background: 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)',
     borderRadius: '6px',
-    fontSize: '13px',
-    border: '1px solid #e5e7eb',
+    transition: 'width 0.4s ease-out',
+    minWidth: '2px',
   },
-  taskPending: {
-    backgroundColor: '#f9fafb',
-    color: '#9ca3af',
-  },
-  taskProcessing: {
-    backgroundColor: '#eff6ff',
-    color: '#3b82f6',
-    borderColor: '#3b82f6',
-  },
-  taskCompleted: {
-    backgroundColor: '#ecfdf5',
-    color: '#059669',
-    borderColor: '#10b981',
-  },
-  taskFailed: {
-    backgroundColor: '#fef2f2',
-    color: '#dc2626',
-    borderColor: '#ef4444',
-  },
-  taskIcon: {
-    marginRight: '8px',
+  progressPercentageText: {
     fontSize: '14px',
-    minWidth: '20px',
-  },
-  taskName: {
-    flex: 1,
-    fontWeight: 500,
-  },
-  taskProcessingIndicator: {
-    fontSize: '11px',
+    fontWeight: 600,
     color: '#3b82f6',
-    animation: 'pulse 1.5s ease-in-out infinite',
+    minWidth: '45px',
+    textAlign: 'right' as const,
   },
-  currentTaskBanner: {
-    marginTop: '12px',
-    padding: '10px 12px',
-    backgroundColor: '#eff6ff',
-    color: '#1d4ed8',
-    borderRadius: '6px',
-    fontSize: '13px',
-    fontWeight: 500,
-    textAlign: 'center',
+  // 简单加载动画（无进度数据时）
+  simpleProgressWrapper: {
+    marginTop: '20px',
+    width: '100%',
+    maxWidth: '300px',
+    margin: '20px auto 0',
+  },
+  simpleProgressBar: {
+    height: '4px',
+    backgroundColor: '#e5e7eb',
+    borderRadius: '2px',
+    overflow: 'hidden',
+    position: 'relative' as const,
+    '&::after': {
+      content: '""',
+      position: 'absolute' as const,
+      top: '0',
+      left: '0',
+      width: '30%',
+      height: '100%',
+      background: 'linear-gradient(90deg, transparent, #3b82f6, transparent)',
+      animation: 'shimmer 1.5s ease-in-out infinite',
+    } as any,
   },
   // Strategy selection step styles
   strategySelectionArea: {
@@ -1498,3 +1394,15 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 export default ContractUploadUnified;
+
+// 内联CSS动画
+const animationStyles = `
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+`;

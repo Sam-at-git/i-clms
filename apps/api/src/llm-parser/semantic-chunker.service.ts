@@ -121,12 +121,182 @@ export class SemanticChunkerService {
 
   /**
    * 主方法：对合同文本进行语义分段
-   * @param text 合同全文
+   *
+   * 分段策略（按优先级）：
+   * 1. 优先按Markdown章节标题分割（#, ##, ###等）
+   * 2. 如果无法识别章节，按合同结构切分（header/financial/schedule/party/article）
+   *
+   * @param text 合同全文（Markdown格式）
    * @param minChunkSize 最小chunk大小（防止过小的片段）
    * @returns 语义分段的chunk数组
    */
   chunkBySemanticStructure(text: string, minChunkSize = 500): SemanticChunk[] {
     this.logger.log(`[SemanticChunking] Starting: ${text.length} chars`);
+
+    // 尝试按章节结构分割（优先）
+    const chapterChunks = this.chunkByChapterStructure(text);
+    if (chapterChunks.length > 1) {
+      this.logger.log(`[SemanticChunking] Using chapter-based splitting: ${chapterChunks.length} chapters`);
+      return this.enrichChunksWithMetadata(chapterChunks);
+    }
+
+    // 如果没有识别出章节，回退到按合同结构分割
+    this.logger.log(`[SemanticChunking] No chapters found, using structure-based splitting`);
+    return this.chunkByContractStructure(text, minChunkSize);
+  }
+
+  /**
+   * 按Markdown章节标题分割
+   *
+   * 识别以下格式：
+   * - # 一级标题（第X章）
+   * - ## 二级标题（第X条）
+   * - ### 三级标题（第X款）
+   *
+   * @param text Markdown文本
+   * @returns 章节分段的chunk数组
+   */
+  private chunkByChapterStructure(text: string): Array<{ text: string; title?: string; level: number }> {
+    const chapters: Array<{ text: string; title?: string; level: number }> = [];
+
+    // Markdown标题模式
+    const headerPattern = /^(#{1,3})\s+(.+)$/gm;
+    let currentChapter: { text: string; title?: string; level: number } = { text: '', level: 1 };
+    let lastEndIndex = 0;
+    let match: RegExpExecArray | null;
+
+    // 重置正则表达式索引
+    headerPattern.lastIndex = 0;
+
+    while ((match = headerPattern.exec(text)) !== null) {
+      const fullMatch = match[0];
+      const level = match[1].length; // #数量表示标题级别
+      const title = match[2].trim();
+      const startIndex = match.index;
+      const endIndex = match.index + fullMatch.length;
+
+      // 保存上一个章节（如果有内容）
+      if (currentChapter.text.trim().length > 0) {
+        currentChapter.text = text.substring(lastEndIndex, startIndex).trim();
+        if (currentChapter.text) {
+          chapters.push({ ...currentChapter });
+        }
+      }
+
+      // 开始新章节
+      currentChapter = {
+        text: '',
+        title,
+        level,
+      };
+      lastEndIndex = endIndex;
+    }
+
+    // 保存最后一个章节
+    if (currentChapter.text.trim().length > 0 || lastEndIndex < text.length) {
+      currentChapter.text = text.substring(lastEndIndex).trim();
+      if (currentChapter.text) {
+        chapters.push({ ...currentChapter });
+      }
+    }
+
+    return chapters;
+  }
+
+  /**
+   * 为章节chunks添加语义元数据
+   */
+  private enrichChunksWithMetadata(
+    chapters: Array<{ text: string; title?: string; level: number }>
+  ): SemanticChunk[] {
+    return chapters.map((chapter, index) => {
+      // 根据标题和内容推断语义类型
+      const detected = this.inferChunkType(chapter.title || '', chapter.text);
+
+      return {
+        id: `chunk-${index}`,
+        text: chapter.text,
+        metadata: {
+          type: detected.type,
+          title: chapter.title,
+          priority: detected.priority,
+          fieldRelevance: detected.fieldRelevance,
+        },
+        position: {
+          start: 0,
+          end: chapter.text.length,
+        },
+      };
+    });
+  }
+
+  /**
+   * 根据标题和内容推断chunk的语义类型
+   */
+  private inferChunkType(title: string, content: string): SemanticSegmentDetection {
+    const combined = `${title} ${content}`.toLowerCase();
+
+    // 检查各种章节类型
+    const typeChecks = [
+      {
+        type: 'header' as const,
+        keywords: ['合同编号', '合同名称', '甲方', '乙方', '合同当事人', '签订双方', '双方主体'],
+        priority: 100,
+        fieldRelevance: ['contractNo', 'name', 'customerName', 'ourEntity', 'contractType'],
+      },
+      {
+        type: 'financial' as const,
+        keywords: ['合同价格', '合同价款', '含税金额', '不含税金额', '总价款', '合同总金额', '支付', '付款', '结算', '开票', '税费', '税率'],
+        priority: 90,
+        fieldRelevance: ['amountWithTax', 'amountWithoutTax', 'taxRate', 'paymentTerms', 'paymentMethod', 'currency'],
+      },
+      {
+        type: 'schedule' as const,
+        keywords: ['合同期限', '履行期限', '有效期', '起止时间', '签订日期', '生效日期', '起始日期', '终止日期', '到期日期'],
+        priority: 80,
+        fieldRelevance: ['signedAt', 'effectiveAt', 'expiresAt', 'duration'],
+      },
+      {
+        type: 'party' as const,
+        keywords: ['甲方', '乙方', '委托方', '受托方', '发包方', '承包方', '卖方', '买方'],
+        priority: 95,
+        fieldRelevance: ['customerName', 'ourEntity', 'partyA', 'partyB'],
+      },
+      {
+        type: 'signature' as const,
+        keywords: ['法定代表人', '授权代表', '签字', '盖章', '签署日期', '签订地点'],
+        priority: 70,
+        fieldRelevance: ['signedAt', 'signLocation', 'salesPerson', 'legalRepresentative'],
+      },
+    ];
+
+    for (const check of typeChecks) {
+      if (check.keywords.some(kw => combined.includes(kw.toLowerCase()))) {
+        return {
+          type: check.type,
+          priority: check.priority,
+          fieldRelevance: check.fieldRelevance,
+          patterns: [],
+          title,
+        };
+      }
+    }
+
+    // 默认为article类型
+    return {
+      type: 'article',
+      priority: 50,
+      fieldRelevance: [],
+      patterns: [],
+      title,
+    };
+  }
+
+  /**
+   * 按合同结构切分（回退方案，当无法识别章节时使用）
+   */
+  private chunkByContractStructure(text: string, minChunkSize: number): SemanticChunk[] {
+    this.logger.log(`[SemanticChunking] Using contract structure splitting`);
 
     const chunks: SemanticChunk[] = [];
     let currentChunk: Partial<SemanticChunk> = {

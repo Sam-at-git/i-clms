@@ -5,6 +5,7 @@ import {
   ParseOptions,
   ParseResult,
 } from './parse-strategy.interface';
+import { ModuleRef } from '@nestjs/core';
 
 /**
  * Strategy Manager Service
@@ -12,18 +13,62 @@ import {
  * Manages all parse strategies, handles registration, execution,
  * and provides utilities for working with multiple strategies.
  *
+ * Auto-discovers and registers all strategy executors from the module.
+ *
  * @see Spec 25 - Docling Extraction Strategy
  */
 @Injectable()
 export class StrategyManagerService implements OnModuleInit {
   private readonly logger = new Logger(StrategyManagerService.name);
   private readonly strategies = new Map<ParseStrategy, ParseStrategyExecutor>();
+  private autoRegistered = false;
+
+  constructor(private readonly moduleRef: ModuleRef) {}
 
   /**
-   * Module initialization - log that strategy manager is ready
+   * Module initialization - discover and register all strategies
    */
-  onModuleInit(): void {
-    this.logger.log('StrategyManagerService initialized');
+  async onModuleInit(): Promise<void> {
+    if (!this.autoRegistered) {
+      await this.autoRegisterStrategies();
+      this.autoRegistered = true;
+    }
+    const count = this.strategies.size;
+    const names = Array.from(this.strategies.keys()).join(', ');
+    this.logger.log(`StrategyManagerService initialized with ${count} strategies: ${names}`);
+  }
+
+  /**
+   * Auto-discover and register all strategy executors
+   * This is called once during module initialization
+   */
+  private async autoRegisterStrategies(): Promise<void> {
+    // Strategy classes to auto-register
+    const strategyClasses = [
+      import('./docling-parse.strategy').then(m => m.DoclingParseStrategy),
+      import('./comprehensive-llm.strategy').then(m => m.ComprehensiveLLMStrategy),
+      import('../../rag/rag-parse.strategy').then(m => m.RAGParseStrategy),
+    ];
+
+    for (const strategyClassPromise of strategyClasses) {
+      try {
+        const StrategyClass = await strategyClassPromise;
+        let instance: ParseStrategyExecutor | undefined;
+
+        // Try to get instance from NestJS DI container
+        try {
+          instance = this.moduleRef.get(StrategyClass, { strict: false });
+        } catch {
+          // Strategy not provided in module, skip
+        }
+
+        if (instance) {
+          this.register(instance);
+        }
+      } catch {
+        // Strategy class not available, skip
+      }
+    }
   }
 
   /**

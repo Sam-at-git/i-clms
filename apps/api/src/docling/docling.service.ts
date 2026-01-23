@@ -9,6 +9,11 @@ export interface DoclingConvertOptions {
   ocr?: boolean;
   withTables?: boolean;
   withImages?: boolean;
+  /**
+   * 保留章节标题（用于语义分段）
+   * 启用后，Markdown输出将保留原始文档的章节结构（# 标题格式）
+   */
+  preserveHeaders?: boolean;
 }
 
 export interface DoclingTable {
