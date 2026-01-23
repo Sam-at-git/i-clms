@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma';
 import { Client as MinioClient } from 'minio';
+import OpenAI from 'openai';
 import {
   SystemConfig,
   SystemHealth,
@@ -11,7 +12,11 @@ import {
   LLMConfig,
   EmbeddingConfig,
   ModelTestResult,
+  OCRConfig,
 } from './dto';
+import { LlmConfigService } from '../llm-parser/config/llm-config.service';
+import { RAGService } from '../rag/rag.service';
+import { EMBEDDING_MODELS, EmbeddingProvider } from '../rag/dto/embedding-config.dto';
 
 // 配置键常量
 const CONFIG_KEYS = {
@@ -27,6 +32,7 @@ const CONFIG_KEYS = {
   EMBEDDING_BASE_URL: 'embedding.baseUrl',
   EMBEDDING_API_KEY: 'embedding.apiKey',
   EMBEDDING_DIMENSIONS: 'embedding.dimensions',
+  OCR_ENGINE: 'ocr.engine',
   SMTP_ENABLED: 'smtp.enabled',
   SMTP_HOST: 'smtp.host',
   SMTP_PORT: 'smtp.port',
@@ -51,6 +57,7 @@ const DEFAULT_CONFIG = {
   embeddingBaseUrl: '',
   embeddingApiKey: '',
   embeddingDimensions: 768,
+  ocrEngine: 'rapidocr' as 'rapidocr' | 'easyocr' | 'tesseract',
   smtpEnabled: false,
   smtpSecure: false,
   minioEndpoint: 'localhost',
@@ -66,6 +73,8 @@ export class SystemConfigService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly llmConfigService?: LlmConfigService,
+    @Optional() private readonly ragService?: RAGService,
   ) {}
 
   /**
@@ -630,28 +639,153 @@ export class SystemConfigService {
   }
 
   /**
-   * Test LLM connection
+   * Test LLM connection with a real API call
+   * @param overrideConfig - Optional config to test with instead of database config
    */
-  async testLLMConnection(): Promise<ModelTestResult> {
+  async testLLMConnection(overrideConfig?: {
+    provider?: string;
+    model?: string;
+    baseUrl?: string;
+    apiKey?: string;
+  }): Promise<ModelTestResult> {
     const startTime = Date.now();
     try {
-      const config = await this.getLLMConfig();
+      let activeConfig, providerName;
 
-      // Simple validation - in a full implementation, this would make an actual API call
-      const hasProvider = !!config.provider;
-      const hasModel = !!config.model;
-      const hasValidConfig =
-        config.provider === 'ollama' || (config.provider === 'openai' && !!config.apiKey);
+      if (overrideConfig && overrideConfig.baseUrl && overrideConfig.model) {
+        // Use override config for testing (from UI form values)
+        activeConfig = {
+          baseUrl: overrideConfig.baseUrl,
+          model: overrideConfig.model,
+          apiKey: overrideConfig.apiKey || 'ollama',
+          timeout: 30000,
+        };
+        providerName = overrideConfig.provider || 'ollama';
+      } else {
+        // Get config from database via LlmConfigService
+        activeConfig = this.llmConfigService?.getActiveConfig();
+        providerName = this.llmConfigService?.getProviderName();
 
-      const valid = hasProvider && hasModel && hasValidConfig;
+        if (!activeConfig || !providerName) {
+          return {
+            success: false,
+            message: 'LLM config service not available',
+            latency: Date.now() - startTime,
+          };
+        }
+      }
+
+      // Normalize baseUrl (add /v1 suffix if needed)
+      const normalizedBaseUrl = this.normalizeBaseUrl(activeConfig.baseUrl);
+
+      // Create a test client with the config
+      const client = new OpenAI({
+        baseURL: normalizedBaseUrl,
+        apiKey: activeConfig.apiKey || 'ollama',
+        timeout: Math.min(activeConfig.timeout, 30000), // Max 30s for test
+      });
+
+      // Make a simple test request
+      const response = await client.chat.completions.create({
+        model: activeConfig.model,
+        messages: [{ role: 'user', content: 'Hi' }],
+        max_tokens: 5,
+      });
+
       const latency = Date.now() - startTime;
+      const content = response.choices[0]?.message?.content || '';
 
       return {
-        success: valid ? true : false,
-        message: valid
-          ? `Configuration is valid for ${config.provider}/${config.model}`
-          : 'Invalid configuration',
+        success: true,
+        message: `Connected successfully to ${providerName}/${activeConfig.model}. Response: "${content}"`,
         latency,
+      };
+    } catch (error) {
+      const latency = Date.now() - startTime;
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        message: `Connection failed: ${message}`,
+        latency,
+      };
+    }
+  }
+
+  /**
+   * Test Embedding connection with a real API call
+   * @param overrideConfig - Optional config to test with instead of database config
+   */
+  async testEmbeddingConnection(overrideConfig?: {
+    provider?: string;
+    model?: string;
+    baseUrl?: string;
+    apiKey?: string;
+  }): Promise<ModelTestResult> {
+    const startTime = Date.now();
+    try {
+      let embeddingConfig;
+
+      if (overrideConfig && overrideConfig.provider && overrideConfig.model) {
+        // Use override config for testing (from UI form values)
+        embeddingConfig = {
+          provider: overrideConfig.provider as EmbeddingProvider,
+          model: overrideConfig.model,
+          baseUrl: overrideConfig.baseUrl,
+          apiKey: overrideConfig.apiKey,
+          dimensions: 768, // Default, not used for test
+        };
+      } else {
+        // Get config from database
+        embeddingConfig = await this.getEmbeddingConfig();
+      }
+
+      // Validate the config
+      if (!embeddingConfig.provider || !embeddingConfig.model) {
+        return {
+          success: false,
+          message: 'Invalid embedding configuration',
+          latency: Date.now() - startTime,
+        };
+      }
+
+      // Use RAGService to test connection if available
+      if (this.ragService) {
+        // Find the model config from EMBEDDING_MODELS
+        const modelKey = Object.keys(EMBEDDING_MODELS).find(
+          key => EMBEDDING_MODELS[key].model === embeddingConfig.model,
+        );
+
+        if (!modelKey) {
+          return {
+            success: false,
+            message: `Unknown embedding model: ${embeddingConfig.model}`,
+            latency: Date.now() - startTime,
+          };
+        }
+
+        const modelConfig = {
+          ...EMBEDDING_MODELS[modelKey],
+          provider: embeddingConfig.provider as EmbeddingProvider,
+          baseUrl: embeddingConfig.baseUrl,
+          apiKey: embeddingConfig.apiKey,
+        };
+
+        const connected = await this.ragService.testConnection(modelConfig);
+
+        return {
+          success: connected,
+          message: connected
+            ? `Connected successfully to ${embeddingConfig.provider}/${embeddingConfig.model}`
+            : `Failed to connect to ${embeddingConfig.provider}/${embeddingConfig.model}`,
+          latency: Date.now() - startTime,
+        };
+      }
+
+      // Fallback: just validate config structure
+      return {
+        success: true,
+        message: 'Embedding model configuration is valid (RAGService not available for real test)',
+        latency: Date.now() - startTime,
       };
     } catch (error) {
       return {
@@ -663,36 +797,19 @@ export class SystemConfigService {
   }
 
   /**
-   * Test Embedding connection
+   * Normalize baseUrl by adding /v1 suffix if not present
+   * Ollama's OpenAI-compatible endpoint requires /v1 prefix
    */
-  async testEmbeddingConnection(): Promise<ModelTestResult> {
-    const startTime = Date.now();
-    try {
-      const embeddingConfig = await this.getEmbeddingConfig();
-
-      // Validate the config
-      if (!embeddingConfig.provider || !embeddingConfig.model) {
-        return {
-          success: false,
-          message: 'Invalid embedding configuration',
-          latency: Date.now() - startTime,
-        };
-      }
-
-      // For now, just validate the config is well-formed
-      // In a full implementation, this would call RAGService.testConnection()
-      return {
-        success: true,
-        message: 'Embedding model configuration is valid',
-        latency: Date.now() - startTime,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : String(error),
-        latency: Date.now() - startTime,
-      };
+  private normalizeBaseUrl(url: string): string {
+    if (!url) return url;
+    const trimmed = url.trim();
+    if (trimmed.endsWith('/v1') || trimmed.endsWith('/v1/')) {
+      return trimmed.replace(/\/$/, '');
     }
+    if (trimmed.endsWith('/')) {
+      return trimmed + 'v1';
+    }
+    return trimmed + '/v1';
   }
 
   /**
@@ -725,5 +842,41 @@ export class SystemConfigService {
     };
 
     return this.saveEmbeddingConfig(defaultConfig, userId);
+  }
+
+  /**
+   * Get OCR configuration
+   */
+  async getOCRConfig(): Promise<OCRConfig> {
+    const engine = await this.getConfigValue(CONFIG_KEYS.OCR_ENGINE);
+
+    return {
+      engine: (engine as OCRConfig['engine']) || DEFAULT_CONFIG.ocrEngine,
+    };
+  }
+
+  /**
+   * Save OCR configuration
+   */
+  async saveOCRConfig(
+    config: Partial<OCRConfig>,
+    userId?: string,
+  ): Promise<OCRConfig> {
+    if (config.engine !== undefined) {
+      await this.setConfigValue(CONFIG_KEYS.OCR_ENGINE, config.engine, 'ocr', userId);
+    }
+
+    return this.getOCRConfig();
+  }
+
+  /**
+   * Reset OCR config to defaults
+   */
+  async resetOCRConfig(userId?: string): Promise<OCRConfig> {
+    const defaultConfig: OCRConfig = {
+      engine: DEFAULT_CONFIG.ocrEngine,
+    };
+
+    return this.saveOCRConfig(defaultConfig, userId);
   }
 }

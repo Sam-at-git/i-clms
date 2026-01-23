@@ -1,4 +1,22 @@
-import { ExtractTopicDefinition } from './topic.interface';
+import { ExtractTopicDefinition, TopicBatch } from './topic.interface';
+
+/**
+ * 合同类型枚举
+ */
+export enum ContractTypeEnum {
+  STAFF_AUGMENTATION = 'STAFF_AUGMENTATION',  // 人力外包
+  PROJECT_OUTSOURCING = 'PROJECT_OUTSOURCING', // 项目外包
+  PRODUCT_SALES = 'PRODUCT_SALES',            // 产品销售
+}
+
+/**
+ * 合同类型显示名称
+ */
+export const ContractTypeNames: Record<ContractTypeEnum, string> = {
+  [ContractTypeEnum.STAFF_AUGMENTATION]: '人力外包',
+  [ContractTypeEnum.PROJECT_OUTSOURCING]: '项目外包',
+  [ContractTypeEnum.PRODUCT_SALES]: '产品销售',
+};
 
 /**
  * Extract Topic Enumeration
@@ -206,4 +224,82 @@ export function infoTypeToExtractTopic(infoType: string): ExtractTopic | undefin
     return infoType as ExtractTopic;
   }
   return undefined;
+}
+
+/**
+ * 合同类型与主题批次映射配置
+ *
+ * 不同类型的合同需要提取不同的主题批次：
+ *
+ * 人力外包 (STAFF_AUGMENTATION):
+ *   - 需要: 基本信息、财务信息、时间信息、人力费率、交付物、风险条款
+ *   - 不需要: 里程碑(MILESTONES)、产品清单(LINE_ITEMS)
+ *
+ * 项目外包 (PROJECT_OUTSOURCING):
+ *   - 需要: 基本信息、财务信息、时间信息、里程碑、交付物、风险条款
+ *   - 不需要: 人力费率(RATE_ITEMS)、产品清单(LINE_ITEMS)
+ *
+ * 产品销售 (PRODUCT_SALES):
+ *   - 需要: 基本信息、财务信息、时间信息、产品清单、风险条款
+ *   - 不需要: 里程碑(MILESTONES)、人力费率(RATE_ITEMS)、交付物(DELIVERABLES)
+ */
+export const CONTRACT_TYPE_TOPIC_BATCHES: Record<ContractTypeEnum, TopicBatch> = {
+  // 人力外包合同主题批次
+  [ContractTypeEnum.STAFF_AUGMENTATION]: {
+    contractType: ContractTypeEnum.STAFF_AUGMENTATION,
+    contractTypeName: ContractTypeNames[ContractTypeEnum.STAFF_AUGMENTATION],
+    topics: [
+      ExtractTopic.BASIC_INFO,   // 基本信息
+      ExtractTopic.FINANCIAL,    // 财务信息
+      ExtractTopic.TIME_INFO,    // 时间信息
+      ExtractTopic.RATE_ITEMS,   // 人力费率 (核心)
+      ExtractTopic.DELIVERABLES, // 交付物
+      ExtractTopic.RISK_CLAUSES, // 风险条款
+    ],
+    description: '人力外包合同专用主题批次',
+  },
+
+  // 项目外包合同主题批次
+  [ContractTypeEnum.PROJECT_OUTSOURCING]: {
+    contractType: ContractTypeEnum.PROJECT_OUTSOURCING,
+    contractTypeName: ContractTypeNames[ContractTypeEnum.PROJECT_OUTSOURCING],
+    topics: [
+      ExtractTopic.BASIC_INFO,   // 基本信息
+      ExtractTopic.FINANCIAL,    // 财务信息
+      ExtractTopic.TIME_INFO,    // 时间信息
+      ExtractTopic.MILESTONES,   // 里程碑 (核心)
+      ExtractTopic.DELIVERABLES, // 交付物
+      ExtractTopic.RISK_CLAUSES, // 风险条款
+    ],
+    description: '项目外包合同专用主题批次',
+  },
+
+  // 产品销售合同主题批次
+  [ContractTypeEnum.PRODUCT_SALES]: {
+    contractType: ContractTypeEnum.PRODUCT_SALES,
+    contractTypeName: ContractTypeNames[ContractTypeEnum.PRODUCT_SALES],
+    topics: [
+      ExtractTopic.BASIC_INFO,   // 基本信息
+      ExtractTopic.FINANCIAL,    // 财务信息
+      ExtractTopic.TIME_INFO,    // 时间信息
+      ExtractTopic.LINE_ITEMS,   // 产品清单 (核心)
+      ExtractTopic.RISK_CLAUSES, // 风险条款
+    ],
+    description: '产品销售合同专用主题批次',
+  },
+};
+
+/**
+ * 获取合同类型的主题批次
+ */
+export function getTopicBatchForContractType(contractType: string): TopicBatch | undefined {
+  return CONTRACT_TYPE_TOPIC_BATCHES[contractType as ContractTypeEnum];
+}
+
+/**
+ * 获取合同类型需要执行的主题列表
+ */
+export function getTopicsForContractType(contractType: string): ExtractTopic[] {
+  const batch = getTopicBatchForContractType(contractType);
+  return (batch?.topics || []) as ExtractTopic[];
 }

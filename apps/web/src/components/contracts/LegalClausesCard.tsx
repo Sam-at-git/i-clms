@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { gql } from '@apollo/client';
 
@@ -90,11 +90,14 @@ export function LegalClausesCard({ contractId }: LegalClausesCardProps) {
   }>(GET_CONTRACT_LEGAL_CLAUSES, {
     variables: { contractId },
     skip: !contractId,
-    // Suppress error until API is restarted with new schema
-    onError: (err) => {
-      console.warn('Legal clauses query failed (API may need restart):', err.message);
-    },
   });
+
+  // Suppress error until API is restarted with new schema
+  useEffect(() => {
+    if (error) {
+      console.warn('Legal clauses query failed (API may need restart):', error.message);
+    }
+  }, [error]);
 
   if (loading) {
     return (
@@ -117,8 +120,8 @@ export function LegalClausesCard({ contractId }: LegalClausesCardProps) {
     );
   }
 
-  const legalClauses = data?.contractLegalClauses || [];
-  const dataProtection = data?.contractDataProtection;
+  const legalClauses: LegalClause[] = (data?.contractLegalClauses as LegalClause[]) || [];
+  const dataProtection: DataProtection | undefined = data?.contractDataProtection as DataProtection | undefined;
 
   // 按条款类型分组
   const clausesByType: Record<ClauseType, LegalClause | null> = {

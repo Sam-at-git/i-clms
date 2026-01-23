@@ -126,6 +126,35 @@ mutation ParseAndExtract($objectName: String!) {
   }
 }
 
+mutation ConvertUploadedFileToMarkdown($objectName: String!, $options: DoclingConvertOptions) {
+  convertUploadedFileToMarkdown(objectName: $objectName, options: $options) {
+    success
+    markdown
+    pages
+    tables {
+      markdown
+      rows
+      cols
+    }
+    images {
+      page
+      width
+      height
+    }
+    error
+  }
+}
+
+mutation DetectContractType($markdown: String!) {
+  detectContractType(markdown: $markdown) {
+    detectedType
+    confidence
+    reasoning
+    displayName
+    description
+  }
+}
+
 mutation CreateParseSession($objectName: String!) {
   createParseSession(objectName: $objectName)
 }
@@ -174,8 +203,8 @@ mutation ParseContractWithLlm($objectName: String!) {
   }
 }
 
-mutation StartParseContractAsync($objectName: String!) {
-  startParseContractAsync(objectName: $objectName) {
+mutation StartParseContractAsync($objectName: String!, $strategy: ParseStrategyType, $markdown: String) {
+  startParseContractAsync(objectName: $objectName, strategy: $strategy, markdown: $markdown) {
     sessionId
     message
   }

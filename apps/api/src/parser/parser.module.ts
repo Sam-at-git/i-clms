@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { StorageModule } from '../storage';
 import { DoclingModule } from '../docling/docling.module';
 import { ParserService } from './parser.service';
@@ -12,7 +12,7 @@ import { PartiesExtractor } from './extractors/basic/parties.extractor';
 import { TermExtractor } from './extractors/basic/term.extractor';
 
 @Module({
-  imports: [StorageModule, DoclingModule],
+  imports: [StorageModule, forwardRef(() => DoclingModule)],
   providers: [
     ParserService,
     ParserResolver,

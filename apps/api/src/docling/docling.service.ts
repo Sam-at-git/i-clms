@@ -1,12 +1,20 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { SystemConfigService } from '../system-config/system-config.service';
 
 const execAsync = promisify(exec);
 
 export interface DoclingConvertOptions {
   ocr?: boolean;
+  /**
+   * OCR 引擎选择
+   * - 'rapidocr': 基于 PaddleOCR，中文识别效果最好（推荐）
+   * - 'easyocr': 默认选项，支持多语言
+   * - 'tesseract': Tesseract OCR
+   */
+  ocrEngine?: 'rapidocr' | 'easyocr' | 'tesseract';
   withTables?: boolean;
   withImages?: boolean;
   /**
@@ -56,8 +64,12 @@ export class DoclingService implements OnModuleInit {
   private readonly logger = new Logger(DoclingService.name);
   private pythonAvailable = false;
   private pythonCommand: string = 'python3';
+  private cachedOCREngine: 'rapidocr' | 'easyocr' | 'tesseract' = 'rapidocr';
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Optional() private readonly systemConfigService?: SystemConfigService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     // Check Python environment
@@ -111,12 +123,33 @@ export class DoclingService implements OnModuleInit {
     }
 
     const wrapperPath = this.getWrapperPath();
-    const optionsJson = JSON.stringify(options);
+
+    // Get OCR engine from system config if not specified in options
+    let defaultOCREngine = this.cachedOCREngine;
+    if (this.systemConfigService && !options.ocrEngine) {
+      try {
+        const ocrConfig = await this.systemConfigService.getOCRConfig();
+        this.cachedOCREngine = ocrConfig.engine;
+        defaultOCREngine = ocrConfig.engine;
+      } catch (error) {
+        this.logger.warn('Failed to get OCR config from system, using default');
+      }
+    }
+
+    const optionsWithDefaults: DoclingConvertOptions = {
+      ocrEngine: options.ocrEngine || defaultOCREngine,
+      ocr: options.ocr !== false,
+      withTables: options.withTables !== false,
+      withImages: options.withImages !== false,
+      preserveHeaders: options.preserveHeaders !== false,
+    };
+    const optionsJson = JSON.stringify(optionsWithDefaults);
 
     try {
+      // Increase timeout for OCR processing (5 minutes)
       const { stdout } = await execAsync(
         `${this.pythonCommand} ${wrapperPath} convert "${filePath}" '${optionsJson}'`,
-        { timeout: 60000 }, // 60 second timeout
+        { timeout: 300000 }, // 5 minute timeout for OCR
       );
 
       const result = JSON.parse(stdout);

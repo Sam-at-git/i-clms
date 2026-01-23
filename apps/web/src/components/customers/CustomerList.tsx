@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '@apollo/client';
-import { useQuery } from '@apollo/client/react';
+import { useQuery, useMutation } from '@apollo/client/react';
 import { Link } from 'react-router-dom';
 import { EmptyState } from '../ui/EmptyState';
 import { Skeleton } from '../ui/Skeleton';
@@ -49,6 +49,28 @@ interface CustomerListProps {
 
 export function CustomerList({ search, industry, status, refreshKey }: CustomerListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const DELETE_CUSTOMER = gql`
+    mutation DeleteCustomer($id: ID!) {
+      deleteCustomer(id: $id) {
+        id
+        name
+      }
+    }
+  `;
+
+  const [deleteCustomer, { loading: deleting }] = useMutation(DELETE_CUSTOMER, {
+    onCompleted: (data) => {
+      console.log('Customer deleted:', data.deleteCustomer);
+      refetch();
+    },
+    onError: (error) => {
+      console.error('Delete customer error:', error);
+      alert('删除失败: ' + error.message);
+    },
+  });
 
   const { loading, error, data, refetch } = useQuery(GET_CUSTOMERS, {
     variables: {
@@ -100,6 +122,26 @@ export function CustomerList({ search, industry, status, refreshKey }: CustomerL
       setSelectedIds(new Set(customers.map((c: any) => c.id)));
     }
   };
+
+  const handleDeleteClick = (customerId: string) => {
+    setDeleteId(customerId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteId) {
+      deleteCustomer({ variables: { id: deleteId } });
+    }
+    setShowDeleteConfirm(false);
+    setDeleteId(null);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setDeleteId(null);
+  };
+
+  const customerToDelete = customers.find((c: any) => c.id === deleteId);
 
   return (
     <div style={styles.container}>
@@ -176,11 +218,49 @@ export function CustomerList({ search, industry, status, refreshKey }: CustomerL
                     <Link to={`/customers/${customer.id}`} style={styles.actionLink}>
                       查看
                     </Link>
+                    <button
+                      onClick={() => handleDeleteClick(customer.id)}
+                      style={styles.deleteButton}
+                      disabled={deleting}
+                    >
+                      删除
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* 删除确认对话框 */}
+      {showDeleteConfirm && customerToDelete && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modal}>
+            <h3 style={styles.modalTitle}>确认删除</h3>
+            <p style={styles.modalMessage}>
+              确定要删除客户 <strong>{customerToDelete.name}</strong> 吗？
+            </p>
+            <p style={styles.modalWarning}>
+              此操作不可恢复，请谨慎操作。
+            </p>
+            <div style={styles.modalActions}>
+              <button
+                onClick={handleCancelDelete}
+                style={styles.modalCancelButton}
+                disabled={deleting}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                style={styles.modalConfirmButton}
+                disabled={deleting}
+              >
+                {deleting ? '删除中...' : '确认删除'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -271,6 +351,81 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#3b82f6',
     textDecoration: 'none',
     fontSize: '14px',
+    marginRight: '12px',
+  },
+  deleteButton: {
+    padding: '4px 10px',
+    fontSize: '13px',
+    color: '#dc2626',
+    backgroundColor: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  deleteButtonDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
+  // Modal styles
+  modalOverlay: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modal: {
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    padding: '24px',
+    maxWidth: '400px',
+    width: '90%',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  },
+  modalTitle: {
+    fontSize: '18px',
+    fontWeight: 600,
+    color: '#111827',
+    margin: '0 0 16px 0',
+  },
+  modalMessage: {
+    fontSize: '14px',
+    color: '#374151',
+    margin: '0 0 12px 0',
+    lineHeight: '1.5',
+  },
+  modalWarning: {
+    fontSize: '13px',
+    color: '#dc2626',
+    margin: '0 0 20px 0',
+  },
+  modalActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+  },
+  modalCancelButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    color: '#374151',
+    backgroundColor: '#fff',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  modalConfirmButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    color: '#fff',
+    backgroundColor: '#dc2626',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
   },
   error: {
     padding: '48px',

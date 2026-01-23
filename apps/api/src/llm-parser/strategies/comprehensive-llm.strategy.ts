@@ -711,10 +711,12 @@ ${relevantText.substring(0, 15000)}
   /**
    * 根据合同类型获取相关主题
    *
-   * 不同合同类型只需提取特定信息，避免浪费时间解析无关字段：
-   * - 项目外包(PROJECT_OUTSOURCING): 需要里程碑信息，不需要费率和产品清单
-   * - 人力框架(STAFF_AUGMENTATION): 需要费率信息，不需要里程碑和产品清单
-   * - 产品购销(PRODUCT_SALES): 需要产品清单，不需要里程碑和费率
+   * 不同合同类型只提取特定信息，避免浪费时间解析无关字段
+   * 配置与 topics.const.ts 中的 CONTRACT_TYPE_TOPIC_BATCHES 保持一致
+   *
+   * - 项目外包(PROJECT_OUTSOURCING): BASIC_INFO, FINANCIAL, TIME_INFO, MILESTONES, DELIVERABLES, RISK_CLAUSES (6个)
+   * - 人力外包(STAFF_AUGMENTATION): BASIC_INFO, FINANCIAL, TIME_INFO, RATE_ITEMS, DELIVERABLES, RISK_CLAUSES (6个)
+   * - 产品销售(PRODUCT_SALES): BASIC_INFO, FINANCIAL, TIME_INFO, LINE_ITEMS, RISK_CLAUSES (5个)
    */
   private getTopicsForContractType(
     contractType: string | undefined,
@@ -732,11 +734,22 @@ ${relevantText.substring(0, 15000)}
       ExtractTopic.TIME_INFO,
     ];
 
-    // 根据合同类型添加特定主题
+    // 根据合同类型添加特定主题（与 topics.const.ts 保持一致）
     const typeSpecificTopics: Record<string, ExtractTopic[]> = {
-      PROJECT_OUTSOURCING: [ExtractTopic.MILESTONES, ExtractTopic.DELIVERABLES],
-      STAFF_AUGMENTATION: [ExtractTopic.RATE_ITEMS],
-      PRODUCT_SALES: [ExtractTopic.LINE_ITEMS, ExtractTopic.DELIVERABLES],
+      PROJECT_OUTSOURCING: [
+        ExtractTopic.MILESTONES,   // 里程碑（核心）
+        ExtractTopic.DELIVERABLES, // 交付物
+        ExtractTopic.RISK_CLAUSES,  // 风险条款
+      ],
+      STAFF_AUGMENTATION: [
+        ExtractTopic.RATE_ITEMS,    // 人力费率（核心）
+        ExtractTopic.DELIVERABLES,  // 交付物
+        ExtractTopic.RISK_CLAUSES,  // 风险条款
+      ],
+      PRODUCT_SALES: [
+        ExtractTopic.LINE_ITEMS,    // 产品清单（核心）
+        ExtractTopic.RISK_CLAUSES,  // 风险条款
+      ],
     };
 
     // 如果能识别出合同类型，只提取相关主题
@@ -750,6 +763,7 @@ ${relevantText.substring(0, 15000)}
 
   /**
    * Get default topics if none specified
+   * 返回所有可用主题
    */
   private getDefaultTopics(): ExtractTopic[] {
     return [
@@ -759,6 +773,8 @@ ${relevantText.substring(0, 15000)}
       ExtractTopic.MILESTONES,
       ExtractTopic.RATE_ITEMS,
       ExtractTopic.LINE_ITEMS,
+      ExtractTopic.RISK_CLAUSES,
+      ExtractTopic.DELIVERABLES,
     ];
   }
 

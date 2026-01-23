@@ -371,7 +371,7 @@ export function ContractUploadLLM({ onClose, onSuccess }: ContractUploadProps) {
                   </select>
                 </div>
                 <div style={styles.field}>
-                  <label style={styles.label}>我方主体</label>
+                  <label style={styles.label}>供应商</label>
                   <input
                     type="text"
                     value={formData.ourEntity}

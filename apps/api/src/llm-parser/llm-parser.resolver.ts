@@ -11,6 +11,8 @@ import { TopicRegistryService } from './topics/topic-registry.service';
 import { ParseStrategyService } from './parse-strategy.service';
 import { MultiStrategyService } from './multi-strategy.service';
 import { LLMEvaluatorService } from './evaluation/llm-evaluator.service';
+import { ContractTypeDetectorService } from './contract-type-detector.service';
+import { ContractTypeDetectionResult } from './entities/contract-type-detection.entity';
 import { LlmParseResult, AsyncParseStartResponse } from './dto/llm-parse-result.dto';
 import { ParseWithLlmInput } from './dto/parse-with-llm.input';
 import {
@@ -86,6 +88,7 @@ export class LlmParserResolver {
     private readonly parseStrategyService: ParseStrategyService,
     private readonly multiStrategyService: MultiStrategyService,
     private readonly llmEvaluator: LLMEvaluatorService,
+    private readonly contractTypeDetector: ContractTypeDetectorService,
   ) {}
 
   @Query(() => CompletenessScore, {
@@ -150,21 +153,25 @@ export class LlmParserResolver {
   async startParseContractAsync(
     @Args('objectName') objectName: string,
     @Args('strategy', { type: () => ParseStrategyType, nullable: true }) strategy?: ParseStrategyType,
+    @Args('markdown', { type: () => String, nullable: true, description: '预转换的Markdown内容（前端已通过Docling转换）' }) markdown?: string,
   ): Promise<AsyncParseStartResponse> {
     const effectiveStrategy = strategy || ParseStrategyType.LLM;
-    this.logger.log(`[Async Parse] Starting async parse for: ${objectName}, strategy: ${effectiveStrategy}`);
+    this.logger.log(`[Async Parse] Starting async parse for: ${objectName}, strategy: ${effectiveStrategy}, hasMarkdown: ${!!markdown}`);
 
-    // 创建进度会话
+    // 创建进度会话，如果提供了markdown，立即存储
     const sessionId = this.progressService.createSession(objectName);
+    if (markdown) {
+      this.progressService.setMarkdownContent(sessionId, markdown);
+      this.logger.log(`[Async Parse] Stored pre-converted markdown (${markdown.length} chars) for session ${sessionId}`);
+    }
 
     // 立即返回sessionId，让客户端可以开始轮询
     // 在后台异步执行解析（使用Promise但不await）
     Promise.resolve().then(async () => {
       try {
         this.logger.log(`[Async Parse] Starting background execution for session: ${sessionId}, strategy: ${effectiveStrategy}`);
-        // TODO: Route to appropriate strategy based on strategy parameter
-        // For now, always use the LLM parser
-        await this.llmParserService.parseContractWithLlm(objectName, sessionId);
+        // Route to appropriate strategy based on strategy parameter
+        await this.llmParserService.parseContractWithLlm(objectName, sessionId, markdown);
         this.logger.log(`[Async Parse] Completed background execution for session: ${sessionId}`);
       } catch (error) {
         this.logger.error(`[Async Parse] Failed for session ${sessionId}:`, error);
@@ -180,6 +187,34 @@ export class LlmParserResolver {
       message: strategy
         ? `解析任务已启动 (使用${effectiveStrategy}策略)，请使用sessionId查询进度`
         : '解析任务已启动，请使用sessionId查询进度',
+    };
+  }
+
+  @Mutation(() => ContractTypeDetectionResult, {
+    description: '从Markdown内容或文件名中检测合同类型',
+  })
+  @UseGuards(GqlAuthGuard)
+  async detectContractType(
+    @Args('markdown', { type: () => String }) markdown: string,
+    @Args('fileName', { type: () => String, nullable: true }) fileName?: string,
+  ): Promise<ContractTypeDetectionResult> {
+    this.logger.log(
+      `[Contract Type Detection] Detecting type from markdown (${markdown.length} chars)` +
+      (fileName ? `, fileName: "${fileName}"` : '')
+    );
+
+    const result = await this.contractTypeDetector.detectContractType(markdown, fileName);
+
+    return {
+      detectedType: result.detectedType,
+      confidence: result.confidence,
+      reasoning: result.reasoning,
+      displayName: result.detectedType
+        ? this.contractTypeDetector.getTypeDisplayName(result.detectedType)
+        : null,
+      description: result.detectedType
+        ? this.contractTypeDetector.getTypeDescription(result.detectedType)
+        : null,
     };
   }
 
@@ -385,6 +420,7 @@ export class LlmParserResolver {
       extractedFieldsCount: session.extractedFieldsCount,
       estimatedRemainingSeconds,
       resultData: session.resultData,
+      markdownContent: session.markdownContent,
     };
   }
 
@@ -440,6 +476,7 @@ export class LlmParserResolver {
         extractedFieldsCount: session.extractedFieldsCount,
         estimatedRemainingSeconds,
         resultData: session.resultData,
+        markdownContent: session.markdownContent,
       };
     });
   }
@@ -461,6 +498,7 @@ export class LlmParserResolver {
 
     const result = await this.taskBasedParser.parseByTasks(
       text,
+      undefined, // contractType
       taskTypes as InfoType[]
     );
 
@@ -491,6 +529,7 @@ export class LlmParserResolver {
 
     const result = await this.taskBasedParser.parseByTasks(
       text,
+      undefined, // contractType
       [InfoType.MILESTONES]
     );
 

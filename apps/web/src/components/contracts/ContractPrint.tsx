@@ -81,7 +81,7 @@ export function ContractPrint({ contract }: ContractPrintProps) {
         <div style={styles.sections}>
           {/* Basic Info */}
           <Section title="基本信息">
-            <InfoRow label="我方主体" value={contract.ourEntity} />
+            <InfoRow label="供应商" value={contract.ourEntity} />
             <InfoRow label="所属部门" value={contract.department.name} />
           </Section>
 

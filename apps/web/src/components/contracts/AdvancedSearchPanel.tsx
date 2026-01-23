@@ -249,7 +249,7 @@ export function AdvancedSearchPanel({ onSearch }: AdvancedSearchPanelProps) {
 
   // Convert condition groups back to filters
   const convertGroupsToFilters = (groups: SearchConditionGroup[]): ContractFilters => {
-    const result: ContractFilters = {};
+    const result: Partial<Record<keyof ContractFilters | 'amountRange', any>> = {};
 
     groups.forEach((group) => {
       group.conditions.forEach((condition) => {
@@ -262,13 +262,13 @@ export function AdvancedSearchPanel({ onSearch }: AdvancedSearchPanelProps) {
           if (condition.value.max !== undefined) {
             result.maxAmount = condition.value.max;
           }
-        } else {
+        } else if (key !== 'amountRange') {
           result[key] = condition.value;
         }
       });
     });
 
-    return result;
+    return result as ContractFilters;
   };
 
   // Get active filter count
@@ -939,7 +939,7 @@ const styles: Record<string, React.CSSProperties> = {
     '&:last-child': {
       borderBottom: 'none',
     },
-  },
+  } as any,
   savedItemContent: {
     display: 'flex',
     flexDirection: 'column',

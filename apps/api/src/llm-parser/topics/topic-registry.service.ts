@@ -6,8 +6,14 @@ import {
   CompletenessScoreBreakdown,
   TopicScoreBreakdown,
   TopicFieldValue,
+  TopicBatch,
 } from './topic.interface';
-import { EXTRACT_TOPICS, ExtractTopic, ExtractTopicNames } from './topics.const';
+import {
+  EXTRACT_TOPICS,
+  ExtractTopic,
+  ExtractTopicNames,
+  getTopicBatchForContractType,
+} from './topics.const';
 
 /**
  * Placeholder values that indicate a field is empty
@@ -361,5 +367,132 @@ export class TopicRegistryService {
       (sum, topic) => sum + (topic.weight || 0),
       0,
     );
+  }
+
+  /**
+   * 获取合同类型的主题批次配置
+   *
+   * @param contractType 合同类型 (STAFF_AUGMENTATION, PROJECT_OUTSOURCING, PRODUCT_SALES)
+   * @returns 主题批次配置，未找到返回 undefined
+   */
+  getTopicBatchForContractType(contractType: string): TopicBatch | undefined {
+    return getTopicBatchForContractType(contractType);
+  }
+
+  /**
+   * 获取合同类型需要执行的主题列表
+   *
+   * @param contractType 合同类型
+   * @returns 主题定义数组，按执行顺序排序
+   */
+  getTopicsForContractType(contractType: string): ExtractTopicDefinition[] {
+    const batch = this.getTopicBatchForContractType(contractType);
+    if (!batch) {
+      this.logger.warn(`No topic batch found for contract type: ${contractType}`);
+      return [];
+    }
+
+    const topicDefinitions: ExtractTopicDefinition[] = [];
+    for (const topicName of batch.topics) {
+      const topic = this.getTopicSafe(topicName);
+      if (topic) {
+        topicDefinitions.push(topic);
+      } else {
+        this.logger.warn(`Topic ${topicName} not found in registry`);
+      }
+    }
+
+    return topicDefinitions.sort((a, b) => (a.order || 0) - (b.order || 0));
+  }
+
+  /**
+   * 获取合同类型需要执行的主题名称列表
+   *
+   * @param contractType 合同类型
+   * @returns 主题名称数组
+   */
+  getTopicNamesForContractType(contractType: string): string[] {
+    const batch = this.getTopicBatchForContractType(contractType);
+    return batch?.topics || [];
+  }
+
+  /**
+   * 计算合同类型主题批次的完整性分数
+   *
+   * 与 calculateCompleteness 的区别在于：只计算该合同类型相关的主题
+   *
+   * @param results 提取结果数组
+   * @param contractType 合同类型
+   * @returns 完整性分数
+   */
+  calculateCompletenessForContractType(
+    results: TopicExtractResult[],
+    contractType: string,
+  ): CompletenessScoreBreakdown {
+    const topicNames = this.getTopicNamesForContractType(contractType);
+
+    // 过滤出属于该合同类型的结果
+    const filteredResults = results.filter(r => topicNames.includes(r.topicName));
+
+    let totalScore = 0;
+    let maxScore = 0;
+    const topicScores: TopicScoreBreakdown[] = [];
+
+    for (const result of filteredResults) {
+      const topic = this.getTopicSafe(result.topicName);
+      if (!topic) {
+        this.logger.warn(`Unknown topic in results: ${result.topicName}`);
+        continue;
+      }
+
+      const weight = topic.weight || 1;
+      const topicBreakdown = this.calculateTopicScore(topic, result.data);
+
+      totalScore += topicBreakdown.score;
+      maxScore += weight;
+
+      topicScores.push({
+        topicName: topic.name,
+        displayName: topic.displayName,
+        weight,
+        completedFields: topicBreakdown.completedFields,
+        totalFields: topicBreakdown.totalFields,
+        percentage: topicBreakdown.percentage,
+        score: topicBreakdown.score,
+      });
+    }
+
+    // 包含该合同类型下未提取的主题（分数为0）
+    for (const topicName of topicNames) {
+      if (!topicScores.find((ts) => ts.topicName === topicName)) {
+        const topic = this.getTopicSafe(topicName);
+        if (topic) {
+          const weight = topic.weight || 1;
+          maxScore += weight;
+          topicScores.push({
+            topicName: topic.name,
+            displayName: topic.displayName,
+            weight,
+            completedFields: 0,
+            totalFields: topic.fields.length,
+            percentage: 0,
+            score: 0,
+          });
+        }
+      }
+    }
+
+    const score = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+
+    this.logger.debug(
+      `[${contractType}] Completeness: ${score}/100 (total=${totalScore.toFixed(2)}, max=${maxScore.toFixed(2)})`,
+    );
+
+    return {
+      score,
+      total: Math.round(totalScore * 100) / 100,
+      maxScore: Math.round(maxScore * 100) / 100,
+      topicScores: topicScores.sort((a, b) => b.weight - a.weight),
+    };
   }
 }

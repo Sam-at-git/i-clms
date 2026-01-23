@@ -159,11 +159,27 @@ export class LlmConfigService implements OnModuleInit {
 
     console.log(`[LlmConfigService] getActiveConfig: provider="${provider}", baseUrl="${baseUrl}", apiKey="***", using cached: ${cachedProvider !== null}`);
 
+    // 规范化baseUrl：确保以 /v1 结尾（Ollama需要）
+    const normalizeBaseUrl = (url: string): string => {
+      if (!url) return url;
+      const trimmed = url.trim();
+      // 如果已经以 /v1 或 /v1/ 结尾，直接返回
+      if (trimmed.endsWith('/v1') || trimmed.endsWith('/v1/')) {
+        return trimmed.replace(/\/$/, ''); // 移除尾部斜杠
+      }
+      // 如果以 / 结尾，添加 v1
+      if (trimmed.endsWith('/')) {
+        return trimmed + 'v1';
+      }
+      // 否则添加 /v1
+      return trimmed + '/v1';
+    };
+
     if (provider === 'openai') {
       // OpenAI 使用 OPENAI_MODEL 或 gpt-4o 作为默认值
       const model = cachedModel || this.configService.get<string>('OPENAI_MODEL', 'gpt-4o');
       return {
-        baseUrl: baseUrl || 'https://api.openai.com/v1',
+        baseUrl: normalizeBaseUrl(baseUrl || 'https://api.openai.com/v1'),
         apiKey: apiKey || '',
         model: model,
         temperature,
@@ -179,7 +195,7 @@ export class LlmConfigService implements OnModuleInit {
         : this.configService.get<string>('OLLAMA_BASE_URL', 'http://localhost:11434/v1');
 
       return {
-        baseUrl: ollamaBaseUrl,
+        baseUrl: normalizeBaseUrl(ollamaBaseUrl),
         apiKey: 'ollama', // Ollama不需要key，但OpenAI SDK要求
         model: model,
         temperature,

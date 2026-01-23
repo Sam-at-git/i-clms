@@ -17,6 +17,7 @@ import {
   LLMConfig,
   EmbeddingConfig,
   ModelTestResult,
+  OCRConfig,
 } from './dto';
 
 @Resolver()
@@ -177,22 +178,34 @@ export class SystemConfigResolver {
 
   /**
    * Test LLM connection
+   * If config parameters are provided, test with those values instead of database config
    */
   @Mutation(() => ModelTestResult, { description: '测试LLM连接' })
   @UseGuards(GqlAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async testLLMConnection(): Promise<ModelTestResult> {
-    return this.systemConfigService.testLLMConnection();
+  async testLLMConnection(
+    @Args('provider', { type: () => String, nullable: true }) provider?: string,
+    @Args('model', { type: () => String, nullable: true }) model?: string,
+    @Args('baseUrl', { type: () => String, nullable: true }) baseUrl?: string,
+    @Args('apiKey', { type: () => String, nullable: true }) apiKey?: string,
+  ): Promise<ModelTestResult> {
+    return this.systemConfigService.testLLMConnection({ provider, model, baseUrl, apiKey });
   }
 
   /**
    * Test Embedding connection
+   * If config parameters are provided, test with those values instead of database config
    */
   @Mutation(() => ModelTestResult, { description: '测试嵌入模型连接' })
   @UseGuards(GqlAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async testEmbeddingConnection(): Promise<ModelTestResult> {
-    return this.systemConfigService.testEmbeddingConnection();
+  async testEmbeddingConnection(
+    @Args('provider', { type: () => String, nullable: true }) provider?: string,
+    @Args('model', { type: () => String, nullable: true }) model?: string,
+    @Args('baseUrl', { type: () => String, nullable: true }) baseUrl?: string,
+    @Args('apiKey', { type: () => String, nullable: true }) apiKey?: string,
+  ): Promise<ModelTestResult> {
+    return this.systemConfigService.testEmbeddingConnection({ provider, model, baseUrl, apiKey });
   }
 
   /**
@@ -219,5 +232,39 @@ export class SystemConfigResolver {
   @Roles(UserRole.ADMIN)
   async resetEmbeddingConfig(@CurrentUser() user?: any): Promise<EmbeddingConfig> {
     return this.systemConfigService.resetEmbeddingConfig(user?.id);
+  }
+
+  /**
+   * Get OCR configuration
+   */
+  @Query(() => OCRConfig, { description: '获取OCR配置' })
+  @UseGuards(GqlAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async ocrConfig(): Promise<OCRConfig> {
+    return this.systemConfigService.getOCRConfig();
+  }
+
+  /**
+   * Save OCR configuration
+   */
+  @Mutation(() => OCRConfig, { description: '保存OCR配置' })
+  @UseGuards(GqlAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async saveOCRConfig(
+    @Args('engine', { type: () => String, nullable: true }) engine?: 'rapidocr' | 'easyocr' | 'tesseract',
+    @CurrentUser() user?: any,
+  ): Promise<OCRConfig> {
+    const config: Partial<OCRConfig> = { engine };
+    return this.systemConfigService.saveOCRConfig(config, user?.id);
+  }
+
+  /**
+   * Reset OCR configuration
+   */
+  @Mutation(() => OCRConfig, { description: '重置OCR配置为默认值' })
+  @UseGuards(GqlAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async resetOCRConfig(@CurrentUser() user?: any): Promise<OCRConfig> {
+    return this.systemConfigService.resetOCRConfig(user?.id);
   }
 }

@@ -7,6 +7,7 @@ interface LLMConfig {
   provider: string;
   model: string;
   baseUrl?: string;
+  apiKey?: string;
   temperature: number;
   maxTokens: number;
 }
@@ -15,7 +16,12 @@ interface EmbeddingConfig {
   provider: string;
   model: string;
   baseUrl?: string;
+  apiKey?: string;
   dimensions: number;
+}
+
+interface OCRConfig {
+  engine: 'rapidocr' | 'easyocr' | 'tesseract';
 }
 
 interface ModelTestResult {
@@ -147,8 +153,18 @@ const SAVE_EMBEDDING_CONFIG = gql`
 `;
 
 const TEST_LLM_CONNECTION = gql`
-  mutation TestLLMConnection {
-    testLLMConnection {
+  mutation TestLLMConnection(
+    $provider: String
+    $model: String
+    $baseUrl: String
+    $apiKey: String
+  ) {
+    testLLMConnection(
+      provider: $provider
+      model: $model
+      baseUrl: $baseUrl
+      apiKey: $apiKey
+    ) {
       success
       message
       latency
@@ -157,8 +173,18 @@ const TEST_LLM_CONNECTION = gql`
 `;
 
 const TEST_EMBEDDING_CONNECTION = gql`
-  mutation TestEmbeddingConnection {
-    testEmbeddingConnection {
+  mutation TestEmbeddingConnection(
+    $provider: String
+    $model: String
+    $baseUrl: String
+    $apiKey: String
+  ) {
+    testEmbeddingConnection(
+      provider: $provider
+      model: $model
+      baseUrl: $baseUrl
+      apiKey: $apiKey
+    ) {
       success
       message
       latency
@@ -189,8 +215,32 @@ const RESET_EMBEDDING_CONFIG = gql`
   }
 `;
 
+const GET_OCR_CONFIG = gql`
+  query GetOCRConfig {
+    ocrConfig {
+      engine
+    }
+  }
+`;
+
+const SAVE_OCR_CONFIG = gql`
+  mutation SaveOCRConfig($engine: String) {
+    saveOCRConfig(engine: $engine) {
+      engine
+    }
+  }
+`;
+
+const RESET_OCR_CONFIG = gql`
+  mutation ResetOCRConfig {
+    resetOCRConfig {
+      engine
+    }
+  }
+`;
+
 export function ModelConfigPage() {
-  const [activeTab, setActiveTab] = useState<'llm' | 'embedding'>('llm');
+  const [activeTab, setActiveTab] = useState<'llm' | 'embedding' | 'ocr'>('llm');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
@@ -213,22 +263,42 @@ export function ModelConfigPage() {
   });
   const [embeddingTestResult, setEmbeddingTestResult] = useState<ModelTestResult | null>(null);
 
+  // OCR Config State
+  const [ocrConfig, setOcrConfig] = useState<OCRConfig>({
+    engine: 'rapidocr',
+  });
+
   // Queries
   const { data: llmData, refetch: refetchLlm } = useQuery<{ llmConfig: LLMConfig }>(
     GET_LLM_CONFIG,
-    { fetchPolicy: 'cache-and-network' },
+    {
+      fetchPolicy: 'cache-first',
+    } as any,
   );
 
   const { data: embeddingData, refetch: refetchEmbedding } = useQuery<{ embeddingConfig: EmbeddingConfig }>(
     GET_EMBEDDING_CONFIG,
-    { fetchPolicy: 'cache-and-network' },
+    {
+      fetchPolicy: 'cache-first',
+    } as any,
+  );
+
+  const { data: ocrData, refetch: refetchOcr } = useQuery<{ ocrConfig: OCRConfig }>(
+    GET_OCR_CONFIG,
+    {
+      fetchPolicy: 'cache-first',
+    } as any,
   );
 
   // Mutations
   const [saveLLMConfig, { loading: savingLLM }] = useMutation(SAVE_LLM_CONFIG, {
-    onCompleted: () => {
+    onCompleted: (data: any) => {
       setSuccess('LLM配置保存成功');
       setTimeout(() => setSuccess(''), 3000);
+      // 立即更新表单状态
+      if (data.saveLLMConfig) {
+        setLlmConfig(data.saveLLMConfig as LLMConfig);
+      }
       refetchLlm();
     },
     onError: (err) => {
@@ -238,9 +308,13 @@ export function ModelConfigPage() {
   });
 
   const [saveEmbeddingConfig, { loading: savingEmbedding }] = useMutation(SAVE_EMBEDDING_CONFIG, {
-    onCompleted: () => {
+    onCompleted: (data: any) => {
       setSuccess('嵌入模型配置保存成功');
       setTimeout(() => setSuccess(''), 3000);
+      // 立即更新表单状态
+      if (data.saveEmbeddingConfig) {
+        setEmbeddingConfig(data.saveEmbeddingConfig as EmbeddingConfig);
+      }
       refetchEmbedding();
     },
     onError: (err) => {
@@ -250,7 +324,7 @@ export function ModelConfigPage() {
   });
 
   const [testLLMConnection, { loading: testingLLM }] = useMutation(TEST_LLM_CONNECTION, {
-    onCompleted: (data) => {
+    onCompleted: (data: any) => {
       setLlmTestResult(data.testLLMConnection);
     },
     onError: (err) => {
@@ -259,7 +333,7 @@ export function ModelConfigPage() {
   });
 
   const [testEmbeddingConnection, { loading: testingEmbedding }] = useMutation(TEST_EMBEDDING_CONNECTION, {
-    onCompleted: (data) => {
+    onCompleted: (data: any) => {
       setEmbeddingTestResult(data.testEmbeddingConnection);
     },
     onError: (err) => {
@@ -268,8 +342,8 @@ export function ModelConfigPage() {
   });
 
   const [resetLLMConfig] = useMutation(RESET_LLM_CONFIG, {
-    onCompleted: (data) => {
-      setLlmConfig(data.resetLLMConfig);
+    onCompleted: (data: any) => {
+      setLlmConfig(data.resetLLMConfig as LLMConfig);
       setLlmTestResult(null);
       setSuccess('LLM配置已重置为默认值');
       setTimeout(() => setSuccess(''), 3000);
@@ -277,10 +351,34 @@ export function ModelConfigPage() {
   });
 
   const [resetEmbeddingConfig] = useMutation(RESET_EMBEDDING_CONFIG, {
-    onCompleted: (data) => {
-      setEmbeddingConfig(data.resetEmbeddingConfig);
+    onCompleted: (data: any) => {
+      setEmbeddingConfig(data.resetEmbeddingConfig as EmbeddingConfig);
       setEmbeddingTestResult(null);
       setSuccess('嵌入模型配置已重置为默认值');
+      setTimeout(() => setSuccess(''), 3000);
+    },
+  });
+
+  const [saveOCRConfig, { loading: savingOCR }] = useMutation(SAVE_OCR_CONFIG, {
+    onCompleted: (data: any) => {
+      setSuccess('OCR配置保存成功');
+      setTimeout(() => setSuccess(''), 3000);
+      // 立即更新表单状态
+      if (data.saveOCRConfig) {
+        setOcrConfig(data.saveOCRConfig as OCRConfig);
+      }
+      refetchOcr();
+    },
+    onError: (err) => {
+      setError(err.message || '保存失败');
+      setTimeout(() => setError(''), 5000);
+    },
+  });
+
+  const [resetOCRConfig] = useMutation(RESET_OCR_CONFIG, {
+    onCompleted: (data: any) => {
+      setOcrConfig(data.resetOCRConfig as OCRConfig);
+      setSuccess('OCR配置已重置为默认值');
       setTimeout(() => setSuccess(''), 3000);
     },
   });
@@ -288,15 +386,21 @@ export function ModelConfigPage() {
   // Update config when data is loaded
   useEffect(() => {
     if (llmData?.llmConfig) {
-      setLlmConfig(llmData.llmConfig);
+      setLlmConfig(llmData.llmConfig as LLMConfig);
     }
   }, [llmData]);
 
   useEffect(() => {
     if (embeddingData?.embeddingConfig) {
-      setEmbeddingConfig(embeddingData.embeddingConfig);
+      setEmbeddingConfig(embeddingData.embeddingConfig as EmbeddingConfig);
     }
   }, [embeddingData]);
+
+  useEffect(() => {
+    if (ocrData?.ocrConfig) {
+      setOcrConfig(ocrData.ocrConfig as OCRConfig);
+    }
+  }, [ocrData]);
 
   // Handlers
   const handleSaveLLM = async () => {
@@ -330,12 +434,42 @@ export function ModelConfigPage() {
 
   const handleTestLLM = async () => {
     setLlmTestResult(null);
-    await testLLMConnection();
+    // Test with current form values, not database values
+    await testLLMConnection({
+      variables: {
+        provider: llmConfig.provider,
+        model: llmConfig.model,
+        baseUrl: llmConfig.baseUrl,
+        apiKey: llmConfig.apiKey,
+      },
+    });
   };
 
   const handleTestEmbedding = async () => {
     setEmbeddingTestResult(null);
-    await testEmbeddingConnection();
+    // Test with current form values, not database values
+    await testEmbeddingConnection({
+      variables: {
+        provider: embeddingConfig.provider,
+        model: embeddingConfig.model,
+        baseUrl: embeddingConfig.baseUrl,
+        apiKey: embeddingConfig.apiKey,
+      },
+    });
+  };
+
+  const handleSaveOCR = async () => {
+    setError('');
+    setSuccess('');
+    await saveOCRConfig({
+      variables: {
+        engine: ocrConfig.engine,
+      },
+    });
+  };
+
+  const handleResetOCR = async () => {
+    await resetOCRConfig();
   };
 
   const handleLLMPresetChange = (value: string) => {
@@ -378,6 +512,12 @@ export function ModelConfigPage() {
             onClick={() => setActiveTab('embedding')}
           >
             向量嵌入模型
+          </button>
+          <button
+            style={{ ...styles.tab, ...(activeTab === 'ocr' ? styles.tabActive : {}) }}
+            onClick={() => setActiveTab('ocr')}
+          >
+            OCR引擎
           </button>
         </div>
 
@@ -660,6 +800,45 @@ export function ModelConfigPage() {
                 {testingEmbedding ? '测试中...' : '测试连接'}
               </button>
               <button onClick={() => resetEmbeddingConfig()} style={styles.textButton}>
+                重置为默认
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* OCR Config Tab */}
+        {activeTab === 'ocr' && (
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>OCR引擎配置</h2>
+            <p style={styles.sectionDescription}>
+              配置PDF文档的OCR识别引擎，用于合同文档文本提取
+            </p>
+
+            {/* OCR Engine Selection */}
+            <div style={styles.field}>
+              <label style={styles.label}>OCR引擎</label>
+              <select
+                style={styles.select}
+                value={ocrConfig.engine}
+                onChange={(e) => setOcrConfig({ ...ocrConfig, engine: e.target.value as OCRConfig['engine'] })}
+              >
+                <option value="rapidocr">RapidOCR (推荐)</option>
+                <option value="easyocr">EasyOCR</option>
+                <option value="tesseract">Tesseract</option>
+              </select>
+              <div style={styles.help}>
+                <strong>RapidOCR</strong>: 基于PaddleOCR，中文识别效果最好（推荐）<br/>
+                <strong>EasyOCR</strong>: 支持多语言，识别速度中等<br/>
+                <strong>Tesseract</strong>: 开源OCR引擎，英文识别较好
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div style={styles.actions}>
+              <button onClick={handleSaveOCR} disabled={savingOCR} style={styles.primaryButton}>
+                {savingOCR ? '保存中...' : '保存配置'}
+              </button>
+              <button onClick={handleResetOCR} style={styles.textButton}>
                 重置为默认
               </button>
             </div>

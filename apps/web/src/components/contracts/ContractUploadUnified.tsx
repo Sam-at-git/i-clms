@@ -8,10 +8,13 @@ import {
   useParseAndExtractMutation,
   useCreateContractMutation,
   useGetParseProgressQuery,
+  useConvertUploadedFileToMarkdownMutation,
+  useDetectContractTypeMutation,
   ContractStatus,
 } from '@i-clms/shared/generated/graphql';
 import { JsonPreviewStep } from './JsonPreviewStep';
 import { StrategySelector } from './StrategySelector';
+import { MarkdownPreview } from './MarkdownPreview';
 
 interface ContractUploadProps {
   onClose: () => void;
@@ -111,6 +114,9 @@ interface DuplicateContract {
 
 type Step =
   | 'upload'
+  | 'converting'
+  | 'markdown_preview'
+  | 'type_detection'
   | 'strategy_selection'
   | 'parsing'
   | 'review'
@@ -132,6 +138,7 @@ export function ContractUploadUnified({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [parseProgress, setParseProgress] = useState<ParseProgress | null>(null);
   const [progressPolling, setProgressPolling] = useState(false);
+  const [markdownContent, setMarkdownContent] = useState<string | null>(null);
 
   // LLM parsing state
   const [extractedData, setExtractedData] = useState<LlmExtractedData | null>(null);
@@ -176,6 +183,21 @@ export function ContractUploadUnified({
   // Simple mutations
   const [parseAndExtract] = useParseAndExtractMutation();
   const [createContract] = useCreateContractMutation();
+
+  // Docling conversion mutation
+  const [convertToMarkdown] = useConvertUploadedFileToMarkdownMutation();
+  const [converting, setConverting] = useState(false);
+
+  // Contract type detection mutation
+  const [detectContractType] = useDetectContractTypeMutation();
+  const [detectingType, setDetectingType] = useState(false);
+  const [detectedContractType, setDetectedContractType] = useState<{
+    type: string;
+    displayName: string;
+    description: string;
+    confidence: number;
+    reasoning: string;
+  } | null>(null);
 
   // 进度轮询逻辑
   useEffect(() => {
@@ -222,6 +244,7 @@ export function ContractUploadUnified({
                     }
                     estimatedRemainingSeconds
                     resultData
+                    markdownContent
                   }
                 }
               `,
@@ -240,8 +263,15 @@ export function ContractUploadUnified({
             tasksCount: progress.tasks?.length,
             hasResultData: !!progress.resultData,
             resultDataKeys: progress.resultData ? Object.keys(progress.resultData) : [],
+            hasMarkdownContent: !!progress.markdownContent,
+            markdownContentLength: progress.markdownContent?.length || 0,
           });
           setParseProgress(progress);
+
+          // Store markdown content for preview
+          if (progress.markdownContent) {
+            setMarkdownContent(progress.markdownContent);
+          }
 
           // 如果已完成或失败，停止轮询并更新UI
           if (progress.status?.toLowerCase() === 'completed') {
@@ -279,7 +309,7 @@ export function ContractUploadUnified({
                 });
 
                 console.log('[Parse Progress] Navigating to review step');
-                // 跳转到review步骤
+                // 解析完成后跳转到信息整合步骤（review）
                 setStep('review');
               } else {
                 console.error('[Parse Progress] Invalid result:', llmResult);
@@ -328,8 +358,10 @@ export function ContractUploadUnified({
     }
 
     setUploading(true);
+    setConverting(true);
     setError('');
     setStep('upload');
+    setMarkdownContent(null);
 
     try {
       // 1. Upload file
@@ -352,20 +384,110 @@ export function ContractUploadUnified({
       }
 
       const uploadResult = await response.json();
-      setObjectName(uploadResult.objectName);
+      const uploadedObjectName = uploadResult.objectName;
+      setObjectName(uploadedObjectName);
 
-      // 2. Go to strategy selection step
-      setStep('strategy_selection');
+      setUploading(false);
+      setConverting(true);
+
+      // 2. Convert to Markdown with Docling (with OCR for scanned PDFs)
+      console.log('[Docling] Converting file to Markdown:', uploadedObjectName);
+      const convertResult = await convertToMarkdown({
+        variables: {
+          objectName: uploadedObjectName,
+          options: {
+            ocr: true,
+            withTables: true,
+            withImages: true,
+          },
+        },
+      });
+
+      if (convertResult.error) {
+        console.error('[Docling] GraphQL error:', convertResult.error);
+        throw new Error(convertResult.error.message);
+      }
+
+      const result = convertResult.data?.convertUploadedFileToMarkdown;
+      if (!result) {
+        throw new Error('转换失败：未返回数据');
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || '文档转换失败');
+      }
+
+      console.log('[Docling] Conversion successful:', {
+        pages: result.pages,
+        tablesCount: result.tables?.length || 0,
+        imagesCount: result.images?.length || 0,
+        markdownLength: result.markdown?.length || 0,
+      });
+
+      // 3. Store markdown content for preview
+      setMarkdownContent(result.markdown);
+
+      // 4. Go to markdown preview step first
+      setStep('markdown_preview');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '上传失败');
+      console.error('[Upload/Convert] Error:', err);
+      setError(err instanceof Error ? err.message : '上传或转换失败');
       setStep('upload');
     } finally {
       setUploading(false);
+      setConverting(false);
+    }
+  };
+
+  const handleTypeDetection = async () => {
+    if (!markdownContent) {
+      setError('缺少Markdown内容');
+      return;
+    }
+
+    setDetectingType(true);
+    setError('');
+
+    try {
+      console.log('[Contract Type Detection] Starting detection...');
+      const result = await detectContractType({
+        variables: { markdown: markdownContent },
+      });
+
+      if (result.data?.detectContractType) {
+        const detected = result.data.detectContractType;
+        console.log('[Contract Type Detection] Result:', detected);
+
+        setDetectedContractType({
+          type: detected.detectedType || 'PROJECT_OUTSOURCING',
+          displayName: detected.displayName || '项目外包',
+          description: detected.description || '',
+          confidence: detected.confidence || 0,
+          reasoning: detected.reasoning || '',
+        });
+
+        setStep('type_detection');
+      } else {
+        throw new Error('类型检测失败');
+      }
+    } catch (err) {
+      console.error('[Contract Type Detection] Error:', err);
+      // 如果检测失败，使用默认类型并继续
+      setDetectedContractType({
+        type: 'PROJECT_OUTSOURCING',
+        displayName: '项目外包',
+        description: '以里程碑和交付物为核心的合同类型',
+        confidence: 0.5,
+        reasoning: '检测失败，使用默认类型',
+      });
+      setStep('type_detection');
+    } finally {
+      setDetectingType(false);
     }
   };
 
   const handleLlmParsing = async (objName: string, strategy: string) => {
-    console.log('[LLM Parsing] Starting for:', objName, 'strategy:', strategy);
+    console.log('[LLM Parsing] Starting for:', objName, 'strategy:', strategy, 'hasMarkdown:', !!markdownContent);
 
     // Step 1: 启动异步解析任务（立即返回，在后台执行）
     try {
@@ -379,14 +501,18 @@ export function ContractUploadUnified({
           },
           body: JSON.stringify({
             query: `
-              mutation StartParseContractAsync($objectName: String!, $strategy: ParseStrategyType) {
-                startParseContractAsync(objectName: $objectName, strategy: $strategy) {
+              mutation StartParseContractAsync($objectName: String!, $strategy: ParseStrategyType, $markdown: String) {
+                startParseContractAsync(objectName: $objectName, strategy: $strategy, markdown: $markdown) {
                   sessionId
                   message
                 }
               }
             `,
-            variables: { objectName: objName, strategy },
+            variables: {
+              objectName: objName,
+              strategy,
+              markdown: markdownContent || null,
+            },
           }),
         },
       );
@@ -656,13 +782,16 @@ export function ContractUploadUnified({
       <div style={styles.modal}>
         <div style={styles.header}>
           <h2 style={styles.title}>
-            {step === 'upload' && '上传合同文件'}
-            {step === 'strategy_selection' && '选择解析策略'}
-            {step === 'parsing' && '解析中...'}
-            {step === 'review' && '确认合同信息'}
-            {step === 'json_preview' && 'AI解析结果预览'}
+            {step === 'upload' && '1. 上传合同文件'}
+            {step === 'converting' && '2. Docling 文档转换中...'}
+            {step === 'markdown_preview' && '3. Markdown 内容预览'}
+            {step === 'type_detection' && '4. 合同类型检测'}
+            {step === 'strategy_selection' && '5. 选择解析策略'}
+            {step === 'parsing' && '6. AI 解析中...'}
+            {step === 'review' && '7. 信息整合确认'}
+            {step === 'json_preview' && 'AI 解析结果预览'}
             {step === 'duplicate_check' && '检测到重复合同'}
-            {step === 'creating' && '创建中...'}
+            {step === 'creating' && '8. 入库中...'}
           </h2>
           <button onClick={onClose} style={styles.closeButton}>
             ×
@@ -687,6 +816,14 @@ export function ContractUploadUnified({
             >
               {uploading ? (
                 <p>上传中...</p>
+              ) : converting ? (
+                <>
+                  <p style={styles.loadingIcon}>🔄</p>
+                  <p>文档转换中...</p>
+                  <p style={styles.hint}>
+                    Docling 正在将文档转换为 Markdown 格式，支持 OCR 识别
+                  </p>
+                </>
               ) : (
                 <>
                   <p style={styles.uploadIcon}>📄</p>
@@ -700,12 +837,22 @@ export function ContractUploadUnified({
           </div>
         )}
 
-        {/* Step 2: Strategy Selection */}
+        {/* Step 5: Strategy Selection */}
         {step === 'strategy_selection' && (
           <div style={styles.strategySelectionArea}>
+            <div style={styles.stepIndicator}>
+              <div style={styles.stepNumber}>5</div>
+              <div style={styles.stepText}>
+                <div style={styles.stepTitle}>选择解析策略</div>
+                <div style={styles.stepDesc}>选择适合的 AI 解析模式</div>
+              </div>
+            </div>
             <div style={styles.strategySelectionContent}>
-              <p style={{ ...styles.hint, marginBottom: '16px' }}>
-                请选择合同解析策略。系统将根据您选择的策略提取合同信息。
+              <p style={{ ...styles.hint, marginBottom: '8px' }}>
+                文档已通过 Docling 转换为 Markdown（支持 OCR），请选择合同解析策略。
+              </p>
+              <p style={{ ...styles.hint, marginBottom: '16px', color: '#059669' }}>
+                ✓ 所有策略都将使用已转换的 Markdown 进行解析，无需重复处理文档。
               </p>
               <StrategySelector
                 selectedStrategy={selectedStrategy}
@@ -732,9 +879,16 @@ export function ContractUploadUnified({
           </div>
         )}
 
-        {/* Step 3: Parsing */}
+        {/* Step 6: Parsing */}
         {step === 'parsing' && (
           <div style={styles.loading}>
+            <div style={styles.stepIndicator}>
+              <div style={{...styles.stepNumber, background: 'rgba(255,255,255,0.2)', width: '32px', height: '32px', fontSize: '16px'}}>6</div>
+              <div style={styles.stepText}>
+                <div style={styles.stepTitle}>AI 解析中</div>
+                <div style={styles.stepDesc}>正在提取合同字段信息...</div>
+              </div>
+            </div>
             <p style={styles.loadingIcon}>🤖</p>
             <p>
               {parseProgress?.currentStage || 'AI正在智能解析合同内容...'}
@@ -790,9 +944,215 @@ export function ContractUploadUnified({
           </div>
         )}
 
-        {/* Step 4: Review and edit */}
+        {/* Step 3.5: Markdown Preview */}
+        {step === 'markdown_preview' && markdownContent && (
+          <>
+            <div style={styles.stepIndicator}>
+              <div style={styles.stepNumber}>3</div>
+              <div style={styles.stepText}>
+                <div style={styles.stepTitle}>Markdown 内容预览</div>
+                <div style={styles.stepDesc}>确认文档内容已正确转换</div>
+              </div>
+            </div>
+            <MarkdownPreview
+              markdown={markdownContent}
+              fileName={objectName}
+              onBack={() => setStep('upload')}
+              onContinue={handleTypeDetection}
+            />
+          </>
+        )}
+
+        {/* Step: Contract Type Detection */}
+        {step === 'type_detection' && detectedContractType && (
+          <div style={styles.stepContainer}>
+            <div style={styles.stepIndicator}>
+              <div style={styles.stepNumber}>4</div>
+              <div style={styles.stepText}>
+                <div style={styles.stepTitle}>合同类型检测</div>
+                <div style={styles.stepDesc}>AI 识别合同类型，可手动修正</div>
+              </div>
+            </div>
+            <div style={styles.content}>
+              <div style={{
+                ...styles.card,
+                padding: '24px',
+                marginBottom: '24px',
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '16px',
+                }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: '16px',
+                  }}>
+                    <span style={{ fontSize: '24px' }}>📋</span>
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                      {detectedContractType.displayName}
+                    </h3>
+                    <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '14px' }}>
+                      {detectedContractType.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: '16px',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px', color: '#6b7280', marginRight: '8px' }}>
+                      置信度:
+                    </span>
+                    <div style={{
+                      flex: 1,
+                      height: '8px',
+                      background: '#e5e7eb',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        width: `${detectedContractType.confidence * 100}%`,
+                        height: '100%',
+                        background: detectedContractType.confidence > 0.8
+                          ? '#10b981'
+                          : detectedContractType.confidence > 0.5
+                          ? '#f59e0b'
+                          : '#ef4444',
+                        borderRadius: '4px',
+                      }} />
+                    </div>
+                    <span style={{ fontSize: '14px', fontWeight: '600', marginLeft: '8px' }}>
+                      {Math.round(detectedContractType.confidence * 100)}%
+                    </span>
+                  </div>
+                  <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#6b7280' }}>
+                    判断依据: {detectedContractType.reasoning}
+                  </p>
+                </div>
+
+                <div style={{
+                  padding: '12px 16px',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#1e40af' }}>
+                    💡 提示: 如果检测不准确，您可以手动选择正确的合同类型
+                  </p>
+                </div>
+
+                <h4 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '600' }}>
+                  选择合同类型
+                </h4>
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {[
+                    { value: 'PROJECT_OUTSOURCING', label: '项目外包', desc: '以里程碑和交付物为核心的合同类型' },
+                    { value: 'STAFF_AUGMENTATION', label: '人力框架', desc: '以工时和费率为核心的合同类型' },
+                    { value: 'PRODUCT_SALES', label: '产品购销', desc: '以产品买卖为核心的合同类型' },
+                  ].map((type) => (
+                    <div
+                      key={type.value}
+                      onClick={() => setDetectedContractType({
+                        ...detectedContractType,
+                        type: type.value,
+                        displayName: type.label,
+                        description: type.desc,
+                      })}
+                      style={{
+                        padding: '16px',
+                        border: `2px solid ${detectedContractType.type === type.value ? '#3b82f6' : '#e5e7eb'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        background: detectedContractType.type === type.value ? '#eff6ff' : '#fff',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          border: `2px solid ${detectedContractType.type === type.value ? '#3b82f6' : '#d1d5db'}`,
+                          marginRight: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          {detectedContractType.type === type.value && (
+                            <div style={{
+                              width: '10px',
+                              height: '10px',
+                              borderRadius: '50%',
+                              background: '#3b82f6',
+                            }} />
+                          )}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '600', fontSize: '15px' }}>
+                            {type.label}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
+                            {type.desc}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={styles.buttonGroup}>
+                <button
+                  onClick={() => setStep('markdown_preview')}
+                  style={styles.secondaryButton}
+                  disabled={detectingType}
+                >
+                  返回
+                </button>
+                <button
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, type: detectedContractType.type as any }));
+                    setStep('strategy_selection');
+                  }}
+                  style={{
+                    ...styles.primaryButton,
+                    opacity: detectingType ? 0.6 : 1,
+                  }}
+                  disabled={detectingType}
+                >
+                  {detectingType ? '处理中...' : '确认类型，继续'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 7: Review and edit - 信息整合确认 */}
         {step === 'review' && (
           <div style={styles.reviewContainer}>
+            {/* Step indicator */}
+            <div style={styles.stepIndicator}>
+              <div style={styles.stepNumber}>7</div>
+              <div style={styles.stepText}>
+                <div style={styles.stepTitle}>信息整合确认</div>
+                <div style={styles.stepDesc}>请核对并完善AI提取的合同信息</div>
+              </div>
+            </div>
+
             {/* Confidence banner */}
             {parseConfidence > 0 && (
               <div style={styles.confidenceBanner}>
@@ -851,7 +1211,7 @@ export function ContractUploadUnified({
                   </select>
                 </div>
                 <div style={styles.field}>
-                  <label style={styles.label}>我方主体</label>
+                  <label style={styles.label}>供应商</label>
                   <input
                     type="text"
                     value={formData.ourEntity}
@@ -1382,14 +1742,85 @@ const styles: Record<string, React.CSSProperties> = {
       height: '100%',
       background: 'linear-gradient(90deg, transparent, #3b82f6, transparent)',
       animation: 'shimmer 1.5s ease-in-out infinite',
-    } as any,
-  },
+    },
+  } as any,
   // Strategy selection step styles
   strategySelectionArea: {
     padding: '24px',
   },
   strategySelectionContent: {
     marginBottom: '24px',
+  },
+  // Step indicator styles
+  stepIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: '24px',
+    padding: '16px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    borderRadius: '8px',
+    color: '#fff',
+  },
+  stepNumber: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    background: 'rgba(255, 255, 255, 0.25)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '18px',
+    fontWeight: '700',
+    marginRight: '16px',
+  },
+  stepText: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    marginBottom: '4px',
+  },
+  stepDesc: {
+    fontSize: '13px',
+    opacity: 0.9,
+  },
+  buttonGroup: {
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'flex-end',
+  },
+  primaryButton: {
+    padding: '10px 24px',
+    fontSize: '14px',
+    fontWeight: '500',
+    border: 'none',
+    borderRadius: '6px',
+    backgroundColor: '#3b82f6',
+    color: '#fff',
+    cursor: 'pointer',
+  },
+  secondaryButton: {
+    padding: '10px 24px',
+    fontSize: '14px',
+    fontWeight: '500',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    background: '#fff',
+    color: '#374151',
+    cursor: 'pointer',
+  },
+  card: {
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    padding: '16px',
+    backgroundColor: '#fff',
+  },
+  content: {
+    padding: '24px',
+  },
+  stepContainer: {
+    padding: '24px',
   },
 };
 

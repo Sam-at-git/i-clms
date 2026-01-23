@@ -378,6 +378,36 @@ export type ContractConnection = {
   totalCount: Scalars['Int']['output'];
 };
 
+export type ContractDataProtection = {
+  __typename?: 'ContractDataProtection';
+  /** AI提取的置信度 (0-1) */
+  confidence?: Maybe<Scalars['Float']['output']>;
+  /** 合同ID */
+  contractId: Scalars['String']['output'];
+  /** 创建时间 */
+  createdAt: Scalars['DateTime']['output'];
+  /** 跨境传输要求 */
+  crossBorderTransfer?: Maybe<Scalars['String']['output']>;
+  /** 数据保留期限 */
+  dataRetention?: Maybe<Scalars['String']['output']>;
+  /** 主键ID */
+  id: Scalars['Int']['output'];
+  /** 是否涉及个人数据 */
+  involvesPersonalData: Scalars['Boolean']['output'];
+  /** 原始文本引用 */
+  originalText?: Maybe<Scalars['String']['output']>;
+  /** 个人数据类型描述 */
+  personalDataType?: Maybe<Scalars['String']['output']>;
+  /** 数据处理地点限制 */
+  processingLocation?: Maybe<Scalars['String']['output']>;
+  /** 风险等级 */
+  riskLevel: DataProtectionRisk;
+  /** 安全措施要求 */
+  securityMeasures?: Maybe<Scalars['String']['output']>;
+  /** 更新时间 */
+  updatedAt: Scalars['DateTime']['output'];
+};
+
 export type ContractExtractedData = {
   __typename?: 'ContractExtractedData';
   basicInfo: BasicInfo;
@@ -413,6 +443,50 @@ export type ContractIdentificationType = {
   effectiveLanguage?: Maybe<Scalars['String']['output']>;
   subType?: Maybe<Scalars['String']['output']>;
   versionNumber?: Maybe<Scalars['String']['output']>;
+};
+
+export type ContractLegalClause = {
+  __typename?: 'ContractLegalClause';
+  /** 违约责任描述 */
+  breachLiability?: Maybe<Scalars['String']['output']>;
+  /** 条款类型 */
+  clauseType: LegalClauseType;
+  /** 赔偿计算方式 */
+  compensationMethod?: Maybe<Scalars['String']['output']>;
+  /** AI提取的置信度 (0-1) */
+  confidence?: Maybe<Scalars['Float']['output']>;
+  /** 合同ID */
+  contractId: Scalars['String']['output'];
+  /** 创建时间 */
+  createdAt: Scalars['DateTime']['output'];
+  /** 争议解决地点 */
+  disputeLocation?: Maybe<Scalars['String']['output']>;
+  /** 争议解决方式（ARBITRATION/LITIGATION/NEGOTIATION） */
+  disputeResolution?: Maybe<Scalars['String']['output']>;
+  /** 除外责任类型描述 */
+  exclusions?: Maybe<Scalars['String']['output']>;
+  /** 担保金额 */
+  guaranteeAmount?: Maybe<Scalars['String']['output']>;
+  /** 担保期限描述 */
+  guaranteePeriod?: Maybe<Scalars['String']['output']>;
+  /** 担保类型（GENERAL/JOINT_AND_SEVERAL） */
+  guaranteeType?: Maybe<Scalars['String']['output']>;
+  /** 担保方（FIRST_PARTY/SECOND_PARTY/THIRD_PARTY） */
+  guarantor?: Maybe<Scalars['String']['output']>;
+  /** 主键ID */
+  id: Scalars['Int']['output'];
+  /** 责任上限金额 */
+  liabilityLimit?: Maybe<Scalars['String']['output']>;
+  /** 许可费用描述 */
+  licenseFee?: Maybe<Scalars['String']['output']>;
+  /** 许可类型（独占/非独占/普通） */
+  licenseType?: Maybe<Scalars['String']['output']>;
+  /** 原始文本引用（用于溯源） */
+  originalText?: Maybe<Scalars['String']['output']>;
+  /** 便利终止通知期（如"30天"、"60天"） */
+  terminationNotice?: Maybe<Scalars['String']['output']>;
+  /** 更新时间 */
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 /** Field to order contracts by */
@@ -526,6 +600,20 @@ export enum ContractType {
   StaffAugmentation = 'STAFF_AUGMENTATION'
 }
 
+export type ContractTypeDetectionResult = {
+  __typename?: 'ContractTypeDetectionResult';
+  /** 置信度 (0-1) */
+  confidence: Scalars['Int']['output'];
+  /** 合同类型描述 */
+  description?: Maybe<Scalars['String']['output']>;
+  /** 检测到的合同类型 */
+  detectedType?: Maybe<Scalars['String']['output']>;
+  /** 合同类型中文名称 */
+  displayName?: Maybe<Scalars['String']['output']>;
+  /** 判断依据说明 */
+  reasoning: Scalars['String']['output'];
+};
+
 export type CoreKpIs = {
   __typename?: 'CoreKPIs';
   categories: Array<KpiCategory>;
@@ -585,9 +673,69 @@ export type CreateCustomerInput = {
   shortName?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type CreateDataProtectionInput = {
+  /** AI提取的置信度 (0-1) */
+  confidence?: InputMaybe<Scalars['Float']['input']>;
+  /** 合同ID */
+  contractId: Scalars['String']['input'];
+  /** 跨境传输要求 */
+  crossBorderTransfer?: InputMaybe<Scalars['String']['input']>;
+  /** 数据保留期限 */
+  dataRetention?: InputMaybe<Scalars['String']['input']>;
+  /** 是否涉及个人数据 */
+  involvesPersonalData: Scalars['Boolean']['input'];
+  /** 原始文本引用 */
+  originalText?: InputMaybe<Scalars['String']['input']>;
+  /** 个人数据类型描述 */
+  personalDataType?: InputMaybe<Scalars['String']['input']>;
+  /** 数据处理地点限制 */
+  processingLocation?: InputMaybe<Scalars['String']['input']>;
+  /** 风险等级 */
+  riskLevel: DataProtectionRisk;
+  /** 安全措施要求 */
+  securityMeasures?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type CreateDepartmentInput = {
   code: Scalars['String']['input'];
   name: Scalars['String']['input'];
+};
+
+export type CreateLegalClauseInput = {
+  /** 违约责任描述 */
+  breachLiability?: InputMaybe<Scalars['String']['input']>;
+  /** 条款类型 */
+  clauseType: LegalClauseType;
+  /** 赔偿计算方式 */
+  compensationMethod?: InputMaybe<Scalars['String']['input']>;
+  /** AI提取的置信度 (0-1) */
+  confidence?: InputMaybe<Scalars['Float']['input']>;
+  /** 合同ID */
+  contractId: Scalars['String']['input'];
+  /** 争议解决地点 */
+  disputeLocation?: InputMaybe<Scalars['String']['input']>;
+  /** 争议解决方式 */
+  disputeResolution?: InputMaybe<Scalars['String']['input']>;
+  /** 除外责任类型描述 */
+  exclusions?: InputMaybe<Scalars['String']['input']>;
+  /** 担保金额 */
+  guaranteeAmount?: InputMaybe<Scalars['Float']['input']>;
+  /** 担保期限描述 */
+  guaranteePeriod?: InputMaybe<Scalars['String']['input']>;
+  /** 担保类型（GENERAL/JOINT_AND_SEVERAL） */
+  guaranteeType?: InputMaybe<Scalars['String']['input']>;
+  /** 担保方（FIRST_PARTY/SECOND_PARTY/THIRD_PARTY） */
+  guarantor?: InputMaybe<Scalars['String']['input']>;
+  /** 责任上限金额 */
+  liabilityLimit?: InputMaybe<Scalars['Float']['input']>;
+  /** 许可费用描述 */
+  licenseFee?: InputMaybe<Scalars['String']['input']>;
+  /** 许可类型（独占/非独占/普通） */
+  licenseType?: InputMaybe<Scalars['String']['input']>;
+  /** 原始文本引用 */
+  originalText?: InputMaybe<Scalars['String']['input']>;
+  /** 便利终止通知期 */
+  terminationNotice?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CreateTagInput = {
@@ -698,6 +846,52 @@ export enum CustomerStatus {
   Archived = 'ARCHIVED',
   Inactive = 'INACTIVE'
 }
+
+export type DataProtectionExtractionResult = {
+  __typename?: 'DataProtectionExtractionResult';
+  /** 整体置信度 (0-1) */
+  confidence: Scalars['Float']['output'];
+  /** 提取的数据保护条款 */
+  dataProtection?: Maybe<ContractDataProtection>;
+  /** 是否涉及个人数据 */
+  involvesPersonalData: Scalars['Boolean']['output'];
+  /** 使用的LLM模型 */
+  llmModel?: Maybe<Scalars['String']['output']>;
+  /** 使用的LLM提供商 */
+  llmProvider?: Maybe<Scalars['String']['output']>;
+  /** 处理时间（毫秒） */
+  processingTimeMs: Scalars['Int']['output'];
+  /** 风险等级 */
+  riskLevel: DataProtectionRisk;
+};
+
+/** 数据保护风险等级 */
+export enum DataProtectionRisk {
+  High = 'HIGH',
+  Low = 'LOW',
+  Medium = 'MEDIUM',
+  None = 'NONE'
+}
+
+export type DataProtectionRiskCount = {
+  __typename?: 'DataProtectionRiskCount';
+  /** 数量 */
+  count: Scalars['Int']['output'];
+  /** 风险等级 */
+  level: DataProtectionRisk;
+};
+
+export type DataProtectionStats = {
+  __typename?: 'DataProtectionStats';
+  /** 平均置信度 */
+  avgConfidence: Scalars['Float']['output'];
+  /** 按风险等级统计 */
+  byRiskLevel: Array<DataProtectionRiskCount>;
+  /** 涉及个人数据的合同数 */
+  involvingPersonalData: Scalars['Int']['output'];
+  /** 总记录数 */
+  total: Scalars['Int']['output'];
+};
 
 export type DeleteResult = {
   __typename?: 'DeleteResult';
@@ -883,6 +1077,13 @@ export type FeatureScore = {
   score: Scalars['Float']['output'];
 };
 
+export type FieldConflict = {
+  __typename?: 'FieldConflict';
+  fieldName: Scalars['String']['output'];
+  needsResolution: Scalars['Boolean']['output'];
+  values: Array<FieldValue>;
+};
+
 export type FieldMatch = {
   __typename?: 'FieldMatch';
   confidence: Scalars['Float']['output'];
@@ -907,6 +1108,13 @@ export type FieldValidationResult = {
   isCorrect: Scalars['Boolean']['output'];
   issue?: Maybe<Scalars['String']['output']>;
   programValue?: Maybe<Scalars['String']['output']>;
+};
+
+export type FieldValue = {
+  __typename?: 'FieldValue';
+  confidence: Scalars['Int']['output'];
+  strategy: ParseStrategyType;
+  value: Scalars['String']['output'];
 };
 
 export type FinancialInfo = {
@@ -1015,6 +1223,46 @@ export type LlmConfig = {
   provider: Scalars['String']['output'];
   temperature: Scalars['Float']['output'];
   timeout?: Maybe<Scalars['Int']['output']>;
+};
+
+export type LegalClauseStats = {
+  __typename?: 'LegalClauseStats';
+  /** 平均置信度 */
+  avgConfidence: Scalars['Float']['output'];
+  /** 按类型统计 */
+  byType: Array<LegalClauseTypeCount>;
+  /** 总条款数 */
+  total: Scalars['Int']['output'];
+};
+
+/** 法务条款类型 */
+export enum LegalClauseType {
+  Guarantee = 'GUARANTEE',
+  IntellectualProperty = 'INTELLECTUAL_PROPERTY',
+  LiabilityLimitation = 'LIABILITY_LIMITATION',
+  TerminationDispute = 'TERMINATION_DISPUTE'
+}
+
+export type LegalClauseTypeCount = {
+  __typename?: 'LegalClauseTypeCount';
+  /** 数量 */
+  count: Scalars['Int']['output'];
+  /** 条款类型 */
+  type: LegalClauseType;
+};
+
+export type LegalClausesExtractionResult = {
+  __typename?: 'LegalClausesExtractionResult';
+  /** 整体置信度 (0-1) */
+  confidence: Scalars['Float']['output'];
+  /** 提取的法务条款列表 */
+  extracted: Array<ContractLegalClause>;
+  /** 使用的LLM模型 */
+  llmModel?: Maybe<Scalars['String']['output']>;
+  /** 使用的LLM提供商 */
+  llmProvider?: Maybe<Scalars['String']['output']>;
+  /** 处理时间（毫秒） */
+  processingTimeMs: Scalars['Int']['output'];
 };
 
 export type LlmParseResult = {
@@ -1219,11 +1467,15 @@ export type Mutation = {
   clearAllCache: Scalars['Boolean']['output'];
   /** 将文档转换为Markdown */
   convertDocumentToMarkdown: DoclingConvertResult;
+  /** 将已上传的文件转换为Markdown (从MinIO获取文件) */
+  convertUploadedFileToMarkdown: DoclingConvertResult;
   /** Create a new contract */
   createContract: Contract;
   createCustomer: Customer;
   /** Create a new department (Admin only) */
   createDepartment: Department;
+  /** 手动创建法务条款 */
+  createLegalClause: ContractLegalClause;
   /** Create a new contract or update existing one if duplicate */
   createOrUpdateContract: Contract;
   /** 创建解析进度会话 - 返回sessionId，用于后续查询进度 */
@@ -1234,13 +1486,21 @@ export type Mutation = {
   createUser: User;
   /** Delete a contract */
   deleteContract: Scalars['Boolean']['output'];
+  /** 删除合同的所有法务条款 */
+  deleteContractLegalClauses: Scalars['String']['output'];
   deleteCustomer: Customer;
+  /** 删除数据保护条款 */
+  deleteDataProtection: ContractDataProtection;
   /** Delete a department (Admin only) */
   deleteDepartment: DeleteResult;
   /** 删除文件 */
   deleteFile: Scalars['Boolean']['output'];
+  /** 删除法务条款 */
+  deleteLegalClause: ContractLegalClause;
   /** Delete a tag (soft delete) */
   deleteTag: TagDeleteResult;
+  /** 从Markdown内容中检测合同类型 */
+  detectContractType: ContractTypeDetectionResult;
   /** 导出合同列表 */
   exportContracts: ExportResult;
   /** 导出客户列表 */
@@ -1249,8 +1509,12 @@ export type Mutation = {
   exportFinancial: ExportResult;
   /** 导出里程碑数据 */
   exportMilestones: ExportResult;
+  /** 从合同文本中提取数据保护条款（AI提取） */
+  extractDataProtection: DataProtectionExtractionResult;
   /** 从文档中提取指定字段 */
   extractDocumentFields: DoclingExtractResult;
+  /** 从合同文本中提取法务条款（AI提取） */
+  extractLegalClauses: LegalClausesExtractionResult;
   /** 只提取里程碑信息 - 专门用于项目外包类合同 */
   extractMilestones: Scalars['JSONObject']['output'];
   /** 提取标签 */
@@ -1269,10 +1533,14 @@ export type Mutation = {
   parseByTasks: Scalars['JSONObject']['output'];
   /** Parse contract from uploaded file with hybrid strategy */
   parseContractWithLlm: LlmParseResult;
+  /** 使用指定策略解析文档 */
+  parseWith: Scalars['JSONObject']['output'];
   /** 使用并发模式解析合同 - Map-Reduce模式，适合大合同，大幅提升速度 */
   parseWithConcurrent: OptimizedParseResult;
   /** Parse contract text with mixed strategy (programmatic + LLM) */
   parseWithLlm: LlmParseResult;
+  /** 使用多策略解析文档 */
+  parseWithMulti: Scalars['JSONObject']['output'];
   /** 使用多个策略解析合同并进行投票 */
   parseWithMultiStrategies: MultiStrategyParseResult;
   /** 使用优化策略解析合同 - 自动选择最佳解析模式（语义分段/RAG/并发） */
@@ -1294,6 +1562,8 @@ export type Mutation = {
   resetEmbeddingConfig: EmbeddingConfig;
   /** 重置LLM配置为默认值 */
   resetLLMConfig: LlmConfig;
+  /** 重置OCR配置为默认值 */
+  resetOCRConfig: OcrConfig;
   /** Reset password with token */
   resetPassword: Scalars['Boolean']['output'];
   /** Reset user password (Admin only) */
@@ -1304,6 +1574,8 @@ export type Mutation = {
   saveEmbeddingConfig: EmbeddingConfig;
   /** 保存LLM配置 */
   saveLLMConfig: LlmConfig;
+  /** 保存OCR配置 */
+  saveOCRConfig: OcrConfig;
   /** 发送通知 */
   sendNotification: NotificationResult;
   setPrimaryContact: CustomerContact;
@@ -1323,8 +1595,12 @@ export type Mutation = {
   updateContract: Contract;
   updateCustomer: Customer;
   updateCustomerContact: CustomerContact;
+  /** 更新数据保护条款 */
+  updateDataProtection: ContractDataProtection;
   /** Update a department (Admin only) */
   updateDepartment: Department;
+  /** 更新法务条款 */
+  updateLegalClause: ContractLegalClause;
   /** 更新里程碑状态 */
   updateMilestoneStatus: MilestoneDetail;
   /** 更新解析策略配置 */
@@ -1337,6 +1613,8 @@ export type Mutation = {
   updateUser: User;
   /** 上传交付物 */
   uploadDeliverable: MilestoneDetail;
+  /** 创建或更新数据保护条款 */
+  upsertDataProtection: ContractDataProtection;
 };
 
 
@@ -1384,6 +1662,12 @@ export type MutationConvertDocumentToMarkdownArgs = {
 };
 
 
+export type MutationConvertUploadedFileToMarkdownArgs = {
+  objectName: Scalars['String']['input'];
+  options?: InputMaybe<DoclingConvertOptions>;
+};
+
+
 export type MutationCreateContractArgs = {
   input: CreateContractInput;
 };
@@ -1396,6 +1680,11 @@ export type MutationCreateCustomerArgs = {
 
 export type MutationCreateDepartmentArgs = {
   input: CreateDepartmentInput;
+};
+
+
+export type MutationCreateLegalClauseArgs = {
+  input: CreateLegalClauseInput;
 };
 
 
@@ -1426,8 +1715,18 @@ export type MutationDeleteContractArgs = {
 };
 
 
+export type MutationDeleteContractLegalClausesArgs = {
+  contractId: Scalars['String']['input'];
+};
+
+
 export type MutationDeleteCustomerArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteDataProtectionArgs = {
+  contractId: Scalars['String']['input'];
 };
 
 
@@ -1441,8 +1740,18 @@ export type MutationDeleteFileArgs = {
 };
 
 
+export type MutationDeleteLegalClauseArgs = {
+  id: Scalars['Int']['input'];
+};
+
+
 export type MutationDeleteTagArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type MutationDetectContractTypeArgs = {
+  markdown: Scalars['String']['input'];
 };
 
 
@@ -1474,9 +1783,21 @@ export type MutationExportMilestonesArgs = {
 };
 
 
+export type MutationExtractDataProtectionArgs = {
+  content: Scalars['String']['input'];
+  contractId: Scalars['String']['input'];
+};
+
+
 export type MutationExtractDocumentFieldsArgs = {
   filePath: Scalars['String']['input'];
   topics: Array<Scalars['String']['input']>;
+};
+
+
+export type MutationExtractLegalClausesArgs = {
+  content: Scalars['String']['input'];
+  contractId: Scalars['String']['input'];
 };
 
 
@@ -1529,6 +1850,13 @@ export type MutationParseContractWithLlmArgs = {
 };
 
 
+export type MutationParseWithArgs = {
+  content: Scalars['String']['input'];
+  options?: InputMaybe<Scalars['JSONObject']['input']>;
+  strategy: ParseStrategyType;
+};
+
+
 export type MutationParseWithConcurrentArgs = {
   input: ConcurrentParseInput;
 };
@@ -1536,6 +1864,13 @@ export type MutationParseWithConcurrentArgs = {
 
 export type MutationParseWithLlmArgs = {
   input: ParseWithLlmInput;
+};
+
+
+export type MutationParseWithMultiArgs = {
+  content: Scalars['String']['input'];
+  options?: InputMaybe<Scalars['JSONObject']['input']>;
+  strategies: Array<ParseStrategyType>;
 };
 
 
@@ -1617,6 +1952,11 @@ export type MutationSaveLlmConfigArgs = {
 };
 
 
+export type MutationSaveOcrConfigArgs = {
+  engine?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationSendNotificationArgs = {
   input: SendNotificationInput;
 };
@@ -1628,7 +1968,25 @@ export type MutationSetPrimaryContactArgs = {
 
 
 export type MutationStartParseContractAsyncArgs = {
+  markdown?: InputMaybe<Scalars['String']['input']>;
   objectName: Scalars['String']['input'];
+  strategy?: InputMaybe<ParseStrategyType>;
+};
+
+
+export type MutationTestEmbeddingConnectionArgs = {
+  apiKey?: InputMaybe<Scalars['String']['input']>;
+  baseUrl?: InputMaybe<Scalars['String']['input']>;
+  model?: InputMaybe<Scalars['String']['input']>;
+  provider?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationTestLlmConnectionArgs = {
+  apiKey?: InputMaybe<Scalars['String']['input']>;
+  baseUrl?: InputMaybe<Scalars['String']['input']>;
+  model?: InputMaybe<Scalars['String']['input']>;
+  provider?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1660,9 +2018,43 @@ export type MutationUpdateCustomerContactArgs = {
 };
 
 
+export type MutationUpdateDataProtectionArgs = {
+  confidence?: InputMaybe<Scalars['Int']['input']>;
+  contractId: Scalars['String']['input'];
+  crossBorderTransfer?: InputMaybe<Scalars['String']['input']>;
+  dataRetention?: InputMaybe<Scalars['String']['input']>;
+  involvesPersonalData?: InputMaybe<Scalars['Boolean']['input']>;
+  originalText?: InputMaybe<Scalars['String']['input']>;
+  personalDataType?: InputMaybe<Scalars['String']['input']>;
+  processingLocation?: InputMaybe<Scalars['String']['input']>;
+  riskLevel?: InputMaybe<DataProtectionRisk>;
+  securityMeasures?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationUpdateDepartmentArgs = {
   id: Scalars['String']['input'];
   input: UpdateDepartmentInput;
+};
+
+
+export type MutationUpdateLegalClauseArgs = {
+  breachLiability?: InputMaybe<Scalars['String']['input']>;
+  compensationMethod?: InputMaybe<Scalars['String']['input']>;
+  confidence?: InputMaybe<Scalars['Int']['input']>;
+  disputeLocation?: InputMaybe<Scalars['String']['input']>;
+  disputeResolution?: InputMaybe<Scalars['String']['input']>;
+  exclusions?: InputMaybe<Scalars['String']['input']>;
+  guaranteeAmount?: InputMaybe<Scalars['String']['input']>;
+  guaranteePeriod?: InputMaybe<Scalars['String']['input']>;
+  guaranteeType?: InputMaybe<Scalars['String']['input']>;
+  guarantor?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['Int']['input'];
+  liabilityLimit?: InputMaybe<Scalars['String']['input']>;
+  licenseFee?: InputMaybe<Scalars['String']['input']>;
+  licenseType?: InputMaybe<Scalars['String']['input']>;
+  originalText?: InputMaybe<Scalars['String']['input']>;
+  terminationNotice?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1697,11 +2089,21 @@ export type MutationUploadDeliverableArgs = {
   input: UploadDeliverableInput;
 };
 
+
+export type MutationUpsertDataProtectionArgs = {
+  input: CreateDataProtectionInput;
+};
+
 export type NotificationResult = {
   __typename?: 'NotificationResult';
   message?: Maybe<Scalars['String']['output']>;
   messageId?: Maybe<Scalars['String']['output']>;
   success: Scalars['Boolean']['output'];
+};
+
+export type OcrConfig = {
+  __typename?: 'OCRConfig';
+  engine: Scalars['String']['output'];
 };
 
 export type OptimizedParseResult = {
@@ -1775,6 +2177,17 @@ export type ParseResult = {
   text?: Maybe<Scalars['String']['output']>;
 };
 
+export type ParseResultDto = {
+  __typename?: 'ParseResultDto';
+  completeness: Scalars['Int']['output'];
+  confidence: Scalars['Int']['output'];
+  duration: Scalars['Int']['output'];
+  fields: Scalars['String']['output'];
+  strategy: ParseStrategyType;
+  timestamp?: Maybe<Scalars['String']['output']>;
+  warnings: Array<Scalars['String']['output']>;
+};
+
 export type ParseSessionProgressInfo = {
   __typename?: 'ParseSessionProgressInfo';
   chunks: Array<ChunkProgressInfo>;
@@ -1787,6 +2200,7 @@ export type ParseSessionProgressInfo = {
   estimatedEndTime?: Maybe<Scalars['Int']['output']>;
   estimatedRemainingSeconds?: Maybe<Scalars['Int']['output']>;
   extractedFieldsCount?: Maybe<Scalars['Int']['output']>;
+  markdownContent?: Maybe<Scalars['String']['output']>;
   objectName: Scalars['String']['output'];
   processingTimeMs?: Maybe<Scalars['Int']['output']>;
   progressPercentage: Scalars['Int']['output'];
@@ -2034,6 +2448,8 @@ export type Query = {
   availableStrategies: Array<StrategyInfo>;
   /** 批量评估多个字段的质量 */
   batchEvaluateFields?: Maybe<Scalars['JSONObject']['output']>;
+  /** 获取最佳可用策略 */
+  bestStrategy?: Maybe<ParseStrategyType>;
   /** 获取缓存统计信息 */
   cacheStats: CacheStats;
   /** Calculate completeness score for extracted fields */
@@ -2060,10 +2476,16 @@ export type Query = {
   contractChunks: Array<RagContractChunk>;
   /** 获取合同合规扫描结果 */
   contractCompliance: ContractCompliance;
+  /** 获取合同的数据保护条款 */
+  contractDataProtection?: Maybe<ContractDataProtection>;
+  /** 获取合同的所有法务条款 */
+  contractLegalClauses: Array<ContractLegalClause>;
   /** 获取合同风险评分 */
   contractRiskScore: ContractRiskScore;
   /** Get paginated list of contracts */
   contracts: ContractConnection;
+  /** 查询涉及个人数据的合同 */
+  contractsWithPersonalData: Array<ContractDataProtection>;
   /** 获取核心KPI指标 */
   coreKPIs: CoreKpIs;
   customer: Customer;
@@ -2074,6 +2496,10 @@ export type Query = {
   customerOverview: CustomerOverview;
   customerStats: CustomerStats;
   customers: PaginatedCustomers;
+  /** 按风险等级查询数据保护条款 */
+  dataProtectionByRiskLevel: Array<ContractDataProtection>;
+  /** 获取数据保护统计信息 */
+  dataProtectionStats: DataProtectionStats;
   /** Get a single department by ID (Admin only) */
   department?: Maybe<Department>;
   /** Get all departments */
@@ -2126,6 +2552,10 @@ export type Query = {
   getTrend: Array<TrendPoint>;
   /** 健康检查 */
   health: HealthCheck;
+  /** 获取法务条款统计信息 */
+  legalClauseStats: LegalClauseStats;
+  /** 按类型查询合同法务条款 */
+  legalClausesByType: Array<ContractLegalClause>;
   /** 获取LLM配置 */
   llmConfig: LlmConfig;
   /** Get login history for current user */
@@ -2138,6 +2568,8 @@ export type Query = {
   milestoneOverview: MilestoneOverview;
   /** 获取里程碑状态历史 */
   milestoneStatusHistory: Array<MilestoneStatusHistory>;
+  /** 获取OCR配置 */
+  ocrConfig: OcrConfig;
   /** 获取逾期预警 */
   overdueAlerts: Array<OverdueAlert>;
   /** Parse a document from storage and extract text content */
@@ -2162,6 +2594,10 @@ export type Query = {
   salesPerformance: SalesPerformance;
   /** 搜索合同知识库 */
   searchContracts: SearchResponse;
+  /** 搜索数据保护条款（跨合同） */
+  searchDataProtection: Array<ContractDataProtection>;
+  /** 全局搜索法务条款（跨合同） */
+  searchLegalClauses: Array<ContractLegalClause>;
   /** 语义搜索合同 */
   semanticSearch: Array<SemanticSearchResult>;
   /** 获取当前解析策略配置 */
@@ -2268,6 +2704,16 @@ export type QueryContractComplianceArgs = {
 };
 
 
+export type QueryContractDataProtectionArgs = {
+  contractId: Scalars['String']['input'];
+};
+
+
+export type QueryContractLegalClausesArgs = {
+  contractId: Scalars['String']['input'];
+};
+
+
 export type QueryContractRiskScoreArgs = {
   contractId: Scalars['String']['input'];
 };
@@ -2308,6 +2754,11 @@ export type QueryCustomerStatsArgs = {
 
 export type QueryCustomersArgs = {
   filter?: InputMaybe<CustomerFilterInput>;
+};
+
+
+export type QueryDataProtectionByRiskLevelArgs = {
+  riskLevel: DataProtectionRisk;
 };
 
 
@@ -2421,6 +2872,12 @@ export type QueryGetTrendArgs = {
 };
 
 
+export type QueryLegalClausesByTypeArgs = {
+  clauseType: LegalClauseType;
+  contractId: Scalars['String']['input'];
+};
+
+
 export type QueryLoginHistoryArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -2458,6 +2915,21 @@ export type QuerySalesPerformanceArgs = {
 
 export type QuerySearchContractsArgs = {
   input: ContractSearchInput;
+};
+
+
+export type QuerySearchDataProtectionArgs = {
+  hasCrossBorderTransfer?: InputMaybe<Scalars['Boolean']['input']>;
+  involvesPersonalData?: InputMaybe<Scalars['Boolean']['input']>;
+  riskLevel?: InputMaybe<DataProtectionRisk>;
+};
+
+
+export type QuerySearchLegalClausesArgs = {
+  clauseType?: InputMaybe<LegalClauseType>;
+  disputeResolution?: InputMaybe<Scalars['String']['input']>;
+  guaranteeType?: InputMaybe<Scalars['String']['input']>;
+  minLiability?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3399,6 +3871,13 @@ export type CreateContractMutationVariables = Exact<{
 
 export type CreateContractMutation = { __typename?: 'Mutation', createContract: { __typename?: 'Contract', id: string, contractNo: string, name: string } };
 
+export type GetContractLegalClausesQueryVariables = Exact<{
+  contractId: Scalars['String']['input'];
+}>;
+
+
+export type GetContractLegalClausesQuery = { __typename?: 'Query', contractLegalClauses: Array<{ __typename?: 'ContractLegalClause', id: number, contractId: string, clauseType: LegalClauseType, licenseType?: string | null, licenseFee?: string | null, guarantor?: string | null, guaranteeType?: string | null, guaranteeAmount?: string | null, guaranteePeriod?: string | null, liabilityLimit?: string | null, exclusions?: string | null, compensationMethod?: string | null, terminationNotice?: string | null, breachLiability?: string | null, disputeResolution?: string | null, disputeLocation?: string | null, confidence?: number | null, originalText?: string | null }>, contractDataProtection?: { __typename?: 'ContractDataProtection', id: number, contractId: string, involvesPersonalData: boolean, personalDataType?: string | null, processingLocation?: string | null, crossBorderTransfer?: string | null, securityMeasures?: string | null, dataRetention?: string | null, riskLevel: DataProtectionRisk, confidence?: number | null, originalText?: string | null } | null };
+
 export type SemanticSearchQueryVariables = Exact<{
   query: Scalars['String']['input'];
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -3471,6 +3950,21 @@ export type UpdateContractByIdMutationVariables = Exact<{
 
 export type UpdateContractByIdMutation = { __typename?: 'Mutation', updateContract: { __typename?: 'Contract', id: string, contractNo: string, name: string, status: ContractStatus } };
 
+export type ConvertUploadedFileToMarkdownMutationVariables = Exact<{
+  objectName: Scalars['String']['input'];
+  options?: InputMaybe<DoclingConvertOptions>;
+}>;
+
+
+export type ConvertUploadedFileToMarkdownMutation = { __typename?: 'Mutation', convertUploadedFileToMarkdown: { __typename?: 'DoclingConvertResult', success: boolean, markdown: string, pages: number, error?: string | null, tables: Array<{ __typename?: 'DoclingTable', markdown: string, rows: number, cols: number }>, images: Array<{ __typename?: 'DoclingImage', page: number, width: number, height: number }> } };
+
+export type DetectContractTypeMutationVariables = Exact<{
+  markdown: Scalars['String']['input'];
+}>;
+
+
+export type DetectContractTypeMutation = { __typename?: 'Mutation', detectContractType: { __typename?: 'ContractTypeDetectionResult', detectedType?: string | null, confidence: number, reasoning: string, displayName?: string | null, description?: string | null } };
+
 export type CreateParseSessionMutationVariables = Exact<{
   objectName: Scalars['String']['input'];
 }>;
@@ -3487,6 +3981,8 @@ export type ParseContractWithLlmMutation = { __typename?: 'Mutation', parseContr
 
 export type StartParseContractAsyncMutationVariables = Exact<{
   objectName: Scalars['String']['input'];
+  strategy?: InputMaybe<ParseStrategyType>;
+  markdown?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
@@ -3854,12 +4350,22 @@ export type SaveEmbeddingConfigMutationVariables = Exact<{
 
 export type SaveEmbeddingConfigMutation = { __typename?: 'Mutation', saveEmbeddingConfig: { __typename?: 'EmbeddingConfig', provider: string, model: string, baseUrl?: string | null, dimensions: number } };
 
-export type TestLlmConnectionMutationVariables = Exact<{ [key: string]: never; }>;
+export type TestLlmConnectionMutationVariables = Exact<{
+  provider?: InputMaybe<Scalars['String']['input']>;
+  model?: InputMaybe<Scalars['String']['input']>;
+  baseUrl?: InputMaybe<Scalars['String']['input']>;
+  apiKey?: InputMaybe<Scalars['String']['input']>;
+}>;
 
 
 export type TestLlmConnectionMutation = { __typename?: 'Mutation', testLLMConnection: { __typename?: 'ModelTestResult', success: boolean, message?: string | null, latency?: number | null } };
 
-export type TestEmbeddingConnectionMutationVariables = Exact<{ [key: string]: never; }>;
+export type TestEmbeddingConnectionMutationVariables = Exact<{
+  provider?: InputMaybe<Scalars['String']['input']>;
+  model?: InputMaybe<Scalars['String']['input']>;
+  baseUrl?: InputMaybe<Scalars['String']['input']>;
+  apiKey?: InputMaybe<Scalars['String']['input']>;
+}>;
 
 
 export type TestEmbeddingConnectionMutation = { __typename?: 'Mutation', testEmbeddingConnection: { __typename?: 'ModelTestResult', success: boolean, message?: string | null, latency?: number | null } };
@@ -3874,6 +4380,23 @@ export type ResetEmbeddingConfigMutationVariables = Exact<{ [key: string]: never
 
 export type ResetEmbeddingConfigMutation = { __typename?: 'Mutation', resetEmbeddingConfig: { __typename?: 'EmbeddingConfig', provider: string, model: string, baseUrl?: string | null, dimensions: number } };
 
+export type GetOcrConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetOcrConfigQuery = { __typename?: 'Query', ocrConfig: { __typename?: 'OCRConfig', engine: string } };
+
+export type SaveOcrConfigMutationVariables = Exact<{
+  engine?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type SaveOcrConfigMutation = { __typename?: 'Mutation', saveOCRConfig: { __typename?: 'OCRConfig', engine: string } };
+
+export type ResetOcrConfigMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ResetOcrConfigMutation = { __typename?: 'Mutation', resetOCRConfig: { __typename?: 'OCRConfig', engine: string } };
+
 export type ChangePasswordMutationVariables = Exact<{
   input: ChangePasswordInput;
 }>;
@@ -3884,7 +4407,7 @@ export type ChangePasswordMutation = { __typename?: 'Mutation', changePassword: 
 export type GetSystemConfigQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetSystemConfigQuery = { __typename?: 'Query', systemConfig: { __typename?: 'SystemConfig', llmProvider: string, llmModel: string, llmBaseUrl?: string | null, llmApiKey?: string | null, llmTemperature?: number | null, llmMaxTokens?: number | null, llmTimeout?: number | null, smtpEnabled: boolean, smtpHost?: string | null, smtpPort?: number | null, smtpUser?: string | null, smtpSecure?: boolean | null, minioEndpoint: string, minioPort: number, minioBucket: string } };
+export type GetSystemConfigQuery = { __typename?: 'Query', systemConfig: { __typename?: 'SystemConfig', smtpEnabled: boolean, smtpHost?: string | null, smtpPort?: number | null, smtpUser?: string | null, smtpSecure?: boolean | null, minioEndpoint: string, minioPort: number, minioBucket: string } };
 
 export type GetSystemHealthQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -3896,7 +4419,7 @@ export type UpdateSystemConfigMutationVariables = Exact<{
 }>;
 
 
-export type UpdateSystemConfigMutation = { __typename?: 'Mutation', updateSystemConfig: { __typename?: 'SystemConfig', llmProvider: string, llmModel: string, llmBaseUrl?: string | null, llmApiKey?: string | null, llmTemperature?: number | null, llmMaxTokens?: number | null, llmTimeout?: number | null, smtpEnabled: boolean, smtpHost?: string | null, smtpPort?: number | null, smtpSecure?: boolean | null, minioEndpoint: string, minioPort: number, minioBucket: string } };
+export type UpdateSystemConfigMutation = { __typename?: 'Mutation', updateSystemConfig: { __typename?: 'SystemConfig', smtpEnabled: boolean, smtpHost?: string | null, smtpPort?: number | null, smtpSecure?: boolean | null, minioEndpoint: string, minioPort: number, minioBucket: string } };
 
 export type TestSmtpConnectionMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -4506,6 +5029,62 @@ export function useCreateContractMutation(baseOptions?: ApolloReactHooks.Mutatio
 export type CreateContractMutationHookResult = ReturnType<typeof useCreateContractMutation>;
 export type CreateContractMutationResult = ApolloReactCommon.MutationResult<CreateContractMutation>;
 export type CreateContractMutationOptions = ApolloReactCommon.BaseMutationOptions<CreateContractMutation, CreateContractMutationVariables>;
+export const GetContractLegalClausesDocument = gql`
+    query GetContractLegalClauses($contractId: String!) {
+  contractLegalClauses(contractId: $contractId) {
+    id
+    contractId
+    clauseType
+    licenseType
+    licenseFee
+    guarantor
+    guaranteeType
+    guaranteeAmount
+    guaranteePeriod
+    liabilityLimit
+    exclusions
+    compensationMethod
+    terminationNotice
+    breachLiability
+    disputeResolution
+    disputeLocation
+    confidence
+    originalText
+  }
+  contractDataProtection(contractId: $contractId) {
+    id
+    contractId
+    involvesPersonalData
+    personalDataType
+    processingLocation
+    crossBorderTransfer
+    securityMeasures
+    dataRetention
+    riskLevel
+    confidence
+    originalText
+  }
+}
+    `;
+export function useGetContractLegalClausesQuery(baseOptions: ApolloReactHooks.QueryHookOptions<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables> & ({ variables: GetContractLegalClausesQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>(GetContractLegalClausesDocument, options);
+      }
+export function useGetContractLegalClausesLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>(GetContractLegalClausesDocument, options);
+        }
+// @ts-ignore
+export function useGetContractLegalClausesSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>;
+export function useGetContractLegalClausesSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetContractLegalClausesQuery | undefined, GetContractLegalClausesQueryVariables>;
+export function useGetContractLegalClausesSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>(GetContractLegalClausesDocument, options);
+        }
+export type GetContractLegalClausesQueryHookResult = ReturnType<typeof useGetContractLegalClausesQuery>;
+export type GetContractLegalClausesLazyQueryHookResult = ReturnType<typeof useGetContractLegalClausesLazyQuery>;
+export type GetContractLegalClausesSuspenseQueryHookResult = ReturnType<typeof useGetContractLegalClausesSuspenseQuery>;
+export type GetContractLegalClausesQueryResult = ApolloReactCommon.QueryResult<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>;
 export const SemanticSearchDocument = gql`
     query SemanticSearch($query: String!, $limit: Int) {
   semanticSearch(query: $query, limit: $limit) {
@@ -4851,6 +5430,53 @@ export function useUpdateContractByIdMutation(baseOptions?: ApolloReactHooks.Mut
 export type UpdateContractByIdMutationHookResult = ReturnType<typeof useUpdateContractByIdMutation>;
 export type UpdateContractByIdMutationResult = ApolloReactCommon.MutationResult<UpdateContractByIdMutation>;
 export type UpdateContractByIdMutationOptions = ApolloReactCommon.BaseMutationOptions<UpdateContractByIdMutation, UpdateContractByIdMutationVariables>;
+export const ConvertUploadedFileToMarkdownDocument = gql`
+    mutation ConvertUploadedFileToMarkdown($objectName: String!, $options: DoclingConvertOptions) {
+  convertUploadedFileToMarkdown(objectName: $objectName, options: $options) {
+    success
+    markdown
+    pages
+    tables {
+      markdown
+      rows
+      cols
+    }
+    images {
+      page
+      width
+      height
+    }
+    error
+  }
+}
+    `;
+export type ConvertUploadedFileToMarkdownMutationFn = ApolloReactCommon.MutationFunction<ConvertUploadedFileToMarkdownMutation, ConvertUploadedFileToMarkdownMutationVariables>;
+export function useConvertUploadedFileToMarkdownMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<ConvertUploadedFileToMarkdownMutation, ConvertUploadedFileToMarkdownMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<ConvertUploadedFileToMarkdownMutation, ConvertUploadedFileToMarkdownMutationVariables>(ConvertUploadedFileToMarkdownDocument, options);
+      }
+export type ConvertUploadedFileToMarkdownMutationHookResult = ReturnType<typeof useConvertUploadedFileToMarkdownMutation>;
+export type ConvertUploadedFileToMarkdownMutationResult = ApolloReactCommon.MutationResult<ConvertUploadedFileToMarkdownMutation>;
+export type ConvertUploadedFileToMarkdownMutationOptions = ApolloReactCommon.BaseMutationOptions<ConvertUploadedFileToMarkdownMutation, ConvertUploadedFileToMarkdownMutationVariables>;
+export const DetectContractTypeDocument = gql`
+    mutation DetectContractType($markdown: String!) {
+  detectContractType(markdown: $markdown) {
+    detectedType
+    confidence
+    reasoning
+    displayName
+    description
+  }
+}
+    `;
+export type DetectContractTypeMutationFn = ApolloReactCommon.MutationFunction<DetectContractTypeMutation, DetectContractTypeMutationVariables>;
+export function useDetectContractTypeMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<DetectContractTypeMutation, DetectContractTypeMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<DetectContractTypeMutation, DetectContractTypeMutationVariables>(DetectContractTypeDocument, options);
+      }
+export type DetectContractTypeMutationHookResult = ReturnType<typeof useDetectContractTypeMutation>;
+export type DetectContractTypeMutationResult = ApolloReactCommon.MutationResult<DetectContractTypeMutation>;
+export type DetectContractTypeMutationOptions = ApolloReactCommon.BaseMutationOptions<DetectContractTypeMutation, DetectContractTypeMutationVariables>;
 export const CreateParseSessionDocument = gql`
     mutation CreateParseSession($objectName: String!) {
   createParseSession(objectName: $objectName)
@@ -4918,8 +5544,12 @@ export type ParseContractWithLlmMutationHookResult = ReturnType<typeof useParseC
 export type ParseContractWithLlmMutationResult = ApolloReactCommon.MutationResult<ParseContractWithLlmMutation>;
 export type ParseContractWithLlmMutationOptions = ApolloReactCommon.BaseMutationOptions<ParseContractWithLlmMutation, ParseContractWithLlmMutationVariables>;
 export const StartParseContractAsyncDocument = gql`
-    mutation StartParseContractAsync($objectName: String!) {
-  startParseContractAsync(objectName: $objectName) {
+    mutation StartParseContractAsync($objectName: String!, $strategy: ParseStrategyType, $markdown: String) {
+  startParseContractAsync(
+    objectName: $objectName
+    strategy: $strategy
+    markdown: $markdown
+  ) {
     sessionId
     message
   }
@@ -6657,8 +7287,13 @@ export type SaveEmbeddingConfigMutationHookResult = ReturnType<typeof useSaveEmb
 export type SaveEmbeddingConfigMutationResult = ApolloReactCommon.MutationResult<SaveEmbeddingConfigMutation>;
 export type SaveEmbeddingConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<SaveEmbeddingConfigMutation, SaveEmbeddingConfigMutationVariables>;
 export const TestLlmConnectionDocument = gql`
-    mutation TestLLMConnection {
-  testLLMConnection {
+    mutation TestLLMConnection($provider: String, $model: String, $baseUrl: String, $apiKey: String) {
+  testLLMConnection(
+    provider: $provider
+    model: $model
+    baseUrl: $baseUrl
+    apiKey: $apiKey
+  ) {
     success
     message
     latency
@@ -6674,8 +7309,13 @@ export type TestLlmConnectionMutationHookResult = ReturnType<typeof useTestLlmCo
 export type TestLlmConnectionMutationResult = ApolloReactCommon.MutationResult<TestLlmConnectionMutation>;
 export type TestLlmConnectionMutationOptions = ApolloReactCommon.BaseMutationOptions<TestLlmConnectionMutation, TestLlmConnectionMutationVariables>;
 export const TestEmbeddingConnectionDocument = gql`
-    mutation TestEmbeddingConnection {
-  testEmbeddingConnection {
+    mutation TestEmbeddingConnection($provider: String, $model: String, $baseUrl: String, $apiKey: String) {
+  testEmbeddingConnection(
+    provider: $provider
+    model: $model
+    baseUrl: $baseUrl
+    apiKey: $apiKey
+  ) {
     success
     message
     latency
@@ -6727,6 +7367,62 @@ export function useResetEmbeddingConfigMutation(baseOptions?: ApolloReactHooks.M
 export type ResetEmbeddingConfigMutationHookResult = ReturnType<typeof useResetEmbeddingConfigMutation>;
 export type ResetEmbeddingConfigMutationResult = ApolloReactCommon.MutationResult<ResetEmbeddingConfigMutation>;
 export type ResetEmbeddingConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<ResetEmbeddingConfigMutation, ResetEmbeddingConfigMutationVariables>;
+export const GetOcrConfigDocument = gql`
+    query GetOCRConfig {
+  ocrConfig {
+    engine
+  }
+}
+    `;
+export function useGetOcrConfigQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetOcrConfigQuery, GetOcrConfigQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetOcrConfigQuery, GetOcrConfigQueryVariables>(GetOcrConfigDocument, options);
+      }
+export function useGetOcrConfigLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetOcrConfigQuery, GetOcrConfigQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetOcrConfigQuery, GetOcrConfigQueryVariables>(GetOcrConfigDocument, options);
+        }
+// @ts-ignore
+export function useGetOcrConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<GetOcrConfigQuery, GetOcrConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetOcrConfigQuery, GetOcrConfigQueryVariables>;
+export function useGetOcrConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetOcrConfigQuery, GetOcrConfigQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<GetOcrConfigQuery | undefined, GetOcrConfigQueryVariables>;
+export function useGetOcrConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetOcrConfigQuery, GetOcrConfigQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetOcrConfigQuery, GetOcrConfigQueryVariables>(GetOcrConfigDocument, options);
+        }
+export type GetOcrConfigQueryHookResult = ReturnType<typeof useGetOcrConfigQuery>;
+export type GetOcrConfigLazyQueryHookResult = ReturnType<typeof useGetOcrConfigLazyQuery>;
+export type GetOcrConfigSuspenseQueryHookResult = ReturnType<typeof useGetOcrConfigSuspenseQuery>;
+export type GetOcrConfigQueryResult = ApolloReactCommon.QueryResult<GetOcrConfigQuery, GetOcrConfigQueryVariables>;
+export const SaveOcrConfigDocument = gql`
+    mutation SaveOCRConfig($engine: String) {
+  saveOCRConfig(engine: $engine) {
+    engine
+  }
+}
+    `;
+export type SaveOcrConfigMutationFn = ApolloReactCommon.MutationFunction<SaveOcrConfigMutation, SaveOcrConfigMutationVariables>;
+export function useSaveOcrConfigMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<SaveOcrConfigMutation, SaveOcrConfigMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<SaveOcrConfigMutation, SaveOcrConfigMutationVariables>(SaveOcrConfigDocument, options);
+      }
+export type SaveOcrConfigMutationHookResult = ReturnType<typeof useSaveOcrConfigMutation>;
+export type SaveOcrConfigMutationResult = ApolloReactCommon.MutationResult<SaveOcrConfigMutation>;
+export type SaveOcrConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<SaveOcrConfigMutation, SaveOcrConfigMutationVariables>;
+export const ResetOcrConfigDocument = gql`
+    mutation ResetOCRConfig {
+  resetOCRConfig {
+    engine
+  }
+}
+    `;
+export type ResetOcrConfigMutationFn = ApolloReactCommon.MutationFunction<ResetOcrConfigMutation, ResetOcrConfigMutationVariables>;
+export function useResetOcrConfigMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<ResetOcrConfigMutation, ResetOcrConfigMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<ResetOcrConfigMutation, ResetOcrConfigMutationVariables>(ResetOcrConfigDocument, options);
+      }
+export type ResetOcrConfigMutationHookResult = ReturnType<typeof useResetOcrConfigMutation>;
+export type ResetOcrConfigMutationResult = ApolloReactCommon.MutationResult<ResetOcrConfigMutation>;
+export type ResetOcrConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<ResetOcrConfigMutation, ResetOcrConfigMutationVariables>;
 export const ChangePasswordDocument = gql`
     mutation ChangePassword($input: ChangePasswordInput!) {
   changePassword(input: $input) {
@@ -6746,13 +7442,6 @@ export type ChangePasswordMutationOptions = ApolloReactCommon.BaseMutationOption
 export const GetSystemConfigDocument = gql`
     query GetSystemConfig {
   systemConfig {
-    llmProvider
-    llmModel
-    llmBaseUrl
-    llmApiKey
-    llmTemperature
-    llmMaxTokens
-    llmTimeout
     smtpEnabled
     smtpHost
     smtpPort
@@ -6819,13 +7508,6 @@ export type GetSystemHealthQueryResult = ApolloReactCommon.QueryResult<GetSystem
 export const UpdateSystemConfigDocument = gql`
     mutation UpdateSystemConfig($config: UpdateSystemConfigInput!) {
   updateSystemConfig(config: $config) {
-    llmProvider
-    llmModel
-    llmBaseUrl
-    llmApiKey
-    llmTemperature
-    llmMaxTokens
-    llmTimeout
     smtpEnabled
     smtpHost
     smtpPort

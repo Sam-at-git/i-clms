@@ -174,7 +174,7 @@ const styles: Record<string, React.CSSProperties> = {
       from: { transform: 'rotate(0deg)' },
       to: { transform: 'rotate(360deg)' },
     },
-  },
+  } as any,
   error: {
     padding: '12px',
     backgroundColor: '#fef2f2',

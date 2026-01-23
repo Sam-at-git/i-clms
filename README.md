@@ -30,7 +30,7 @@
 ```
 Monorepo     Nx + pnpm
 后端         NestJS + GraphQL (Apollo Server) + Prisma
-前端         React 18 + Vite + Apollo Client + Recoil
+前端         React 19 + Vite + Apollo Client + Zustand
 数据库       PostgreSQL
 测试         Jest + Playwright
 代码质量     TypeScript (strict) + ESLint + Prettier

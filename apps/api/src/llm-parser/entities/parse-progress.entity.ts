@@ -185,4 +185,7 @@ export class ParseSessionProgressInfo {
 
   @Field(() => GraphQLJSONObject, { nullable: true })
   resultData?: any; // 存储解析完成后的完整结果
+
+  @Field(() => String, { nullable: true })
+  markdownContent?: string; // 文档的Markdown格式内容
 }

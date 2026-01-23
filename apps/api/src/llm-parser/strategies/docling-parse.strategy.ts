@@ -102,8 +102,26 @@ export class DoclingParseStrategy implements ParseStrategyExecutor {
 
         const markdown = doclingResult.markdown;
 
-        // 3. Extract fields using regex patterns
-        const topics = options.topics || (this.topicRegistry.getTopicNames() as ExtractTopic[]);
+        // 3. 先提取基本信息获取合同类型
+        let contractType: string | undefined = undefined;
+        const basicInfoTopic = this.topicRegistry.getTopicSafe(ExtractTopic.BASIC_INFO);
+        if (basicInfoTopic) {
+          for (const field of basicInfoTopic.fields) {
+            if (field.name === 'contractType') {
+              const value = this.extractField(markdown, field.name);
+              if (value) {
+                extractedFields.contractType = value;
+                contractType = String(value);
+                this.logger.log(`[Docling] Detected contract type: ${contractType}`);
+              }
+              break;
+            }
+          }
+        }
+
+        // 4. 根据合同类型获取相关主题
+        const topics = this.getTopicsForContractType(contractType, options.topics);
+        this.logger.log(`[Docling] Using topics for contract type ${contractType || 'unknown'}: ${topics.join(', ')}`);
 
         for (const topicName of topics) {
           const topic = this.topicRegistry.getTopicSafe(topicName);
@@ -487,5 +505,57 @@ export class DoclingParseStrategy implements ParseStrategyExecutor {
       return error.message;
     }
     return String(error);
+  }
+
+  /**
+   * 根据合同类型获取相关主题
+   *
+   * 配置与 topics.const.ts 中的 CONTRACT_TYPE_TOPIC_BATCHES 保持一致
+   *
+   * - 项目外包(PROJECT_OUTSOURCING): BASIC_INFO, FINANCIAL, TIME_INFO, MILESTONES, DELIVERABLES, RISK_CLAUSES (6个)
+   * - 人力外包(STAFF_AUGMENTATION): BASIC_INFO, FINANCIAL, TIME_INFO, RATE_ITEMS, DELIVERABLES, RISK_CLAUSES (6个)
+   * - 产品销售(PRODUCT_SALES): BASIC_INFO, FINANCIAL, TIME_INFO, LINE_ITEMS, RISK_CLAUSES (5个)
+   */
+  private getTopicsForContractType(
+    contractType: string | undefined,
+    userTopics?: ExtractTopic[]
+  ): ExtractTopic[] {
+    // 如果用户明确指定了主题，使用用户的主题
+    if (userTopics && userTopics.length > 0) {
+      return userTopics;
+    }
+
+    // 基础主题（所有合同类型都需要）
+    const baseTopics = [
+      ExtractTopic.BASIC_INFO,
+      ExtractTopic.FINANCIAL,
+      ExtractTopic.TIME_INFO,
+    ];
+
+    // 根据合同类型添加特定主题（与 topics.const.ts 保持一致）
+    const typeSpecificTopics: Record<string, ExtractTopic[]> = {
+      PROJECT_OUTSOURCING: [
+        ExtractTopic.MILESTONES,   // 里程碑（核心）
+        ExtractTopic.DELIVERABLES, // 交付物
+        ExtractTopic.RISK_CLAUSES,  // 风险条款
+      ],
+      STAFF_AUGMENTATION: [
+        ExtractTopic.RATE_ITEMS,    // 人力费率（核心）
+        ExtractTopic.DELIVERABLES,  // 交付物
+        ExtractTopic.RISK_CLAUSES,  // 风险条款
+      ],
+      PRODUCT_SALES: [
+        ExtractTopic.LINE_ITEMS,    // 产品清单（核心）
+        ExtractTopic.RISK_CLAUSES,  // 风险条款
+      ],
+    };
+
+    // 如果能识别出合同类型，只提取相关主题
+    if (contractType && typeSpecificTopics[contractType]) {
+      return [...baseTopics, ...typeSpecificTopics[contractType]];
+    }
+
+    // 默认：返回所有主题
+    return this.topicRegistry.getTopicNames() as ExtractTopic[];
   }
 }

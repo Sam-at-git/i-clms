@@ -222,10 +222,15 @@ function ProjectOutsourcingDetails({ data }: { data?: any }) {
       {(data?.sowSummary || data?.deliverables || data?.acceptanceCriteria) && (
         <div style={styles.section}>
           <h4 style={styles.subTitle}>项目概述</h4>
-          <div style={styles.infoGrid}>
-            <InfoItem label="工作范围" value={data?.sowSummary} fullWidth />
+          <div style={styles.projectOverviewContainer}>
+            {data?.sowSummary && (
+              <div style={styles.overviewSection}>
+                <label style={infoItemStyles.label}>工作范围</label>
+                <div style={styles.overviewContent}>{data.sowSummary}</div>
+              </div>
+            )}
             {data?.deliverables && (
-              <div style={{ ...styles.infoItemFull, gridArea: 'deliverables' }}>
+              <div style={styles.overviewSection}>
                 <label style={infoItemStyles.label}>交付物清单</label>
                 <div style={styles.deliverablesList}>
                   {parseDeliverables(data.deliverables).map((item, idx) => (
@@ -236,7 +241,12 @@ function ProjectOutsourcingDetails({ data }: { data?: any }) {
                 </div>
               </div>
             )}
-            <InfoItem label="验收标准" value={data?.acceptanceCriteria} fullWidth />
+            {data?.acceptanceCriteria && (
+              <div style={styles.overviewSection}>
+                <label style={infoItemStyles.label}>验收标准</label>
+                <div style={styles.overviewContent}>{data.acceptanceCriteria}</div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1050,6 +1060,24 @@ const styles: Record<string, React.CSSProperties> = {
   },
   infoItemFull: {
     gridColumn: '1 / -1',
+  },
+  // 项目概述容器样式
+  projectOverviewContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  overviewSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  overviewContent: {
+    fontSize: '14px',
+    color: '#374151',
+    lineHeight: '1.6',
+    whiteSpace: 'pre-wrap' as const,
+    wordBreak: 'break-word' as const,
   },
   // 产品相关样式
   taxAnalysis: {

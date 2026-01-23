@@ -177,7 +177,7 @@ export function MilestonesPage() {
       {/* Milestone List */}
       <MilestoneList
         milestones={filteredMilestones as any}
-        onSelectMilestone={(milestone) => setSelectedMilestone(milestone)}
+        onSelectMilestone={(milestone) => setSelectedMilestone(milestone as unknown as Milestone)}
         onStatusUpdate={handleStatusUpdate as any}
         onAcceptMilestone={handleAcceptMilestone}
         MilestoneStatus={MilestoneStatus}

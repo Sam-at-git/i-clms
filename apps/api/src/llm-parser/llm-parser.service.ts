@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import OpenAI from 'openai';
+import { randomUUID } from 'crypto';
 import { LlmConfigService } from './config/llm-config.service';
 import { ParserService } from '../parser/parser.service';
 import { CompletenessCheckerService } from './completeness-checker.service';
@@ -87,7 +88,11 @@ export class LlmParserService implements OnModuleInit {
     return this.openai!;
   }
 
-  async parseContractWithLlm(objectName: string, externalSessionId?: string): Promise<LlmParseResult> {
+  async parseContractWithLlm(
+    objectName: string,
+    externalSessionId?: string,
+    preConvertedMarkdown?: string
+  ): Promise<LlmParseResult> {
     const startTime = Date.now();
 
     // 使用外部传入的sessionId或创建新的
@@ -98,17 +103,53 @@ export class LlmParserService implements OnModuleInit {
     }
 
     try {
-      // ========== 阶段1: 程序解析 ==========
-      this.logger.log(`[Hybrid Strategy] Starting document parse: ${objectName}`);
-      sessionId && this.progressService?.updateStage(sessionId, 'parsing', '正在提取文档内容');
-      const parseResult = await this.parserService.parseDocument(objectName);
+      // ========== 阶段1: 文本提取 ==========
+      this.logger.log(`[Hybrid Strategy] Starting document parse: ${objectName}, hasPreConvertedMarkdown: ${!!preConvertedMarkdown}`);
 
-      if (!parseResult.success || !parseResult.text) {
-        throw new Error(parseResult.error || 'Failed to extract text from document');
+      let parseResult: {
+        success: boolean;
+        text?: string;
+        extractedFields?: Record<string, any>;
+        pageCount?: number;
+        error?: string;
+      };
+
+      if (preConvertedMarkdown) {
+        // 使用前端预转换的Markdown，跳过文档转换步骤
+        this.logger.log(`[Hybrid Strategy] Using pre-converted markdown (${preConvertedMarkdown.length} chars)`);
+        sessionId && this.progressService?.updateStage(sessionId, 'parsing', '使用预转换的Markdown内容');
+
+        // 使用预转换的markdown进行正则提取
+        const extractedFields = this.parserService.extractFields(preConvertedMarkdown);
+
+        parseResult = {
+          success: true,
+          text: preConvertedMarkdown,
+          extractedFields,
+          pageCount: 0, // Docling转换无法获取准确的页数
+        };
+
+        this.logger.log(`[Pre-converted Markdown] Using ${preConvertedMarkdown.length} chars, ` +
+          `fields found: ${Object.keys(extractedFields || {}).length}`);
+      } else {
+        // 传统流程：从文件解析
+        sessionId && this.progressService?.updateStage(sessionId, 'parsing', '正在提取文档内容');
+        parseResult = await this.parserService.parseDocument(objectName);
+
+        if (!parseResult.success || !parseResult.text) {
+          throw new Error(parseResult.error || 'Failed to extract text from document');
+        }
+
+        this.logger.log(`[Program Parse] Extracted ${parseResult.text?.length || 0} chars, ` +
+          `fields found: ${Object.keys(parseResult.extractedFields || {}).length}`);
       }
 
-      this.logger.log(`[Program Parse] Extracted ${parseResult.text.length} chars, ` +
-        `fields found: ${Object.keys(parseResult.extractedFields || {}).length}`);
+      // At this point, text is guaranteed to be defined
+      // (either from pre-converted markdown or from parseDocument which throws if text is undefined)
+      if (!parseResult.text) {
+        throw new Error('Failed to get document text');
+      }
+      const documentText = parseResult.text;
 
       // ========== 阶段2: 完整性检查 ==========
       const fields = parseResult.extractedFields || {
@@ -159,7 +200,7 @@ export class LlmParserService implements OnModuleInit {
         const result = {
           success: true,
           extractedData: this.convertToContractData(parseResult.extractedFields!),
-          rawText: parseResult.text,
+          rawText: documentText,
           pageCount: parseResult.pageCount,
           llmModel: undefined,
           llmProvider: undefined,
@@ -191,7 +232,7 @@ export class LlmParserService implements OnModuleInit {
         try {
           // 调用LLM验证程序解析结果
           const validationResult = await this.callLlmForValidation(
-            parseResult.text,
+            documentText,
             parseResult.extractedFields!
           );
 
@@ -212,7 +253,7 @@ export class LlmParserService implements OnModuleInit {
           const result = {
             success: true,
             extractedData: this.convertToContractData(correctedFields),
-            rawText: parseResult.text,
+            rawText: documentText,
             pageCount: parseResult.pageCount,
             llmModel: this.configService.getActiveConfig().model,
             llmProvider: this.configService.getProviderName(),
@@ -259,7 +300,7 @@ export class LlmParserService implements OnModuleInit {
 
       // 确定分段策略
       const chunkingResult = this.chunkingStrategy.determineStrategy(
-        parseResult.text,
+        documentText,
         priorityFields
       );
 
@@ -286,7 +327,13 @@ export class LlmParserService implements OnModuleInit {
         this.logger.log(`[LLM Extraction] sessionId for task-based parsing: ${sessionId}`);
         sessionId && this.progressService?.updateStage(sessionId, 'llm_processing', 'AI正在分类提取信息');
 
-        const taskResult = await this.taskBasedParser.parseByTasks(parseResult.text, undefined, sessionId ?? undefined);
+        const taskResult = await this.taskBasedParser.parseByTasks(
+          documentText,
+          undefined, // contractType (未提供，将自动检测)
+          undefined, // enabledTaskTypes (未提供，将根据 contractType 自动确定)
+          sessionId ?? undefined,
+          objectName // fileName (用于优先判断合同类型)
+        );
         this.logger.log(
           `[Task-based Parsing] Completed: ${taskResult.summary.successfulTasks}/${taskResult.summary.totalTasks} tasks successful, ` +
           `${taskResult.summary.totalTokensUsed} tokens, ${taskResult.summary.totalTimeMs}ms`
@@ -343,7 +390,7 @@ export class LlmParserService implements OnModuleInit {
       const result = {
         success: true,
         extractedData: mergedData,
-        rawText: parseResult.text,
+        rawText: documentText,
         pageCount: parseResult.pageCount,
         llmModel: this.configService.getActiveConfig().model,
         llmProvider: this.configService.getProviderName(),
@@ -769,7 +816,8 @@ export class LlmParserService implements OnModuleInit {
     const cleaned: ContractExtractedData = {
       contractType: data.contractType,
       basicInfo: {
-        contractNo: this.cleanString(data.basicInfo?.contractNo),
+        // 如果没有解析到合同号，生成一个随机的
+        contractNo: this.cleanString(data.basicInfo?.contractNo) || this.generateContractNumber(),
         contractName: this.cleanString(data.basicInfo?.contractName),
         ourEntity: this.cleanString(data.basicInfo?.ourEntity),
         customerName: this.cleanString(data.basicInfo?.customerName),
@@ -850,6 +898,17 @@ export class LlmParserService implements OnModuleInit {
     }
 
     return value;
+  }
+
+  /**
+   * 生成随机合同编号
+   * 格式: CTR-YYYYMMDD-XXXX (XXXX为随机UUID后4位)
+   */
+  private generateContractNumber(): string {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const uuidSuffix = randomUUID().slice(0, 4).toUpperCase(); // 取UUID前4位
+    return `CTR-${dateStr}-${uuidSuffix}`;
   }
 
   /**
@@ -1395,6 +1454,23 @@ ${JSON.stringify(CONTRACT_JSON_SCHEMA, null, 2)}
   }
 
   /**
+   * 清理文本字段，移除Markdown格式符号和多余空格
+   * 保留：汉字、字母、数字、常用标点
+   */
+  private cleanTextField(value: string | null | undefined): string | undefined {
+    if (!value) return undefined;
+    // 移除Markdown加粗符号 ** 和 __
+    let cleaned = value.replace(/\*\*+/g, '').replace(/__+/g, '');
+    // 移除其他Markdown格式符号 * _ (单个)
+    cleaned = cleaned.replace(/\*(?!\*)/g, '').replace(/_(?!_)/g, '');
+    // 移除多余的空格和换行
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    // 只保留汉字、字母、数字、常用标点符号
+    cleaned = cleaned.replace(/[^\u4e00-\u9fa5a-zA-Z0-9()（）\[\]【】《》\.、,，;；:：""''""\s\-–—]/g, '');
+    return cleaned || undefined;
+  }
+
+  /**
    * 将ExtractedFields转换为ContractExtractedData
    * 支持两种字段命名约定：
    * 1. 旧格式（FieldExtractor返回）: contractNumber, contractName, partyA, partyB, signDate, amount
@@ -1412,8 +1488,9 @@ ${JSON.stringify(CONTRACT_JSON_SCHEMA, null, 2)}
       basicInfo: {
         contractNo: normalized.contractNo,
         contractName: normalized.name,
-        ourEntity: normalized.ourEntity,
-        customerName: normalized.customerName,
+        // 清理我方主体和客户名称字段，移除Markdown格式符号
+        ourEntity: this.cleanTextField(normalized.ourEntity),
+        customerName: this.cleanTextField(normalized.customerName),
         status: normalized.status || 'DRAFT',
       },
       financialInfo: {
@@ -1466,8 +1543,9 @@ ${JSON.stringify(CONTRACT_JSON_SCHEMA, null, 2)}
       basicInfo: {
         contractNo: taskData.basicInfo?.contractNo,
         contractName: taskData.basicInfo?.contractName,
-        ourEntity: taskData.basicInfo?.ourEntity,
-        customerName: taskData.basicInfo?.customerName,
+        // 清理我方主体和客户名称字段，移除Markdown格式符号
+        ourEntity: this.cleanTextField(taskData.basicInfo?.ourEntity),
+        customerName: this.cleanTextField(taskData.basicInfo?.customerName),
         status: 'DRAFT',
       },
       financialInfo: {

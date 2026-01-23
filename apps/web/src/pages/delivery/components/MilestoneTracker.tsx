@@ -274,7 +274,7 @@ const styles: Record<string, React.CSSProperties> = {
     '&:hover': {
       textDecoration: 'underline',
     },
-  },
+  } as any,
   empty: {
     padding: '24px',
     textAlign: 'center',

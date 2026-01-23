@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { LlmConfigService } from './config/llm-config.service';
 import { LlmClientService } from './llm-client.service';
@@ -21,6 +21,9 @@ import { ParseStrategyService } from './parse-strategy.service';
 import { VotingService } from './voting.service';
 import { LLMEvaluatorService } from './evaluation/llm-evaluator.service';
 import { MultiStrategyService } from './multi-strategy.service';
+import { ContractTypeDetectorService } from './contract-type-detector.service';
+import { RuleEnhancedParserService } from './rule-enhanced-parser.service';
+import { ResultValidatorService } from './result-validator.service';
 import { ParserModule } from '../parser/parser.module';
 import { DoclingModule } from '../docling/docling.module';
 import { VectorStoreModule } from '../vector-store/vector-store.module';
@@ -30,8 +33,8 @@ import { RAGModule } from '../rag/rag.module';
 @Module({
   imports: [
     ConfigModule,
-    ParserModule,
-    DoclingModule,
+    forwardRef(() => ParserModule),
+    forwardRef(() => DoclingModule),
     VectorStoreModule,
     CacheModule,
     RAGModule,
@@ -65,6 +68,12 @@ import { RAGModule } from '../rag/rag.module';
     VotingService,
     LLMEvaluatorService,
     MultiStrategyService,
+    // 合同类型检测服务
+    ContractTypeDetectorService,
+    // 规则增强解析服务
+    RuleEnhancedParserService,
+    // 结果验证与重试服务
+    ResultValidatorService,
   ],
   exports: [
     LlmConfigService,
@@ -86,6 +95,9 @@ import { RAGModule } from '../rag/rag.module';
     VotingService,
     LLMEvaluatorService,
     MultiStrategyService,
+    ContractTypeDetectorService,
+    RuleEnhancedParserService,
+    ResultValidatorService,
   ],
 })
 export class LlmParserModule {}

@@ -114,3 +114,20 @@ export interface TopicFieldValue {
   /** Field description */
   description?: string;
 }
+
+/**
+ * Topic Batch Definition
+ *
+ * 定义针对特定合同类型的主题批次配置。
+ * 不同合同类型需要提取不同的主题集合。
+ */
+export interface TopicBatch {
+  /** 合同类型 */
+  contractType: string;
+  /** 合同类型显示名称 */
+  contractTypeName: string;
+  /** 该合同类型需要提取的主题列表 */
+  topics: string[];
+  /** 批次描述 */
+  description?: string;
+}

@@ -17,14 +17,20 @@ from pathlib import Path
 
 # Try to import docling
 try:
-    from docling.document_converter import DocumentConverter
+    from docling.document_converter import DocumentConverter, FormatOption
     from docling.datamodel.base_models import InputFormat
-    from docling.datamodel.pipeline_options import PdfPipelineOptions
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, OcrEngine, RapidOcrOptions
+    from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
     from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
     DOCLING_AVAILABLE = True
 except ImportError:
     DOCLING_AVAILABLE = False
     DocumentConverter = None
+    FormatOption = None
+    StandardPdfPipeline = None
+    PyPdfiumDocumentBackend = None
+    OcrEngine = None
+    RapidOcrOptions = None
 
 
 def error_response(message: str) -> dict:
@@ -38,7 +44,12 @@ def convert_to_markdown(file_path: str, options: dict = None) -> dict:
 
     Args:
         file_path: Path to the document file
-        options: Conversion options (ocr, withTables, withImages, preserveHeaders)
+        options: Conversion options:
+            - ocr: Enable/disable OCR (default: true)
+            - ocrEngine: OCR engine - 'easyocr', 'rapidocr', 'tesseract' (default: 'rapidocr' for Chinese)
+            - withTables: Extract tables (default: true)
+            - withImages: Extract images (default: true)
+            - preserveHeaders: Enhance chapter headers (default: true)
 
     Returns:
         dict with markdown, tables, pages, images, success
@@ -49,9 +60,42 @@ def convert_to_markdown(file_path: str, options: dict = None) -> dict:
     opts = options or {}
 
     try:
-        # Create converter with default settings
-        # Docling 2.x+ handles PDFs well out of the box
-        converter = DocumentConverter()
+        # Get OCR engine preference (default to rapidocr for Chinese)
+        ocr_engine = opts.get("ocrEngine", "rapidocr")
+
+        # Configure pipeline options for Chinese OCR
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = opts.get("ocr", True)
+
+        # Configure OCR based on engine choice
+        if ocr_engine == "rapidocr":
+            # RapidOCR (基于 PaddleOCR) - 最优中文识别
+            rapid_ocr_options = RapidOcrOptions()
+            rapid_ocr_options.lang = ["chinese", "english"]  # RapidOCR uses 'chinese' not 'ch_sim'
+            rapid_ocr_options.force_full_page_ocr = True  # Force OCR for garbled text layers
+            rapid_ocr_options.bitmap_area_threshold = 0.01  # Lower threshold for more OCR
+            rapid_ocr_options.text_score = 0.5  # Confidence threshold
+            pipeline_options.ocr_options = rapid_ocr_options
+        elif ocr_engine == "easyocr":
+            # EasyOCR - 默认选项
+            pipeline_options.ocr_options.lang = ["ch_sim", "en"]
+            pipeline_options.ocr_options.force_full_page_ocr = True
+            pipeline_options.ocr_options.bitmap_area_threshold = 0.01
+        else:
+            # Use default EasyOCR for other engines
+            pipeline_options.ocr_options.lang = ["ch_sim", "en"]
+            pipeline_options.ocr_options.force_full_page_ocr = True
+            pipeline_options.ocr_options.bitmap_area_threshold = 0.01
+
+        # Create converter with OCR-enabled pipeline options using FormatOption
+        format_option = FormatOption(
+            pipeline_cls=StandardPdfPipeline,
+            backend=PyPdfiumDocumentBackend,
+            pipeline_options=pipeline_options
+        )
+        converter = DocumentConverter(format_options={
+            InputFormat.PDF: format_option
+        })
 
         # Convert document
         doc = converter.convert(Path(file_path))

@@ -252,8 +252,8 @@ export const CONTRACT_JSON_SCHEMA = {
       properties: {
         contractNo: { type: 'string', description: '合同编号' },
         contractName: { type: 'string', description: '合同名称' },
-        ourEntity: { type: 'string', description: '我方主体（乙方）' },
-        customerName: { type: 'string', description: '客户名称（甲方）' },
+        ourEntity: { type: 'string', description: '供应商/我方主体（乙方=受托方/承包方/卖方）' },
+        customerName: { type: 'string', description: '客户名称（甲方=委托方/发包方/买方）' },
         status: {
           type: 'string',
           enum: ['DRAFT', 'ACTIVE', 'PENDING_APPROVAL'],

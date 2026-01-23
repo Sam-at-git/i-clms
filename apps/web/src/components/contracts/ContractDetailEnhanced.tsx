@@ -314,7 +314,7 @@ export function ContractDetailEnhanced() {
           <div style={styles.card}>
             <h2 style={styles.cardTitle}>基本信息</h2>
             <div style={styles.fieldGrid}>
-              <Field label="我方主体" value={contract.ourEntity} />
+              <Field label="供应商" value={contract.ourEntity} />
               <Field label="所属部门" value={contract.department.name} />
               <Field label="销售负责人" value={contract.salesPerson} />
               <Field label="所属行业" value={contract.industry} />

@@ -62,3 +62,12 @@ export class ModelTestResult {
   @Field(() => Int, { nullable: true })
   latency?: number;
 }
+
+/**
+ * OCR Configuration
+ */
+@ObjectType()
+export class OCRConfig {
+  @Field(() => String)
+  engine!: 'rapidocr' | 'easyocr' | 'tesseract';
+}

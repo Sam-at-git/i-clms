@@ -3,16 +3,18 @@ import { v4 as uuidv4 } from 'uuid';
 
 /**
  * InfoType枚举 - 信息类型
+ *
+ * 值与 ExtractTopic 保持一致，用于合同类型主题批次映射
  */
 export enum InfoType {
-  BASIC_INFO = 'basic_info',           // 基本信息
-  FINANCIAL = 'financial',             // 财务信息
-  MILESTONES = 'milestones',           // 里程碑
-  RATE_ITEMS = 'rate_items',           // 人力费率
-  LINE_ITEMS = 'line_items',           // 产品清单
-  RISK_CLAUSES = 'risk_clauses',       // 风险条款
-  DELIVERABLES = 'deliverables',       // 交付物
-  TIME_INFO = 'time_info',             // 时间信息
+  BASIC_INFO = 'BASIC_INFO',           // 基本信息
+  FINANCIAL = 'FINANCIAL',             // 财务信息
+  MILESTONES = 'MILESTONES',           // 里程碑
+  RATE_ITEMS = 'RATE_ITEMS',           // 人力费率
+  LINE_ITEMS = 'LINE_ITEMS',           // 产品清单
+  RISK_CLAUSES = 'RISK_CLAUSES',       // 风险条款
+  DELIVERABLES = 'DELIVERABLES',       // 交付物
+  TIME_INFO = 'TIME_INFO',             // 时间信息
 }
 
 /**
@@ -80,6 +82,7 @@ export interface ParseSessionProgress {
   error?: string;
   extractedFieldsCount?: number; // 已提取的字段数量
   resultData?: any; // 存储解析完成后的完整结果
+  markdownContent?: string; // 文档的Markdown格式内容
 }
 
 /**
@@ -361,6 +364,12 @@ export class ParseProgressService {
     session.estimatedEndTime = Date.now();
     session.resultData = data; // 存储解析结果
 
+    // 如果data中包含markdown或rawText，也存储起来
+    if (data && typeof data === 'object') {
+      const result = data as any;
+      session.markdownContent = result.markdownContent || result.rawText || '';
+    }
+
     this.logEvent(sessionId, 'completed', { data, processingTimeMs: session.processingTimeMs });
     this.logger.log(`[ParseProgress] Session ${sessionId} completed in ${session.processingTimeMs}ms`);
   }
@@ -387,7 +396,26 @@ export class ParseProgressService {
     if (!session) return;
 
     session.resultData = resultData;
+
+    // 同时存储markdown内容
+    if (resultData && typeof resultData === 'object') {
+      session.markdownContent = resultData.markdownContent || resultData.rawText || '';
+    }
+
     this.logger.log(`[ParseProgress] Session ${sessionId} result data stored`);
+  }
+
+  /**
+   * 设置Markdown内容（用于前端预转换的场景）
+   */
+  setMarkdownContent(sessionId: string, markdown: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      this.logger.warn(`[ParseProgress] Session ${sessionId} not found for setting markdown`);
+      return;
+    }
+    session.markdownContent = markdown;
+    this.logger.log(`[ParseProgress] Set markdown content (${markdown.length} chars) for session ${sessionId}`);
   }
 
   /**
@@ -427,11 +455,18 @@ export class ParseProgressService {
 
   /**
    * 获取进度百分比
+   * 优先使用任务进度（如果有的话），否则使用分块进度
    */
   getProgressPercentage(sessionId: string): number {
     const session = this.sessions.get(sessionId);
     if (!session) return 0;
 
+    // 如果有任务进度，优先使用任务进度
+    if (session.totalTasks > 0) {
+      return Math.round((session.completedTasks / session.totalTasks) * 100);
+    }
+
+    // 否则使用分块进度
     if (session.totalChunks === 0) return 0;
     return Math.round((session.completedChunks / session.totalChunks) * 100);
   }

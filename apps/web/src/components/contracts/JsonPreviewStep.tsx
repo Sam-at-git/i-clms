@@ -42,7 +42,7 @@ const FIELD_LABELS: Record<string, string> = {
   // 基本信息
   contractNo: '合同编号',
   contractName: '合同名称',
-  ourEntity: '我方主体',
+  ourEntity: '供应商',
   customerName: '客户名称',
   status: '合同状态',
   // 财务信息
@@ -708,8 +708,8 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '6px',
     fontSize: '13px',
     marginTop: '8px',
-    firstChild: { marginTop: 0 },
-  },
+    '&:first-child': { marginTop: 0 },
+  } as any,
   jsonSection: {
     padding: '20px 24px',
     borderBottom: '1px solid #e5e7eb',

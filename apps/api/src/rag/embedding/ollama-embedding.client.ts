@@ -18,11 +18,26 @@ export class OllamaEmbeddingClient implements EmbeddingClient {
   private readonly timeout: number;
 
   constructor(config: EmbeddingModelConfig, configService: ConfigService) {
-    this.baseUrl =
-      config.baseUrl || configService.get('OLLAMA_EMBEDDING_BASE_URL') || 'http://localhost:11434';
+    // Normalize baseUrl: remove /v1 suffix since OllamaEmbeddingClient uses native API (/api/*)
+    // The /v1 suffix is needed for OpenAI-compatible endpoints, but not for native Ollama API
+    this.baseUrl = this.normalizeBaseUrl(
+      config.baseUrl || configService.get('OLLAMA_EMBEDDING_BASE_URL') || 'http://localhost:11434',
+    );
     this.model = config.model;
     this.dimensions = config.dimensions;
     this.timeout = configService.get('LLM_TIMEOUT') || 120000;
+  }
+
+  /**
+   * Normalize baseUrl by removing /v1 suffix
+   * OllamaEmbeddingClient uses native Ollama API (/api/embeddings, /api/tags)
+   * which doesn't require the /v1 prefix used by OpenAI-compatible endpoints
+   */
+  private normalizeBaseUrl(url: string): string {
+    if (!url) return url;
+    const trimmed = url.trim();
+    // Remove trailing /v1 or /v1/ to use native Ollama API
+    return trimmed.replace(/\/v1\/?$/, '').replace(/\/$/, '');
   }
 
   /**

@@ -280,7 +280,7 @@ const styles: Record<string, React.CSSProperties> = {
       left: 0,
       color: '#3b82f6',
     },
-  },
+  } as any,
   loading: {
     display: 'flex',
     alignItems: 'center',
@@ -300,7 +300,7 @@ const styles: Record<string, React.CSSProperties> = {
       from: { transform: 'rotate(0deg)' },
       to: { transform: 'rotate(360deg)' },
     },
-  },
+  } as any,
   error: {
     padding: '16px',
     backgroundColor: '#fef2f2',
