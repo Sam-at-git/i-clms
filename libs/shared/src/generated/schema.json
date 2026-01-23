@@ -13705,8 +13705,20 @@
           },
           {
             "name": "detectContractType",
-            "description": "从Markdown内容中检测合同类型",
+            "description": "从Markdown内容或文件名中检测合同类型",
             "args": [
+              {
+                "name": "fileName",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null,
+                "isDeprecated": false,
+                "deprecationReason": null
+              },
               {
                 "name": "markdown",
                 "description": null,

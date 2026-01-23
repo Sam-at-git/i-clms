@@ -1499,7 +1499,7 @@ export type Mutation = {
   deleteLegalClause: ContractLegalClause;
   /** Delete a tag (soft delete) */
   deleteTag: TagDeleteResult;
-  /** 从Markdown内容中检测合同类型 */
+  /** 从Markdown内容或文件名中检测合同类型 */
   detectContractType: ContractTypeDetectionResult;
   /** 导出合同列表 */
   exportContracts: ExportResult;
@@ -1751,6 +1751,7 @@ export type MutationDeleteTagArgs = {
 
 
 export type MutationDetectContractTypeArgs = {
+  fileName?: InputMaybe<Scalars['String']['input']>;
   markdown: Scalars['String']['input'];
 };
 
@@ -3932,6 +3933,13 @@ export type GetCustomerListQueryVariables = Exact<{
 
 export type GetCustomerListQuery = { __typename?: 'Query', customers: { __typename?: 'PaginatedCustomers', total: number, hasMore: boolean, items: Array<{ __typename?: 'Customer', id: string, name: string, shortName?: string | null, creditCode?: string | null, industry?: string | null, status: CustomerStatus, contactPerson?: string | null, contactPhone?: string | null, contactEmail?: string | null, address?: string | null, createdAt: string, updatedAt: string }> } };
 
+export type DeleteCustomerMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteCustomerMutation = { __typename?: 'Mutation', deleteCustomer: { __typename?: 'Customer', id: string, name: string } };
+
 export type GetContractsWithFilterQueryVariables = Exact<{
   filter?: InputMaybe<ContractFilterInput>;
   skip?: InputMaybe<Scalars['Int']['input']>;
@@ -4025,13 +4033,6 @@ export type UpdateCustomerMutationVariables = Exact<{
 
 
 export type UpdateCustomerMutation = { __typename?: 'Mutation', updateCustomer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, status: CustomerStatus } };
-
-export type DeleteCustomerMutationVariables = Exact<{
-  id: Scalars['ID']['input'];
-}>;
-
-
-export type DeleteCustomerMutation = { __typename?: 'Mutation', deleteCustomer: { __typename?: 'Customer', id: string, name: string } };
 
 export type AddCustomerContactMutationVariables = Exact<{
   customerId: Scalars['ID']['input'];
@@ -5360,6 +5361,22 @@ export type GetCustomerListQueryHookResult = ReturnType<typeof useGetCustomerLis
 export type GetCustomerListLazyQueryHookResult = ReturnType<typeof useGetCustomerListLazyQuery>;
 export type GetCustomerListSuspenseQueryHookResult = ReturnType<typeof useGetCustomerListSuspenseQuery>;
 export type GetCustomerListQueryResult = ApolloReactCommon.QueryResult<GetCustomerListQuery, GetCustomerListQueryVariables>;
+export const DeleteCustomerDocument = gql`
+    mutation DeleteCustomer($id: ID!) {
+  deleteCustomer(id: $id) {
+    id
+    name
+  }
+}
+    `;
+export type DeleteCustomerMutationFn = ApolloReactCommon.MutationFunction<DeleteCustomerMutation, DeleteCustomerMutationVariables>;
+export function useDeleteCustomerMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<DeleteCustomerMutation, DeleteCustomerMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<DeleteCustomerMutation, DeleteCustomerMutationVariables>(DeleteCustomerDocument, options);
+      }
+export type DeleteCustomerMutationHookResult = ReturnType<typeof useDeleteCustomerMutation>;
+export type DeleteCustomerMutationResult = ApolloReactCommon.MutationResult<DeleteCustomerMutation>;
+export type DeleteCustomerMutationOptions = ApolloReactCommon.BaseMutationOptions<DeleteCustomerMutation, DeleteCustomerMutationVariables>;
 export const GetContractsWithFilterDocument = gql`
     query GetContractsWithFilter($filter: ContractFilterInput, $skip: Int, $take: Int, $orderBy: ContractOrderInput) {
   contracts(filter: $filter, skip: $skip, take: $take, orderBy: $orderBy) {
@@ -5742,22 +5759,6 @@ export function useUpdateCustomerMutation(baseOptions?: ApolloReactHooks.Mutatio
 export type UpdateCustomerMutationHookResult = ReturnType<typeof useUpdateCustomerMutation>;
 export type UpdateCustomerMutationResult = ApolloReactCommon.MutationResult<UpdateCustomerMutation>;
 export type UpdateCustomerMutationOptions = ApolloReactCommon.BaseMutationOptions<UpdateCustomerMutation, UpdateCustomerMutationVariables>;
-export const DeleteCustomerDocument = gql`
-    mutation DeleteCustomer($id: ID!) {
-  deleteCustomer(id: $id) {
-    id
-    name
-  }
-}
-    `;
-export type DeleteCustomerMutationFn = ApolloReactCommon.MutationFunction<DeleteCustomerMutation, DeleteCustomerMutationVariables>;
-export function useDeleteCustomerMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<DeleteCustomerMutation, DeleteCustomerMutationVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return ApolloReactHooks.useMutation<DeleteCustomerMutation, DeleteCustomerMutationVariables>(DeleteCustomerDocument, options);
-      }
-export type DeleteCustomerMutationHookResult = ReturnType<typeof useDeleteCustomerMutation>;
-export type DeleteCustomerMutationResult = ApolloReactCommon.MutationResult<DeleteCustomerMutation>;
-export type DeleteCustomerMutationOptions = ApolloReactCommon.BaseMutationOptions<DeleteCustomerMutation, DeleteCustomerMutationVariables>;
 export const AddCustomerContactDocument = gql`
     mutation AddCustomerContact($customerId: ID!, $input: CreateContactInput!) {
   addCustomerContact(customerId: $customerId, input: $input) {
