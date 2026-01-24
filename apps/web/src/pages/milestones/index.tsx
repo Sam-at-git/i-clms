@@ -73,14 +73,17 @@ export function MilestonesPage() {
   };
 
   // Placeholder functions for milestone actions
+  // GitHub Issue: Implement milestone status update and accept mutations
+  // Backend mutations (updateMilestoneStatus, acceptMilestone) exist in DeliveryService
+  // These handlers should use useUpdateMilestoneStatusMutation and useAcceptMilestoneMutation
   const handleStatusUpdate = async (_id: string, _status: GraphqlMilestoneStatus, _notes?: string) => {
-    // TODO: Implement when mutations are added back
-    console.log('Status update not implemented yet');
+    // Placeholder: Backend mutations need to be wired up via graphql-codegen
+    alert('里程碑状态更新功能开发中');
   };
 
   const handleAcceptMilestone = async (_id: string, _notes?: string) => {
-    // TODO: Implement when mutations are added back
-    console.log('Accept milestone not implemented yet');
+    // Placeholder: Backend mutations need to be wired up via graphql-codegen
+    alert('里程碑验收功能开发中');
   };
 
   const milestones: Milestone[] = (data as any)?.projectMilestones || [];

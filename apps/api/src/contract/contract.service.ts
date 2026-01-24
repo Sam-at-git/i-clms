@@ -213,6 +213,7 @@ export class ContractService {
         industry: input.industry,
         uploadedById: input.uploadedById,
         parentContractId: input.parentContractId,
+        markdownText: input.markdownText, // 保存markdown文本用于向量化
       },
       include: {
         customer: true,
@@ -487,6 +488,7 @@ export class ContractService {
     if (input.salesPerson !== undefined)
       updateData.salesPerson = input.salesPerson;
     if (input.industry !== undefined) updateData.industry = input.industry;
+    if (input.markdownText !== undefined) updateData.markdownText = input.markdownText;
     if (input.parseStatus !== undefined)
       updateData.parseStatus = input.parseStatus;
     if (input.parsedAt !== undefined) updateData.parsedAt = input.parsedAt;

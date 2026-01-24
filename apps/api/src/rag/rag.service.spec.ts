@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { SemanticChunkerService } from '../llm-parser/semantic-chunker.service';
 import { VectorStoreService } from '../vector-store/vector-store.service';
 import { TopicRegistryService } from '../llm-parser/topics/topic-registry.service';
+import { PrismaService } from '../prisma';
 import { EmbeddingProvider } from './dto/embedding-config.dto';
 
 describe('RAGService', () => {
@@ -32,6 +33,11 @@ describe('RAGService', () => {
     getTopicNames: jest.fn(),
   };
 
+  const mockPrisma = {
+    $queryRaw: jest.fn(),
+    $executeRaw: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -51,6 +57,10 @@ describe('RAGService', () => {
         {
           provide: TopicRegistryService,
           useValue: mockTopicRegistry,
+        },
+        {
+          provide: PrismaService,
+          useValue: mockPrisma,
         },
       ],
     }).compile();
@@ -96,7 +106,7 @@ describe('RAGService', () => {
     it('should throw error when embedding client is not available', async () => {
       mockChunker.chunkBySemanticStructure.mockReturnValue([]);
 
-      await expect(service.indexContract(1, 'test content')).rejects.toThrow(
+      await expect(service.indexContract('1', 'test content')).rejects.toThrow(
         'Embedding client not available',
       );
     });
@@ -104,7 +114,7 @@ describe('RAGService', () => {
 
   describe('extractByTopic', () => {
     it('should throw error when embedding client is not available', async () => {
-      await expect(service.extractByTopic(1, [{ topic: 'BASIC_INFO', query: 'test' }])).rejects.toThrow(
+      await expect(service.extractByTopic('1', [{ topic: 'BASIC_INFO', query: 'test' }])).rejects.toThrow(
         'Embedding client not available',
       );
     });

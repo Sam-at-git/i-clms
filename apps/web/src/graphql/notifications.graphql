@@ -1,0 +1,76 @@
+query GetNotifications($unreadOnly: Boolean, $type: String, $limit: Int, $offset: Int) {
+  notifications(unreadOnly: $unreadOnly, type: $type, limit: $limit, offset: $offset) {
+    items {
+      id
+      type
+      priority
+      title
+      message
+      link
+      readAt
+      createdAt
+      expiresAt
+      metadata
+    }
+    total
+  }
+}
+
+query GetNotificationCount {
+  notificationCount
+}
+
+query GetNotificationPreferences {
+  notificationPreferences {
+    id
+    userId
+    enableInApp
+    enableEmail
+    enableSms
+    contractExpiry
+    paymentOverdue
+    contractApproval
+    milestoneDue
+    riskAlert
+    systemAnnouncement
+    mention
+    taskAssigned
+    documentShared
+    quietHoursStart
+    quietHoursEnd
+  }
+}
+
+mutation MarkNotificationRead($id: ID!) {
+  markNotificationRead(id: $id) {
+    id
+    readAt
+  }
+}
+
+mutation MarkAllNotificationsRead {
+  markAllNotificationsRead {
+    success
+  }
+}
+
+mutation ArchiveNotification($id: ID!) {
+  archiveNotification(id: $id) {
+    id
+  }
+}
+
+mutation DeleteNotification($id: ID!) {
+  deleteNotification(id: $id) {
+    success
+  }
+}
+
+mutation UpdateNotificationPreferences($input: UpdateNotificationPreferencesInput!) {
+  updateNotificationPreferences(input: $input) {
+    id
+    enableInApp
+    enableEmail
+    enableSms
+  }
+}

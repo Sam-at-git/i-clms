@@ -11,6 +11,7 @@ import { StorageModule } from '../storage';
 import { ParserModule } from '../parser';
 import { LlmParserModule } from '../llm-parser/llm-parser.module';
 import { ContractModule } from '../contract';
+import { ContractTemplateModule } from '../contract-template/contract-template.module';
 import { AuthModule } from '../auth';
 import { FinanceModule } from '../finance';
 import { DeliveryModule } from '../delivery';
@@ -35,6 +36,8 @@ import { DoclingModule } from '../docling/docling.module';
 import { RAGModule } from '../rag/rag.module';
 import { LegalClausesModule } from '../legal-clauses/legal-clauses.module';
 import { DataProtectionModule } from '../data-protection/data-protection.module';
+import { NotificationModule } from '../notification/notification.module';
+import { BackupModule } from '../backup/backup.module';
 
 @Module({
   imports: [
@@ -57,6 +60,7 @@ import { DataProtectionModule } from '../data-protection/data-protection.module'
     ParserModule,
     LlmParserModule,
     ContractModule,
+    // ContractTemplateModule, // TODO: Fix return type definitions for queries
     AuthModule,
     FinanceModule,
     DeliveryModule,
@@ -80,6 +84,8 @@ import { DataProtectionModule } from '../data-protection/data-protection.module'
     RAGModule,
     LegalClausesModule,
     DataProtectionModule,
+    NotificationModule,
+    BackupModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar, JSONScalar],

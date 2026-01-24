@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { useParams, Link } from 'react-router-dom';
-import { GetContractWithTagsQuery } from '@i-clms/shared/generated/graphql';
+import { GetContractWithTagsQuery, useVectorizeContractMutation } from '@i-clms/shared/generated/graphql';
 import { ContractEdit } from './ContractEdit';
 import { ContractDelete } from './ContractDelete';
 import { ContractTags } from './ContractTags';
@@ -42,6 +42,10 @@ const GET_CONTRACT = gql`
       parsedAt
       parseConfidence
       needsManualReview
+      isVectorized
+      vectorizedAt
+      vectorizationMethod
+      chunkCount
       createdAt
       updatedAt
       tags {
@@ -160,6 +164,10 @@ interface Contract {
   parsedAt: string | null;
   parseConfidence: number | null;
   needsManualReview: boolean;
+  isVectorized: boolean;
+  vectorizedAt: string | null;
+  vectorizationMethod: string | null;
+  chunkCount: number | null;
   createdAt: string;
   updatedAt: string;
   tags: Array<{
@@ -231,6 +239,20 @@ export function ContractDetailEnhanced() {
     skip: !id,
   });
 
+  const [vectorizeContract, { loading: vectorizing }] = useVectorizeContractMutation({
+    onCompleted: (data) => {
+      if (data.vectorizeContract?.success) {
+        alert(`向量化成功！创建了 ${data.vectorizeContract.chunkCount} 个分块`);
+        refetch(); // 刷新合同详情以显示向量化状态
+      } else {
+        alert(`向量化失败: ${data.vectorizeContract?.message || '未知错误'}`);
+      }
+    },
+    onError: (error) => {
+      alert(`向量化出错: ${error.message}`);
+    },
+  });
+
   if (loading) return <div style={styles.loading}>加载中...</div>;
   if (error) return <div style={styles.error}>错误: {error.message}</div>;
   if (!data?.contract) return <div style={styles.notFound}>合同不存在</div>;
@@ -255,6 +277,14 @@ export function ContractDetailEnhanced() {
   const formatDateTime = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleString('zh-CN');
+  };
+
+  const handleVectorize = async (contractId: string) => {
+    if (vectorizing) return;
+    const confirmed = window.confirm('确定要对合同执行向量化吗？');
+    if (confirmed) {
+      await vectorizeContract({ variables: { id: contractId, method: 'MANUAL' } });
+    }
   };
 
   return (
@@ -395,6 +425,42 @@ export function ContractDetailEnhanced() {
                 value={contract.needsManualReview ? '是' : '否'}
               />
             </div>
+          </div>
+
+          {/* Vectorization Status */}
+          <div style={styles.card}>
+            <h2 style={styles.cardTitle}>向量化状态</h2>
+            {contract.isVectorized ? (
+              <div style={styles.fieldGrid}>
+                <div style={styles.vectorizedStatusBadge}>
+                  ✅ 已向量化
+                </div>
+                <Field
+                  label="向量化方式"
+                  value={contract.vectorizationMethod === 'AUTO' ? '自动（RAG解析时）' : '手动触发'}
+                />
+                <Field label="向量化时间" value={formatDateTime(contract.vectorizedAt)} />
+                <Field label="分块数量" value={contract.chunkCount?.toString() || '0'} />
+              </div>
+            ) : (
+              <div style={styles.fieldGrid}>
+                <div style={styles.unvectorizedStatusBadge}>
+                  ⚪ 未向量化
+                </div>
+                <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
+                  <button
+                    onClick={() => handleVectorize(contract.id)}
+                    disabled={vectorizing}
+                    style={{
+                      ...styles.vectorizeButton,
+                      ...(vectorizing ? styles.vectorizeButtonDisabled : {}),
+                    }}
+                  >
+                    {vectorizing ? '向量化中...' : '执行向量化'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Legal Clauses */}
@@ -616,5 +682,50 @@ const fieldStyles: Record<string, React.CSSProperties> = {
     margin: 0,
   },
 };
+
+// 向量化状态样式
+const vectorizedStatusBadge: React.CSSProperties = {
+  display: 'inline-block',
+  padding: '4px 12px',
+  borderRadius: '6px',
+  backgroundColor: '#dcfce7',
+  color: '#166534',
+  fontSize: '14px',
+  fontWeight: 500,
+};
+
+const unvectorizedStatusBadge: React.CSSProperties = {
+  display: 'inline-block',
+  padding: '4px 12px',
+  borderRadius: '6px',
+  backgroundColor: '#f3f4f6',
+  color: '#6b7280',
+  fontSize: '14px',
+  fontWeight: 500,
+};
+
+const vectorizeButton: React.CSSProperties = {
+  padding: '8px 16px',
+  fontSize: '14px',
+  color: '#3b82f6',
+  backgroundColor: '#eff6ff',
+  border: '1px solid #3b82f6',
+  borderRadius: '6px',
+  cursor: 'pointer',
+  transition: 'background 0.2s',
+};
+
+const vectorizeButtonDisabled: React.CSSProperties = {
+  opacity: 0.6,
+  cursor: 'not-allowed',
+};
+
+// 将样式添加到styles对象中
+Object.assign(styles, {
+  vectorizedStatusBadge,
+  unvectorizedStatusBadge,
+  vectorizeButton,
+  vectorizeButtonDisabled,
+});
 
 export default ContractDetailEnhanced;

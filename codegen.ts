@@ -3,7 +3,9 @@ import type { CodegenConfig } from '@graphql-codegen/cli';
 // For local development, fetch from running API or use source schema (JSON introspection)
 // For CI/CD, use: schema: 'apps/api/src/schema.gql' after building API
 const config: CodegenConfig = {
-  schema: process.env.CI ? 'json:apps/api/src/schema.gql' : 'http://localhost:3000/graphql',
+  schema: process.env.CI
+    ? './libs/shared/src/generated/schema.json'
+    : 'http://localhost:3000/graphql',
   documents: [
     'apps/web/src/**/*.graphql',
     'apps/web/src/**/*.tsx',
@@ -13,6 +15,7 @@ const config: CodegenConfig = {
     '!apps/web/src/components/tags/TagRecommendation.tsx',
     '!apps/web/src/components/tags/TagSelector.tsx',
     '!apps/web/src/components/tags/TagStats.tsx',
+    '!apps/web/src/components/contracts/BatchActions.tsx',
     '!apps/web/src/pages/forgot-password.tsx',
     '!apps/web/src/pages/settings/profile.tsx',
   ],

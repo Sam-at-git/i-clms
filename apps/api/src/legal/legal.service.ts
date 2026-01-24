@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ClauseCheck,
@@ -12,6 +12,16 @@ import {
   RiskOverview,
 } from './dto/risk-score.dto';
 import { Evidence, EvidenceChain } from './dto/evidence-chain.dto';
+import {
+  LegalReview,
+  PaginatedLegalReviews,
+  CreateLegalReviewInput,
+  UpdateLegalReviewInput,
+  LegalReviewFilterInput,
+  LegalReviewPaginationInput,
+  ReviewStatus,
+  LegalRiskLevel,
+} from './dto/legal-review.dto';
 
 // Type for Prisma Decimal values
 type DecimalValue = { toString(): string } | null | undefined;
@@ -471,5 +481,337 @@ export class LegalService {
   private decimalToNumber(value: DecimalValue): number {
     if (!value) return 0;
     return Number(value.toString());
+  }
+
+  private readonly logger = new Logger(LegalService.name);
+
+  // ================================
+  // Legal Review CRUD
+  // ================================
+
+  /**
+   * Get paginated legal reviews with optional filtering
+   */
+  async legalReviews(
+    pagination?: LegalReviewPaginationInput
+  ): Promise<PaginatedLegalReviews> {
+    const {
+      filter,
+      page = 1,
+      pageSize = 20,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = pagination || {};
+
+    const where = this.buildLegalReviewFilter(filter);
+
+    const [items, total] = await Promise.all([
+      this.prisma.legalReview.findMany({
+        where,
+        include: {
+          contract: {
+            select: {
+              id: true,
+              contractNo: true,
+              name: true,
+            },
+          },
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.legalReview.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => ({
+        ...item,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        reviewedAt: item.reviewedAt,
+      })) as unknown as LegalReview[],
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  /**
+   * Get a single legal review by ID
+   */
+  async legalReview(id: string): Promise<LegalReview> {
+    const review = await this.prisma.legalReview.findUnique({
+      where: { id },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+        reviewer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!review) {
+      throw new NotFoundException(`Legal review with ID ${id} not found`);
+    }
+
+    return {
+      ...review,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+      reviewedAt: review.reviewedAt,
+    } as unknown as LegalReview;
+  }
+
+  /**
+   * Get pending reviews for a department or all
+   */
+  async pendingReviews(departmentId?: string): Promise<LegalReview[]> {
+    const where: Record<string, unknown> = {
+      status: { in: [ReviewStatus.DRAFT, ReviewStatus.IN_PROGRESS] },
+    };
+
+    if (departmentId) {
+      // Filter by department through contract relation
+      where.contract = {
+        departmentId,
+      };
+    }
+
+    const reviews = await this.prisma.legalReview.findMany({
+      where,
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+        reviewer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return reviews.map((item) => ({
+      ...item,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      reviewedAt: item.reviewedAt,
+    })) as unknown as LegalReview[];
+  }
+
+  /**
+   * Create a new legal review
+   */
+  async createLegalReview(
+    input: CreateLegalReviewInput
+  ): Promise<LegalReview> {
+    // Verify contract exists
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: input.contractId },
+    });
+
+    if (!contract) {
+      throw new NotFoundException(`Contract with ID ${input.contractId} not found`);
+    }
+
+    // Verify reviewer exists
+    const reviewer = await this.prisma.user.findUnique({
+      where: { id: input.reviewerId },
+    });
+
+    if (!reviewer) {
+      throw new NotFoundException(`User with ID ${input.reviewerId} not found`);
+    }
+
+    const review = await this.prisma.legalReview.create({
+      data: {
+        contractId: input.contractId,
+        reviewerId: input.reviewerId,
+        riskLevel: input.riskLevel,
+        findings: input.findings ? JSON.parse(input.findings) : {},
+        recommendations: input.recommendations,
+        status: input.status || ReviewStatus.DRAFT,
+      },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+        reviewer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Created legal review ${review.id} for contract ${input.contractId}`);
+
+    return {
+      ...review,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+      reviewedAt: review.reviewedAt,
+    } as unknown as LegalReview;
+  }
+
+  /**
+   * Update an existing legal review
+   */
+  async updateLegalReview(
+    id: string,
+    input: UpdateLegalReviewInput
+  ): Promise<LegalReview> {
+    // Check if review exists
+    const existing = await this.prisma.legalReview.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Legal review with ID ${id} not found`);
+    }
+
+    const updateData: Record<string, unknown> = {};
+
+    if (input.status !== undefined) updateData.status = input.status;
+    if (input.riskLevel !== undefined) updateData.riskLevel = input.riskLevel;
+    if (input.findings !== undefined) updateData.findings = JSON.parse(input.findings);
+    if (input.recommendations !== undefined) updateData.recommendations = input.recommendations;
+    if (input.reviewedAt !== undefined) updateData.reviewedAt = new Date(input.reviewedAt);
+
+    const review = await this.prisma.legalReview.update({
+      where: { id },
+      data: updateData,
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+        reviewer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Updated legal review ${id}`);
+
+    return {
+      ...review,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+      reviewedAt: review.reviewedAt,
+    } as unknown as LegalReview;
+  }
+
+  /**
+   * Submit a legal review for approval
+   */
+  async submitLegalReview(id: string): Promise<LegalReview> {
+    const review = await this.prisma.legalReview.update({
+      where: { id },
+      data: {
+        status: ReviewStatus.SUBMITTED,
+      },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+        reviewer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Submitted legal review ${id}`);
+
+    return {
+      ...review,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+      reviewedAt: review.reviewedAt,
+    } as unknown as LegalReview;
+  }
+
+  /**
+   * Build filter for legal reviews
+   */
+  private buildLegalReviewFilter(filter?: LegalReviewFilterInput): Record<string, unknown> {
+    if (!filter) return {};
+
+    const where: Record<string, unknown> = {};
+
+    if (filter.contractId) {
+      where.contractId = filter.contractId;
+    }
+
+    if (filter.status) {
+      where.status = filter.status;
+    }
+
+    if (filter.riskLevel) {
+      where.riskLevel = filter.riskLevel;
+    }
+
+    if (filter.reviewerId) {
+      where.reviewerId = filter.reviewerId;
+    }
+
+    if (filter.startDate || filter.endDate) {
+      where.createdAt = {};
+      if (filter.startDate) {
+        (where.createdAt as Record<string, Date>).gte = new Date(filter.startDate);
+      }
+      if (filter.endDate) {
+        (where.createdAt as Record<string, Date>).lte = new Date(filter.endDate);
+      }
+    }
+
+    return where;
   }
 }

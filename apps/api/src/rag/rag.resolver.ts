@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, Int, ID } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { GqlAuthGuard } from '../auth/guards/gql-auth.guard';
 import { RAGService } from './rag.service';
@@ -11,6 +11,7 @@ import {
 import { TopicQueryDto } from './dto/rag-options.dto';
 import { EMBEDDING_MODELS, EmbeddingProvider, EmbeddingModelConfig } from './dto/embedding-config.dto';
 import { GraphQLJSONObject } from 'graphql-scalars';
+import { RAGQuestionAnswerResult } from './dto/rag-qa.dto';
 
 @Resolver()
 export class RAGResolver {
@@ -58,7 +59,7 @@ export class RAGResolver {
     description: 'Get all chunks for a contract',
   })
   @UseGuards(GqlAuthGuard)
-  async contractChunks(@Args('contractId', { type: () => Number }) contractId: number): Promise<
+  async contractChunks(@Args('contractId', { type: () => ID }) contractId: string): Promise<
     RAGContractChunk[]
   > {
     // This would be implemented by VectorStoreService
@@ -70,7 +71,7 @@ export class RAGResolver {
   })
   @UseGuards(GqlAuthGuard)
   async indexContract(
-    @Args('contractId', { type: () => Number }) contractId: number,
+    @Args('contractId', { type: () => ID }) contractId: string,
     @Args('content', { type: () => String }) content: string,
   ): Promise<boolean> {
     try {
@@ -86,7 +87,7 @@ export class RAGResolver {
   })
   @UseGuards(GqlAuthGuard)
   async extractWithRAG(
-    @Args('contractId', { type: () => Number }) contractId: number,
+    @Args('contractId', { type: () => ID }) contractId: string,
     @Args('queries', { type: () => [TopicQueryDto] }) queries: TopicQueryDto[],
   ): Promise<RAGExtractResult[]> {
     const results = await this.rag.extractByTopic(
@@ -103,5 +104,17 @@ export class RAGResolver {
       })),
       extractedData: r.extractedData,
     }));
+  }
+
+  @Query(() => [RAGQuestionAnswerResult], {
+    description: 'RAG Question Answer - search contracts by natural language question',
+  })
+  @UseGuards(GqlAuthGuard)
+  async ragQuestionAnswer(
+    @Args('question') question: string,
+    @Args('limit', { type: () => Int, nullable: true, defaultValue: 10 }) limit?: number,
+    @Args('threshold', { type: () => Number, nullable: true, defaultValue: 0.5 }) threshold?: number,
+  ): Promise<RAGQuestionAnswerResult[]> {
+    return this.rag.questionAnswer(question, limit || 10, threshold || 0.5);
   }
 }

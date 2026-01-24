@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   RiskAssessment,
@@ -6,6 +6,20 @@ import {
   RiskAlert,
   RiskFactorDetail,
 } from './dto/risk-engine.dto';
+import {
+  RiskAlertModel,
+  PaginatedRiskAlerts,
+  CreateRiskAlertInput,
+  UpdateRiskAlertInput,
+  RiskAlertFilterInput,
+  RiskAlertPaginationInput,
+  RiskAssessmentHistory,
+  PaginatedRiskAssessments,
+  SaveRiskAssessmentInput,
+  RiskAlertType,
+  RiskSeverity,
+  AlertStatus,
+} from './dto/risk-alert.dto';
 
 type DecimalValue = { toString(): string } | null | undefined;
 
@@ -219,5 +233,411 @@ export class RiskEngineService {
   private decimalToNumber(value: DecimalValue): number {
     if (!value) return 0;
     return Number(value.toString());
+  }
+
+  private readonly logger = new Logger(RiskEngineService.name);
+
+  // ================================
+  // Risk Alert CRUD
+  // ================================
+
+  /**
+   * Get paginated risk alerts with optional filtering
+   */
+  async riskAlerts(
+    pagination?: RiskAlertPaginationInput
+  ): Promise<PaginatedRiskAlerts> {
+    const {
+      filter,
+      page = 1,
+      pageSize = 20,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = pagination || {};
+
+    const where = this.buildRiskAlertFilter(filter);
+
+    const [items, total] = await Promise.all([
+      this.prisma.riskAlert.findMany({
+        where,
+        include: {
+          contract: {
+            select: {
+              id: true,
+              contractNo: true,
+              name: true,
+            },
+          },
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.riskAlert.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => ({
+        ...item,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        dismissedAt: item.dismissedAt,
+      })) as unknown as RiskAlertModel[],
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  /**
+   * Get active alerts by severity
+   */
+  async getActiveAlerts(severity?: RiskSeverity): Promise<RiskAlertModel[]> {
+    const where: Record<string, unknown> = {
+      status: AlertStatus.ACTIVE,
+    };
+
+    if (severity) {
+      where.severity = severity;
+    }
+
+    const alerts = await this.prisma.riskAlert.findMany({
+      where,
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return alerts.map((item) => ({
+      ...item,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      dismissedAt: item.dismissedAt,
+    })) as unknown as RiskAlertModel[];
+  }
+
+  /**
+   * Get alert history for a contract
+   */
+  async getAlertHistory(contractId: string): Promise<RiskAlertModel[]> {
+    const alerts = await this.prisma.riskAlert.findMany({
+      where: { contractId },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return alerts.map((item) => ({
+      ...item,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      dismissedAt: item.dismissedAt,
+    })) as unknown as RiskAlertModel[];
+  }
+
+  /**
+   * Create a new risk alert
+   */
+  async createAlert(
+    input: CreateRiskAlertInput,
+    userId?: string
+  ): Promise<RiskAlertModel> {
+    // Verify contract exists
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: input.contractId },
+    });
+
+    if (!contract) {
+      throw new NotFoundException(`Contract with ID ${input.contractId} not found`);
+    }
+
+    const alert = await this.prisma.riskAlert.create({
+      data: {
+        contractId: input.contractId,
+        type: input.type,
+        severity: input.severity,
+        title: input.title,
+        description: input.description,
+        status: AlertStatus.ACTIVE,
+      },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Created risk alert ${alert.id} for contract ${input.contractId}`);
+
+    return {
+      ...alert,
+      createdAt: alert.createdAt,
+      updatedAt: alert.updatedAt,
+      dismissedAt: alert.dismissedAt,
+    } as unknown as RiskAlertModel;
+  }
+
+  /**
+   * Update an existing risk alert
+   */
+  async updateAlert(
+    id: string,
+    input: UpdateRiskAlertInput
+  ): Promise<RiskAlertModel> {
+    // Check if alert exists
+    const existing = await this.prisma.riskAlert.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Risk alert with ID ${id} not found`);
+    }
+
+    const updateData: Record<string, unknown> = {};
+
+    if (input.severity !== undefined) updateData.severity = input.severity;
+    if (input.status !== undefined) updateData.status = input.status;
+    if (input.title !== undefined) updateData.title = input.title;
+    if (input.description !== undefined) updateData.description = input.description;
+
+    // If status is being changed to resolved or dismissed, set dismissedAt
+    if (input.status === AlertStatus.RESOLVED || input.status === AlertStatus.DISMISSED) {
+      if (existing.status === AlertStatus.ACTIVE) {
+        updateData.dismissedAt = new Date();
+      }
+    }
+
+    const alert = await this.prisma.riskAlert.update({
+      where: { id },
+      data: updateData,
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Updated risk alert ${id}`);
+
+    return {
+      ...alert,
+      createdAt: alert.createdAt,
+      updatedAt: alert.updatedAt,
+      dismissedAt: alert.dismissedAt,
+    } as unknown as RiskAlertModel;
+  }
+
+  /**
+   * Dismiss a risk alert with optional reason
+   */
+  async dismissAlert(
+    id: string,
+    userId?: string
+  ): Promise<RiskAlertModel> {
+    const alert = await this.prisma.riskAlert.update({
+      where: { id },
+      data: {
+        status: AlertStatus.DISMISSED,
+        dismissedAt: new Date(),
+        dismissedBy: userId,
+      },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Dismissed risk alert ${id}`);
+
+    return {
+      ...alert,
+      createdAt: alert.createdAt,
+      updatedAt: alert.updatedAt,
+      dismissedAt: alert.dismissedAt,
+    } as unknown as RiskAlertModel;
+  }
+
+  // ================================
+  // Risk Assessment History
+  // ================================
+
+  /**
+   * Save a risk assessment result to history
+   */
+  async saveRiskAssessment(
+    input: SaveRiskAssessmentInput
+  ): Promise<RiskAssessmentHistory> {
+    // Verify contract exists
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: input.contractId },
+    });
+
+    if (!contract) {
+      throw new NotFoundException(`Contract with ID ${input.contractId} not found`);
+    }
+
+    const assessment = await this.prisma.riskAssessment.create({
+      data: {
+        contractId: input.contractId,
+        totalScore: input.totalScore,
+        riskLevel: input.riskLevel,
+        factors: JSON.parse(input.factors),
+        recommendations: input.recommendations ? JSON.parse(input.recommendations) : null,
+        assessedBy: input.assessedBy,
+      },
+    });
+
+    this.logger.log(`Saved risk assessment for contract ${input.contractId}`);
+
+    return {
+      ...assessment,
+      assessedAt: assessment.assessedAt,
+    } as unknown as RiskAssessmentHistory;
+  }
+
+  /**
+   * Get risk assessment history for a contract
+   */
+  async riskAssessmentHistory(
+    contractId: string,
+    page = 1,
+    pageSize = 20
+  ): Promise<PaginatedRiskAssessments> {
+    const where = { contractId };
+
+    const [items, total] = await Promise.all([
+      this.prisma.riskAssessment.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { assessedAt: 'desc' },
+      }),
+      this.prisma.riskAssessment.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => ({
+        ...item,
+        assessedAt: item.assessedAt,
+      })) as unknown as RiskAssessmentHistory[],
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  /**
+   * Compare current vs historical risk scores
+   */
+  async compareRiskScores(contractId: string): Promise<{
+    current: { score: number; level: string; date: Date } | null;
+    previous: Array<{ score: number; level: string; date: Date }>;
+    trend: 'IMPROVING' | 'DECLINING' | 'STABLE';
+  }> {
+    const assessments = await this.prisma.riskAssessment.findMany({
+      where: { contractId },
+      orderBy: { assessedAt: 'desc' },
+      take: 10,
+    });
+
+    if (assessments.length === 0) {
+      return {
+        current: null,
+        previous: [],
+        trend: 'STABLE',
+      };
+    }
+
+    const current = {
+      score: assessments[0].totalScore,
+      level: assessments[0].riskLevel,
+      date: assessments[0].assessedAt,
+    };
+
+    const previous = assessments.slice(1).map((a) => ({
+      score: a.totalScore,
+      level: a.riskLevel,
+      date: a.assessedAt,
+    }));
+
+    // Calculate trend
+    let trend: 'IMPROVING' | 'DECLINING' | 'STABLE' = 'STABLE';
+    if (previous.length > 0) {
+      const avgPrevious = previous.reduce((sum, p) => sum + p.score, 0) / previous.length;
+      if (current.score < avgPrevious - 5) trend = 'IMPROVING';
+      else if (current.score > avgPrevious + 5) trend = 'DECLINING';
+    }
+
+    return {
+      current,
+      previous,
+      trend,
+    };
+  }
+
+  /**
+   * Build filter for risk alerts
+   */
+  private buildRiskAlertFilter(filter?: RiskAlertFilterInput): Record<string, unknown> {
+    if (!filter) return {};
+
+    const where: Record<string, unknown> = {};
+
+    if (filter.contractId) {
+      where.contractId = filter.contractId;
+    }
+
+    if (filter.type) {
+      where.type = filter.type;
+    }
+
+    if (filter.severity) {
+      where.severity = filter.severity;
+    }
+
+    if (filter.status) {
+      where.status = filter.status;
+    }
+
+    if (filter.startDate || filter.endDate) {
+      where.createdAt = {};
+      if (filter.startDate) {
+        (where.createdAt as Record<string, Date>).gte = new Date(filter.startDate);
+      }
+      if (filter.endDate) {
+        (where.createdAt as Record<string, Date>).lte = new Date(filter.endDate);
+      }
+    }
+
+    return where;
   }
 }

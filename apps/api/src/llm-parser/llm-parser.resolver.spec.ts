@@ -56,6 +56,7 @@ import { TopicRegistryService } from './topics/topic-registry.service';
 import { ParseStrategyService } from './parse-strategy.service';
 import { MultiStrategyService } from './multi-strategy.service';
 import { LLMEvaluatorService } from './evaluation/llm-evaluator.service';
+import { ContractTypeDetectorService } from './contract-type-detector.service';
 
 describe('LlmParserResolver', () => {
   let resolver: LlmParserResolver;
@@ -140,6 +141,7 @@ describe('LlmParserResolver', () => {
             updateStage: jest.fn(),
             setChunks: jest.fn(),
             setTasks: jest.fn(),
+            setMarkdownContent: jest.fn(),
             startChunk: jest.fn(),
             completeChunk: jest.fn(),
             failChunk: jest.fn(),
@@ -213,6 +215,14 @@ describe('LlmParserResolver', () => {
             batchEvaluate: jest.fn(),
             batchEvaluateConflicts: jest.fn(),
             resolveConflictEnhanced: jest.fn(),
+          },
+        },
+        {
+          provide: ContractTypeDetectorService,
+          useValue: {
+            detectContractType: jest.fn(),
+            getTypeDisplayName: jest.fn(),
+            getTypeDescription: jest.fn(),
           },
         },
       ],
@@ -381,7 +391,7 @@ describe('LlmParserResolver', () => {
 
       // Service should be called in background (not awaited)
       await new Promise(resolve => setTimeout(resolve, 10));
-      expect(llmParserService.parseContractWithLlm).toHaveBeenCalledWith('contract.pdf', 'async-session-123');
+      expect(llmParserService.parseContractWithLlm).toHaveBeenCalledWith('contract.pdf', 'async-session-123', undefined);
     });
 
     it('should handle background errors by failing the session', async () => {

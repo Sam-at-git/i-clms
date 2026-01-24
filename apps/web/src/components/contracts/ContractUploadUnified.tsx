@@ -256,16 +256,6 @@ export function ContractUploadUnified({
         const result = await response.json();
         if (result.data?.getParseProgress) {
           const progress = result.data.getParseProgress;
-          console.log('[Parse Progress]', {
-            status: progress.status,
-            totalTasks: progress.totalTasks,
-            completedTasks: progress.completedTasks,
-            tasksCount: progress.tasks?.length,
-            hasResultData: !!progress.resultData,
-            resultDataKeys: progress.resultData ? Object.keys(progress.resultData) : [],
-            hasMarkdownContent: !!progress.markdownContent,
-            markdownContentLength: progress.markdownContent?.length || 0,
-          });
           setParseProgress(progress);
 
           // Store markdown content for preview
@@ -276,15 +266,12 @@ export function ContractUploadUnified({
           // 如果已完成或失败，停止轮询并更新UI
           if (progress.status?.toLowerCase() === 'completed') {
             setProgressPolling(false);
-            console.log('[Parse Progress] Parsing completed, resultData:', progress.resultData);
 
             // 从 resultData 中获取解析结果
             if (progress.resultData) {
               const llmResult = progress.resultData;
-              console.log('[Parse Progress] LLM result:', { success: llmResult.success, hasExtractedData: !!llmResult.extractedData });
               if (llmResult.success && llmResult.extractedData) {
                 const extracted = llmResult.extractedData as LlmExtractedData;
-                console.log('[Parse Progress] Extracted data:', extracted);
 
                 setExtractedData(extracted);
                 setParseConfidence(extracted.metadata?.overallConfidence || 0);
@@ -308,7 +295,6 @@ export function ContractUploadUnified({
                   industry: extracted.otherInfo?.industry || '',
                 });
 
-                console.log('[Parse Progress] Navigating to review step');
                 // 解析完成后跳转到信息整合步骤（review）
                 setStep('review');
               } else {
@@ -391,7 +377,6 @@ export function ContractUploadUnified({
       setConverting(true);
 
       // 2. Convert to Markdown with Docling (with OCR for scanned PDFs)
-      console.log('[Docling] Converting file to Markdown:', uploadedObjectName);
       const convertResult = await convertToMarkdown({
         variables: {
           objectName: uploadedObjectName,
@@ -416,13 +401,6 @@ export function ContractUploadUnified({
       if (!result.success) {
         throw new Error(result.error || '文档转换失败');
       }
-
-      console.log('[Docling] Conversion successful:', {
-        pages: result.pages,
-        tablesCount: result.tables?.length || 0,
-        imagesCount: result.images?.length || 0,
-        markdownLength: result.markdown?.length || 0,
-      });
 
       // 3. Store markdown content for preview
       setMarkdownContent(result.markdown);
@@ -449,14 +427,12 @@ export function ContractUploadUnified({
     setError('');
 
     try {
-      console.log('[Contract Type Detection] Starting detection...');
       const result = await detectContractType({
         variables: { markdown: markdownContent },
       });
 
       if (result.data?.detectContractType) {
         const detected = result.data.detectContractType;
-        console.log('[Contract Type Detection] Result:', detected);
 
         setDetectedContractType({
           type: detected.detectedType || 'PROJECT_OUTSOURCING',
@@ -487,7 +463,6 @@ export function ContractUploadUnified({
   };
 
   const handleLlmParsing = async (objName: string, strategy: string) => {
-    console.log('[LLM Parsing] Starting for:', objName, 'strategy:', strategy, 'hasMarkdown:', !!markdownContent);
 
     // Step 1: 启动异步解析任务（立即返回，在后台执行）
     try {
@@ -518,7 +493,6 @@ export function ContractUploadUnified({
       );
 
       const asyncResult = await startAsyncResponse.json();
-      console.log('[LLM Parsing] Async start result:', asyncResult);
 
       if (asyncResult.errors) {
         console.error('[LLM Parsing] GraphQL errors:', asyncResult.errors);
@@ -529,7 +503,6 @@ export function ContractUploadUnified({
 
       if (asyncResult.data?.startParseContractAsync?.sessionId) {
         const sessionId = asyncResult.data.startParseContractAsync.sessionId;
-        console.log('[LLM Parsing] Started async parsing, session:', sessionId);
         setSessionId(sessionId);
         setProgressPolling(true);
         // 步骤切换到parsing以显示进度界面
@@ -725,6 +698,7 @@ export function ContractUploadUnified({
             fileUrl: objectName,
             departmentId: user.department.id,
             uploadedById: user.id,
+            markdownText: markdownContent || undefined, // 保存markdown用于向量化
             ...typeSpecificInput,
           },
           forceUpdate,
@@ -763,6 +737,7 @@ export function ContractUploadUnified({
             fileUrl: objectName,
             departmentId: user.department.id,
             uploadedById: user.id,
+            markdownText: markdownContent || undefined, // 保存markdown用于向量化
           },
         },
       });

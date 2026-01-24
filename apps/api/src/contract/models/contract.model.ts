@@ -124,4 +124,18 @@ export class Contract {
 
   @Field(() => [TagDto])
   tags!: TagDto[];
+
+  // ==================== 向量化相关字段 ====================
+
+  @Field(() => Boolean, { description: '是否已向量化' })
+  isVectorized!: boolean;
+
+  @Field(() => Date, { nullable: true, description: '向量化时间' })
+  vectorizedAt?: Date | null;
+
+  @Field(() => String, { nullable: true, description: '向量化方式：AUTO/MANUAL' })
+  vectorizationMethod?: string | null;
+
+  @Field(() => Int, { nullable: true, description: '分块数量' })
+  chunkCount?: number | null;
 }

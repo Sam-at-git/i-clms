@@ -4,6 +4,8 @@ import { FinanceService } from './finance.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaClient } from '@prisma/client';
 import { OverdueLevel } from './dto/overdue-alert.dto';
+import { TransactionType, TransactionStatus } from './dto/financial-transaction.dto';
+import { NotFoundException } from '@nestjs/common';
 
 describe('FinanceService', () => {
   let service: FinanceService;
@@ -355,6 +357,482 @@ describe('FinanceService', () => {
       const result = await service.getOverdueAlerts();
 
       expect(result).toHaveLength(0);
+    });
+  });
+
+  // ================================
+  // Financial Transaction CRUD Tests
+  // ================================
+
+  const mockFinancialTransaction = {
+    id: 'transaction-1',
+    contractId: 'contract-1',
+    type: TransactionType.PAYMENT,
+    amount: { toString: () => '50000' } as any,
+    currency: 'CNY',
+    category: 'services',
+    status: TransactionStatus.PENDING,
+    occurredAt: new Date('2024-01-15'),
+    dueDate: new Date('2024-02-15'),
+    description: 'Test payment',
+    metadata: null,
+    createdAt: new Date('2024-01-15'),
+    updatedAt: new Date('2024-01-15'),
+    createdBy: 'user-1',
+    contract: {
+      id: 'contract-1',
+      contractNo: 'CT-2024-001',
+      name: 'Test Contract',
+    },
+  };
+
+  describe('financialTransactions', () => {
+    it('should return paginated financial transactions', async () => {
+      prismaService.financialTransaction.findMany.mockResolvedValue([mockFinancialTransaction] as any);
+      prismaService.financialTransaction.count.mockResolvedValue(1);
+
+      const result = await service.financialTransactions();
+
+      expect(result).toBeDefined();
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.pageSize).toBe(20);
+      expect(result.totalPages).toBe(1);
+    });
+
+    it('should apply filters correctly', async () => {
+      prismaService.financialTransaction.findMany.mockResolvedValue([] as any);
+      prismaService.financialTransaction.count.mockResolvedValue(0);
+
+      await service.financialTransactions({
+        filter: {
+          contractId: 'contract-1',
+          type: TransactionType.PAYMENT,
+          status: TransactionStatus.PENDING,
+          startDate: '2024-01-01',
+          endDate: '2024-12-31',
+        },
+        page: 2,
+        pageSize: 10,
+        sortBy: 'occurredAt',
+        sortOrder: 'asc',
+      });
+
+      expect(prismaService.financialTransaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            contractId: 'contract-1',
+            type: TransactionType.PAYMENT,
+            status: TransactionStatus.PENDING,
+            occurredAt: expect.objectContaining({
+              gte: expect.any(Date),
+              lte: expect.any(Date),
+            }),
+          }),
+          skip: 10,
+          take: 10,
+          orderBy: { occurredAt: 'asc' },
+        })
+      );
+    });
+
+    it('should return empty array when no transactions exist', async () => {
+      prismaService.financialTransaction.findMany.mockResolvedValue([]);
+      prismaService.financialTransaction.count.mockResolvedValue(0);
+
+      const result = await service.financialTransactions();
+
+      expect(result.items).toHaveLength(0);
+      expect(result.total).toBe(0);
+    });
+  });
+
+  describe('paymentHistory', () => {
+    it('should return payment history for a contract', async () => {
+      const transactions = [
+        { ...mockFinancialTransaction, type: TransactionType.PAYMENT },
+        { ...mockFinancialTransaction, id: 't2', type: TransactionType.RECEIPT },
+      ];
+      prismaService.financialTransaction.findMany.mockResolvedValue(transactions as any);
+
+      const result = await service.paymentHistory('contract-1');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].type).toBe(TransactionType.PAYMENT);
+      expect(result[1].type).toBe(TransactionType.RECEIPT);
+    });
+
+    it('should only return payment and receipt transactions', async () => {
+      prismaService.financialTransaction.findMany.mockResolvedValue([mockFinancialTransaction] as any);
+
+      await service.paymentHistory('contract-1');
+
+      expect(prismaService.financialTransaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            contractId: 'contract-1',
+            type: { in: [TransactionType.PAYMENT, TransactionType.RECEIPT] },
+          }),
+        })
+      );
+    });
+
+    it('should order by occurredAt descending', async () => {
+      prismaService.financialTransaction.findMany.mockResolvedValue([] as any);
+
+      await service.paymentHistory('contract-1');
+
+      expect(prismaService.financialTransaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { occurredAt: 'desc' },
+        })
+      );
+    });
+  });
+
+  describe('pendingPayments', () => {
+    it('should return pending payments', async () => {
+      prismaService.financialTransaction.findMany.mockResolvedValue([mockFinancialTransaction] as any);
+
+      const result = await service.pendingPayments();
+
+      expect(result).toHaveLength(1);
+    });
+
+    it('should filter by department when provided', async () => {
+      prismaService.financialTransaction.findMany.mockResolvedValue([] as any);
+
+      await service.pendingPayments('dept-1', 50);
+
+      expect(prismaService.financialTransaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: TransactionStatus.PENDING,
+            type: TransactionType.PAYMENT,
+            contract: { departmentId: 'dept-1' },
+          }),
+        })
+      );
+    });
+
+    it('should limit results', async () => {
+      prismaService.financialTransaction.findMany.mockResolvedValue([] as any);
+
+      await service.pendingPayments(undefined, 25);
+
+      expect(prismaService.financialTransaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 25,
+        })
+      );
+    });
+
+    it('should order by dueDate ascending', async () => {
+      prismaService.financialTransaction.findMany.mockResolvedValue([] as any);
+
+      await service.pendingPayments();
+
+      expect(prismaService.financialTransaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { dueDate: 'asc' },
+        })
+      );
+    });
+  });
+
+  describe('createTransaction', () => {
+    it('should create a new financial transaction', async () => {
+      prismaService.contract.findUnique.mockResolvedValue(mockContract as any);
+      prismaService.financialTransaction.create.mockResolvedValue(mockFinancialTransaction as any);
+
+      const result = await service.createTransaction(
+        {
+          contractId: 'contract-1',
+          type: TransactionType.PAYMENT,
+          amount: 50000,
+          category: 'services',
+        },
+        'user-1'
+      );
+
+      expect(result).toBeDefined();
+      expect(prismaService.financialTransaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            contractId: 'contract-1',
+            type: TransactionType.PAYMENT,
+            amount: 50000,
+            category: 'services',
+            status: TransactionStatus.PENDING,
+            currency: 'CNY',
+            createdBy: 'user-1',
+          }),
+        })
+      );
+    });
+
+    it('should throw NotFoundException when contract does not exist', async () => {
+      prismaService.contract.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.createTransaction(
+          {
+            contractId: 'nonexistent',
+            type: TransactionType.PAYMENT,
+            amount: 50000,
+            category: 'services',
+          },
+          'user-1'
+        )
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should parse metadata JSON when provided', async () => {
+      prismaService.contract.findUnique.mockResolvedValue(mockContract as any);
+      prismaService.financialTransaction.create.mockResolvedValue(mockFinancialTransaction as any);
+
+      const metadata = JSON.stringify({ reference: 'INV-001' });
+
+      await service.createTransaction(
+        {
+          contractId: 'contract-1',
+          type: TransactionType.PAYMENT,
+          amount: 50000,
+          category: 'services',
+          metadata,
+        },
+        'user-1'
+      );
+
+      expect(prismaService.financialTransaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            metadata: { reference: 'INV-001' },
+          }),
+        })
+      );
+    });
+
+    it('should use provided status when specified', async () => {
+      prismaService.contract.findUnique.mockResolvedValue(mockContract as any);
+      prismaService.financialTransaction.create.mockResolvedValue(mockFinancialTransaction as any);
+
+      await service.createTransaction(
+        {
+          contractId: 'contract-1',
+          type: TransactionType.PAYMENT,
+          amount: 50000,
+          category: 'services',
+          status: TransactionStatus.COMPLETED,
+        },
+        'user-1'
+      );
+
+      expect(prismaService.financialTransaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: TransactionStatus.COMPLETED,
+          }),
+        })
+      );
+    });
+  });
+
+  describe('updateTransaction', () => {
+    it('should update an existing transaction', async () => {
+      prismaService.financialTransaction.findUnique.mockResolvedValue(mockFinancialTransaction as any);
+      prismaService.financialTransaction.update.mockResolvedValue({
+        ...mockFinancialTransaction,
+        status: TransactionStatus.COMPLETED,
+      } as any);
+
+      const result = await service.updateTransaction('transaction-1', {
+        status: TransactionStatus.COMPLETED,
+      });
+
+      expect(result).toBeDefined();
+      expect(prismaService.financialTransaction.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'transaction-1' },
+          data: expect.objectContaining({
+            status: TransactionStatus.COMPLETED,
+          }),
+        })
+      );
+    });
+
+    it('should throw NotFoundException when transaction does not exist', async () => {
+      prismaService.financialTransaction.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateTransaction('nonexistent', { status: TransactionStatus.COMPLETED })
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should update multiple fields', async () => {
+      prismaService.financialTransaction.findUnique.mockResolvedValue(mockFinancialTransaction as any);
+      prismaService.financialTransaction.update.mockResolvedValue(mockFinancialTransaction as any);
+
+      await service.updateTransaction('transaction-1', {
+        status: TransactionStatus.COMPLETED,
+        amount: 60000,
+        category: 'deliverables',
+      });
+
+      expect(prismaService.financialTransaction.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: TransactionStatus.COMPLETED,
+            amount: 60000,
+            category: 'deliverables',
+          }),
+        })
+      );
+    });
+
+    it('should parse metadata JSON when updating', async () => {
+      prismaService.financialTransaction.findUnique.mockResolvedValue(mockFinancialTransaction as any);
+      prismaService.financialTransaction.update.mockResolvedValue(mockFinancialTransaction as any);
+
+      const metadata = JSON.stringify({ updated: true, notes: 'Updated manually' });
+
+      await service.updateTransaction('transaction-1', { metadata });
+
+      expect(prismaService.financialTransaction.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            metadata: { updated: true, notes: 'Updated manually' },
+          }),
+        })
+      );
+    });
+
+    it('should remove dueDate when explicitly set to null in update', async () => {
+      prismaService.financialTransaction.findUnique.mockResolvedValue(mockFinancialTransaction as any);
+      prismaService.financialTransaction.update.mockResolvedValue(mockFinancialTransaction as any);
+
+      // The DTO expects string | undefined, not null
+      // But we can test that the service handles removing the field
+      const result = await service.updateTransaction('transaction-1', {
+        dueDate: undefined,
+      });
+
+      expect(prismaService.financialTransaction.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({
+            dueDate: expect.anything(),
+          }),
+        })
+      );
+    });
+  });
+
+  describe('deleteTransaction', () => {
+    it('should delete a transaction', async () => {
+      prismaService.financialTransaction.findUnique.mockResolvedValue(mockFinancialTransaction as any);
+      prismaService.financialTransaction.delete.mockResolvedValue(mockFinancialTransaction as any);
+
+      const result = await service.deleteTransaction('transaction-1');
+
+      expect(result).toBe(true);
+      expect(prismaService.financialTransaction.delete).toHaveBeenCalledWith({
+        where: { id: 'transaction-1' },
+      });
+    });
+
+    it('should throw NotFoundException when transaction does not exist', async () => {
+      prismaService.financialTransaction.findUnique.mockResolvedValue(null);
+
+      await expect(service.deleteTransaction('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('recordPayment', () => {
+    it('should record a new payment', async () => {
+      prismaService.contract.findUnique.mockResolvedValue(mockContract as any);
+      prismaService.financialTransaction.create.mockResolvedValue(mockFinancialTransaction as any);
+
+      const result = await service.recordPayment(
+        {
+          contractId: 'contract-1',
+          amount: 50000,
+          description: 'Payment for services',
+        },
+        'user-1'
+      );
+
+      expect(result).toBeDefined();
+      expect(prismaService.financialTransaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            contractId: 'contract-1',
+            type: TransactionType.PAYMENT,
+            amount: 50000,
+            category: 'services',
+            status: TransactionStatus.PENDING,
+            description: 'Payment for services',
+            createdBy: 'user-1',
+          }),
+        })
+      );
+    });
+
+    it('should use default category when not provided', async () => {
+      prismaService.contract.findUnique.mockResolvedValue(mockContract as any);
+      prismaService.financialTransaction.create.mockResolvedValue(mockFinancialTransaction as any);
+
+      await service.recordPayment(
+        {
+          contractId: 'contract-1',
+          amount: 50000,
+        },
+        'user-1'
+      );
+
+      expect(prismaService.financialTransaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            category: 'services',
+          }),
+        })
+      );
+    });
+
+    it('should use paymentDate when provided', async () => {
+      prismaService.contract.findUnique.mockResolvedValue(mockContract as any);
+      prismaService.financialTransaction.create.mockResolvedValue(mockFinancialTransaction as any);
+
+      await service.recordPayment(
+        {
+          contractId: 'contract-1',
+          amount: 50000,
+          paymentDate: '2024-01-20',
+        },
+        'user-1'
+      );
+
+      expect(prismaService.financialTransaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            occurredAt: new Date('2024-01-20'),
+          }),
+        })
+      );
+    });
+
+    it('should throw NotFoundException when contract does not exist', async () => {
+      prismaService.contract.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.recordPayment(
+          {
+            contractId: 'nonexistent',
+            amount: 50000,
+          },
+          'user-1'
+        )
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

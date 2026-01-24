@@ -3,6 +3,7 @@ import { TaskBasedParserService } from './task-based-parser.service';
 import { LlmConfigService } from './config/llm-config.service';
 import { SemanticChunkerService } from './semantic-chunker.service';
 import { ParseProgressService, InfoType } from './parse-progress.service';
+import { TopicRegistryService } from './topics/topic-registry.service';
 
 // Mock uuid
 jest.mock('uuid', () => ({
@@ -105,6 +106,16 @@ describe('TaskBasedParserService', () => {
             startTask: jest.fn(),
             completeTask: jest.fn(),
             failTask: jest.fn(),
+          },
+        },
+        {
+          provide: TopicRegistryService,
+          useValue: {
+            getAllTopics: jest.fn().mockReturnValue([]),
+            getTopic: jest.fn(),
+            getTopicFields: jest.fn().mockReturnValue([]),
+            calculateCompleteness: jest.fn().mockReturnValue({ score: 80, total: 10, maxScore: 16 }),
+            getTopicNamesForContractType: jest.fn().mockReturnValue([]),
           },
         },
       ],
@@ -214,7 +225,7 @@ describe('TaskBasedParserService', () => {
         return mockLLMResponse(timeInfoResponse); // TIME_INFO
       });
 
-      const result = await service.parseByTasks(sampleContractText, undefined, 'test-session');
+      const result = await service.parseByTasks(sampleContractText, undefined, undefined, 'test-session');
 
       expect(result.summary.totalTasks).toBe(8);
       expect(result.summary.successfulTasks).toBe(8);
@@ -236,7 +247,7 @@ describe('TaskBasedParserService', () => {
 
       mockOpenai.chat.completions.create.mockResolvedValue(mockLLMResponse(markdownWrappedJson) as any);
 
-      const result = await service.parseByTasks(sampleContractText, [InfoType.BASIC_INFO], 'test-session');
+      const result = await service.parseByTasks(sampleContractText, undefined, [InfoType.BASIC_INFO], 'test-session');
 
       expect(result.summary.successfulTasks).toBe(1);
       expect(result.data.basicInfo.contractNo).toBe('CTR-2024-00123');
@@ -247,21 +258,21 @@ describe('TaskBasedParserService', () => {
         mockLLMResponse(JSON.stringify({ contractNo: 'CTR-001' })) as any
       );
 
-      await service.parseByTasks(sampleContractText, [InfoType.BASIC_INFO], 'test-session');
+      await service.parseByTasks(sampleContractText, undefined, [InfoType.BASIC_INFO]);
 
-      expect(progressService.setTasks).toHaveBeenCalledWith('test-session', [InfoType.BASIC_INFO]);
-      expect(progressService.startTask).toHaveBeenCalledWith('test-session', InfoType.BASIC_INFO);
+      expect(progressService.setTasks).toHaveBeenCalledWith(expect.any(String), [InfoType.BASIC_INFO]);
+      expect(progressService.startTask).toHaveBeenCalledWith(expect.any(String), InfoType.BASIC_INFO);
       expect(progressService.completeTask).toHaveBeenCalled();
     });
 
     it('should handle task failures gracefully', async () => {
       mockOpenai.chat.completions.create.mockRejectedValue(new Error('Connection error'));
 
-      const result = await service.parseByTasks(sampleContractText, [InfoType.BASIC_INFO], 'test-session');
+      const result = await service.parseByTasks(sampleContractText, undefined, [InfoType.BASIC_INFO]);
 
       expect(result.summary.successfulTasks).toBe(0);
       expect(result.summary.failedTasks).toBe(1);
-      expect(progressService.failTask).toHaveBeenCalledWith('test-session', InfoType.BASIC_INFO, 'Connection error');
+      expect(progressService.failTask).toHaveBeenCalledWith(expect.any(String), InfoType.BASIC_INFO, 'Connection error');
     });
 
     it('should filter tasks based on enabledTaskTypes', async () => {
@@ -271,12 +282,12 @@ describe('TaskBasedParserService', () => {
 
       const result = await service.parseByTasks(
         sampleContractText,
-        [InfoType.BASIC_INFO, InfoType.FINANCIAL],
-        'test-session'
+        undefined,
+        [InfoType.BASIC_INFO, InfoType.FINANCIAL]
       );
 
       expect(result.summary.totalTasks).toBe(2);
-      expect(progressService.setTasks).toHaveBeenCalledWith('test-session', [InfoType.BASIC_INFO, InfoType.FINANCIAL]);
+      expect(progressService.setTasks).toHaveBeenCalledWith(expect.any(String), [InfoType.BASIC_INFO, InfoType.FINANCIAL]);
     });
 
     it('should continue with remaining tasks when one task fails', async () => {
@@ -291,8 +302,8 @@ describe('TaskBasedParserService', () => {
 
       const result = await service.parseByTasks(
         sampleContractText,
-        [InfoType.BASIC_INFO, InfoType.FINANCIAL],
-        'test-session'
+        undefined,
+        [InfoType.BASIC_INFO, InfoType.FINANCIAL]
       );
 
       expect(result.summary.totalTasks).toBe(2);
@@ -319,7 +330,7 @@ End of response.
       // Test the private method through the actual parsing flow
       mockOpenai.chat.completions.create.mockResolvedValue(mockLLMResponse(markdownJson) as any);
 
-      const result = service.parseByTasks('dummy text', [InfoType.BASIC_INFO], 'test-session');
+      const result = service.parseByTasks('dummy text', undefined, [InfoType.BASIC_INFO], 'test-session');
 
       // If we got here without throwing, the extraction worked
       expect(mockOpenai.chat.completions.create).toHaveBeenCalled();
@@ -330,7 +341,7 @@ End of response.
 
       mockOpenai.chat.completions.create.mockResolvedValue(mockLLMResponse(plainJson) as any);
 
-      const result = service.parseByTasks('dummy text', [InfoType.BASIC_INFO], 'test-session');
+      const result = service.parseByTasks('dummy text', undefined, [InfoType.BASIC_INFO], 'test-session');
 
       expect(mockOpenai.chat.completions.create).toHaveBeenCalled();
     });
@@ -379,7 +390,7 @@ End of response.
         return mockLLMResponse(response) as any;
       });
 
-      const result = await service.parseByTasks('sample text', undefined, 'test-session');
+      const result = await service.parseByTasks('sample text', undefined, undefined, 'test-session');
 
       expect(result.data.basicInfo.contractNo).toBe('CTR-001');
       expect(result.data.financialInfo.amountWithTax).toBe('1000000');
@@ -394,7 +405,7 @@ End of response.
         choices: [{ message: { content: null } }],
       } as any);
 
-      const result = await service.parseByTasks('sample text', [InfoType.BASIC_INFO], 'test-session');
+      const result = await service.parseByTasks('sample text', undefined, [InfoType.BASIC_INFO], 'test-session');
 
       expect(result.summary.failedTasks).toBe(1);
       expect(result.results[0].error).toContain('Empty response');
@@ -405,7 +416,7 @@ End of response.
         choices: [{ message: { content: 'Not valid JSON {' } }],
       } as any);
 
-      const result = await service.parseByTasks('sample text', [InfoType.BASIC_INFO], 'test-session');
+      const result = await service.parseByTasks('sample text', undefined, [InfoType.BASIC_INFO], 'test-session');
 
       expect(result.summary.failedTasks).toBe(1);
       expect(result.results[0].error).toContain('Unexpected token');

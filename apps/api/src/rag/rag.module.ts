@@ -6,6 +6,7 @@ import { RAGParseStrategy } from './rag-parse.strategy';
 import { SemanticChunkerService } from '../llm-parser/semantic-chunker.service';
 import { VectorStoreService } from '../vector-store/vector-store.service';
 import { TopicRegistryService } from '../llm-parser/topics/topic-registry.service';
+import { PrismaService } from '../prisma';
 
 /**
  * RAG Module
@@ -25,6 +26,7 @@ import { TopicRegistryService } from '../llm-parser/topics/topic-registry.servic
     SemanticChunkerService,
     VectorStoreService,
     TopicRegistryService,
+    PrismaService,
   ],
   exports: [RAGService, RAGParseStrategy],
 })

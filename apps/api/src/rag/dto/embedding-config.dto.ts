@@ -20,42 +20,16 @@ export interface EmbeddingModelConfig {
 
 /**
  * Available embedding models
+ *
+ * NOTE: Currently only supports nomic-embed-text (768 dimensions).
+ * Future versions may support additional models.
  */
 export const EMBEDDING_MODELS: Record<string, EmbeddingModelConfig> = {
-  // Ollama local models
   'nomic-embed-text': {
     provider: EmbeddingProvider.OLLAMA,
     model: 'nomic-embed-text',
     baseUrl: 'http://localhost:11434',
     dimensions: 768,
-  },
-  'mxbai-embed-large': {
-    provider: EmbeddingProvider.OLLAMA,
-    model: 'mxbai-embed-large',
-    baseUrl: 'http://localhost:11434',
-    dimensions: 1024,
-  },
-  'all-minilm': {
-    provider: EmbeddingProvider.OLLAMA,
-    model: 'all-minilm',
-    baseUrl: 'http://localhost:11434',
-    dimensions: 384,
-  },
-  // OpenAI cloud models
-  'text-embedding-3-small': {
-    provider: EmbeddingProvider.OPENAI,
-    model: 'text-embedding-3-small',
-    dimensions: 1536,
-  },
-  'text-embedding-3-large': {
-    provider: EmbeddingProvider.OPENAI,
-    model: 'text-embedding-3-large',
-    dimensions: 3072,
-  },
-  'text-embedding-ada-002': {
-    provider: EmbeddingProvider.OPENAI,
-    model: 'text-embedding-ada-002',
-    dimensions: 1536,
   },
 };
 

@@ -236,9 +236,10 @@ export class LlmParserResolver {
       return null;
     }
 
-    // TODO: 这里需要从某个地方获取完整的解析结果
-    // 当前ParseProgressService只存储进度，不存储完整结果
-    // 需要扩展ParseProgressService来存储最终结果
+    // GitHub Issue: Store and retrieve complete parse results in ParseProgressService
+    // Currently ParseProgressService only stores progress, not the complete result data
+    // Need to extend ParseProgressService to store final result when parsing completes
+    this.logger.warn(`getParseResult: Session ${sessionId} completed but result data not stored in progress service`);
     return null;
   }
 

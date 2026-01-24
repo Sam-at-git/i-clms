@@ -6,12 +6,30 @@ import { OpenAIEmbeddingClient } from './embedding/openai-embedding.client';
 import { SemanticChunkerService, SemanticChunk } from '../llm-parser/semantic-chunker.service';
 import { VectorStoreService } from '../vector-store/vector-store.service';
 import { TopicRegistryService } from '../llm-parser/topics/topic-registry.service';
+import { PrismaService } from '../prisma';
 import {
   EmbeddingModelConfig,
   EMBEDDING_MODELS,
   EmbeddingProvider,
 } from './dto/embedding-config.dto';
 import { RAGOptions } from './dto/rag-options.dto';
+
+/**
+ * RAG Question Answer Result
+ */
+export interface RAGQuestionAnswerResult {
+  contractId: string;
+  contractNo: string;
+  contractName: string;
+  customerName: string;
+  chunkContent: string;
+  similarity: number;
+  chunkMetadata?: {
+    title?: string;
+    articleNumber?: string;
+    chunkType?: string;
+  };
+}
 
 /**
  * Topic query for RAG extraction
@@ -55,6 +73,7 @@ export class RAGService implements OnModuleInit {
     private readonly chunker: SemanticChunkerService,
     private readonly vectorStore: VectorStoreService,
     private readonly topicRegistry: TopicRegistryService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -106,7 +125,7 @@ export class RAGService implements OnModuleInit {
   /**
    * Generate vector index for a contract
    */
-  async indexContract(contractId: number, content: string): Promise<void> {
+  async indexContract(contractId: string, content: string): Promise<void> {
     if (!this.embeddingClient) {
       throw new Error('Embedding client not available');
     }
@@ -147,7 +166,7 @@ export class RAGService implements OnModuleInit {
    * Extract information by topic using RAG
    */
   async extractByTopic(
-    contractId: number,
+    contractId: string,
     queries: TopicQuery[],
   ): Promise<RAGExtractResult[]> {
     if (!this.embeddingClient) {
@@ -169,8 +188,8 @@ export class RAGService implements OnModuleInit {
 
       // Filter by contract ID if specified
       const contractChunks =
-        contractId > 0
-          ? similarChunks.filter(c => c.contractId === contractId || contractId === 0)
+        contractId !== ''
+          ? similarChunks.filter(c => c.contractId === contractId)
           : similarChunks;
 
       // Extract fields from retrieved chunks
@@ -307,5 +326,97 @@ export class RAGService implements OnModuleInit {
       return error.message;
     }
     return String(error);
+  }
+
+  /**
+   * RAG Question Answer - search contracts by natural language question
+   *
+   * @param question Natural language question
+   * @param limit Maximum number of results to return
+   * @param threshold Minimum similarity threshold (0-1)
+   * @returns Array of relevant contract chunks with contract info
+   */
+  async questionAnswer(
+    question: string,
+    limit = 10,
+    threshold = 0.5
+  ): Promise<RAGQuestionAnswerResult[]> {
+    if (!this.embeddingClient) {
+      throw new Error('Embedding client not available');
+    }
+
+    this.logger.log(`[RAG QA] Processing question: "${question}"`);
+
+    // Generate query embedding
+    const queryEmbedding = await this.embeddingClient.embed(question);
+
+    // Search for similar chunks
+    const similarChunks = await this.vectorStore.searchSimilarChunks(
+      queryEmbedding,
+      limit,
+      threshold
+    );
+
+    this.logger.log(`[RAG QA] Found ${similarChunks.length} chunks above threshold ${threshold}`);
+
+    if (similarChunks.length === 0) {
+      return [];
+    }
+
+    // Get unique contract IDs
+    const contractIds = [...new Set(similarChunks.map(c => c.contractId.toString()))];
+
+    // Fetch contract information
+    const contracts = await this.prisma.contract.findMany({
+      where: {
+        id: { in: contractIds },
+        isVectorized: true,
+      },
+      select: {
+        id: true,
+        contractNo: true,
+        name: true,
+        customer: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    const contractMap = new Map(
+      contracts.map(c => [c.id, c])
+    );
+
+    // Format results
+    const results: RAGQuestionAnswerResult[] = similarChunks
+      .filter(chunk => contractMap.has(chunk.contractId.toString()))
+      .map(chunk => {
+        const contract = contractMap.get(chunk.contractId.toString())!;
+        const metadata = chunk.metadata as {
+          title?: string;
+          articleNumber?: string;
+          type?: string;
+          priority?: number;
+          fieldRelevance?: string[];
+        } | undefined;
+
+        return {
+          contractId: contract.id,
+          contractNo: contract.contractNo,
+          contractName: contract.name,
+          customerName: contract.customer.name,
+          chunkContent: chunk.content,
+          similarity: chunk.similarity,
+          chunkMetadata: {
+            title: metadata?.title,
+            articleNumber: metadata?.articleNumber,
+            chunkType: metadata?.type,
+          },
+        };
+      });
+
+    this.logger.log(`[RAG QA] Returning ${results.length} results`);
+    return results;
   }
 }

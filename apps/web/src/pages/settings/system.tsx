@@ -3,6 +3,8 @@ import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { useAuthStore } from '../../state/auth.state';
 import { formatUserRole } from '../../lib/auth-helpers';
+import { CacheManagement } from '../../components/settings/CacheManagement';
+import { BackupManagement } from '../../components/settings/BackupManagement';
 
 const GET_SYSTEM_CONFIG = gql`
   query GetSystemConfig {
@@ -140,7 +142,7 @@ interface SystemHealthResponse {
 export function SystemSettingsPage() {
   const user = useAuthStore((state) => state.user);
 
-  const [activeTab, setActiveTab] = useState<'smtp' | 'storage' | 'health'>('smtp');
+  const [activeTab, setActiveTab] = useState<'smtp' | 'storage' | 'health' | 'cache' | 'backup'>('smtp');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
@@ -347,6 +349,24 @@ export function SystemSettingsPage() {
             onClick={() => setActiveTab('health')}
           >
             系统状态
+          </button>
+          <button
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'cache' ? styles.tabActive : {}),
+            }}
+            onClick={() => setActiveTab('cache')}
+          >
+            缓存管理
+          </button>
+          <button
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'backup' ? styles.tabActive : {}),
+            }}
+            onClick={() => setActiveTab('backup')}
+          >
+            备份恢复
           </button>
         </div>
 
@@ -651,6 +671,10 @@ export function SystemSettingsPage() {
             </div>
           </div>
         )}
+
+        {activeTab === 'cache' && <CacheManagement />}
+
+        {activeTab === 'backup' && <BackupManagement />}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { VectorStoreService } from './vector-store.service';
 import { GqlAuthGuard } from '../auth/guards/gql-auth.guard';
@@ -35,7 +35,7 @@ export class VectorStoreResolver {
     description: '获取合同段落列表',
   })
   @UseGuards(GqlAuthGuard)
-  async contractChunks(@Args('contractId', { type: () => Number }) contractId: number): Promise<ContractChunk[]> {
+  async contractChunks(@Args('contractId', { type: () => ID }) contractId: string): Promise<ContractChunk[]> {
     const chunks = await this.vectorStore.getContractChunks(contractId);
     return chunks.map(c => ({
       index: c.index,

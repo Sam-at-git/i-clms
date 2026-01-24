@@ -1,6 +1,6 @@
 -- Migration: pgvector Foundation
 -- Created: 2026-01-22
--- Description: Enable pgvector extension and create vector storage tables
+-- Description: Enable pgvector extension and create vector storage tables (fixed naming)
 
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS embedding_cache (
   id SERIAL PRIMARY KEY,
   text_hash VARCHAR(64) NOT NULL,
   model_name VARCHAR(100) NOT NULL,
-  embedding vector(1024),
+  embedding vector(768),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(text_hash, model_name)
@@ -36,13 +36,13 @@ CREATE TABLE IF NOT EXISTS llm_cache (
 CREATE INDEX IF NOT EXISTS idx_llm_cache_prompt ON llm_cache(prompt_hash, model_name);
 CREATE INDEX IF NOT EXISTS idx_llm_cache_expires ON llm_cache(expires_at);
 
--- Contract chunks vector table (for RAG retrieval)
+-- Contract chunks vector table (for RAG retrieval) - using camelCase for Prisma
 CREATE TABLE IF NOT EXISTS contract_chunks (
   id SERIAL PRIMARY KEY,
-  contract_id INTEGER NOT NULL,
+  contract_id TEXT NOT NULL,
   chunk_index INTEGER NOT NULL,
   content TEXT NOT NULL,
-  embedding vector(1024),
+  embedding vector(768),
   chunk_type VARCHAR(50),
   metadata JSONB,
   created_at TIMESTAMP DEFAULT NOW(),
@@ -50,13 +50,13 @@ CREATE TABLE IF NOT EXISTS contract_chunks (
   UNIQUE(contract_id, chunk_index)
 );
 
--- Foreign key constraint for contract_chunks (deferred to avoid circular dependency)
+-- Foreign key constraint for contract_chunks
 ALTER TABLE contract_chunks
-  ADD CONSTRAINT IF NOT EXISTS fk_contract_chunks_contract
-  FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE;
+  ADD CONSTRAINT fk_contract_chunks_contract
+  FOREIGN KEY (contract_id) REFERENCES "Contract"(id) ON DELETE CASCADE;
 
 -- Indexes for contract_chunks
-CREATE INDEX IF NOT EXISTS idx_contract_chunks_contract ON contract_chunks(contract_id, chunk_index);
+CREATE INDEX IF NOT EXISTS contract_chunks_contract_index_unique ON contract_chunks(contract_id, chunk_index);
 CREATE INDEX IF NOT EXISTS idx_contract_chunks_vector ON contract_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
 -- Document fingerprint cache table

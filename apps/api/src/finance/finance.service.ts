@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   RevenueStats,
@@ -9,6 +9,17 @@ import {
 } from './dto/revenue-stats.dto';
 import { CashFlowForecast } from './dto/cash-flow.dto';
 import { OverdueAlert, OverdueLevel } from './dto/overdue-alert.dto';
+import {
+  FinancialTransaction,
+  PaginatedFinancialTransactions,
+  CreateFinancialTransactionInput,
+  UpdateFinancialTransactionInput,
+  RecordPaymentInput,
+  FinancialTransactionFilterInput,
+  FinancialTransactionPaginationInput,
+  TransactionType,
+  TransactionStatus,
+} from './dto/financial-transaction.dto';
 import { ContractType } from '../graphql/types/enums';
 
 // Type for Prisma Decimal values
@@ -329,5 +340,348 @@ export class FinanceService {
   private decimalToNumber(value: DecimalValue): number {
     if (!value) return 0;
     return Number(value.toString());
+  }
+
+  private readonly logger = new Logger(FinanceService.name);
+
+  // ================================
+  // Financial Transaction CRUD
+  // ================================
+
+  /**
+   * Get paginated financial transactions with optional filtering
+   */
+  async financialTransactions(
+    pagination?: FinancialTransactionPaginationInput
+  ): Promise<PaginatedFinancialTransactions> {
+    const {
+      filter,
+      page = 1,
+      pageSize = 20,
+      sortBy = 'occurredAt',
+      sortOrder = 'desc',
+    } = pagination || {};
+
+    const where = this.buildTransactionFilter(filter);
+
+    const [items, total] = await Promise.all([
+      this.prisma.financialTransaction.findMany({
+        where,
+        include: {
+          contract: {
+            select: {
+              id: true,
+              contractNo: true,
+              name: true,
+            },
+          },
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.financialTransaction.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => ({
+        ...item,
+        amount: this.decimalToNumber(item.amount),
+        occurredAt: item.occurredAt,
+        dueDate: item.dueDate,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })) as unknown as FinancialTransaction[],
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  /**
+   * Get payment history for a specific contract
+   */
+  async paymentHistory(contractId: string): Promise<FinancialTransaction[]> {
+    const transactions = await this.prisma.financialTransaction.findMany({
+      where: {
+        contractId,
+        type: { in: [TransactionType.PAYMENT, TransactionType.RECEIPT] },
+      },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { occurredAt: 'desc' },
+    });
+
+    return transactions.map((item) => ({
+      ...item,
+      amount: this.decimalToNumber(item.amount),
+      occurredAt: item.occurredAt,
+      dueDate: item.dueDate,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    })) as unknown as FinancialTransaction[];
+  }
+
+  /**
+   * Get pending payments for a department or all
+   */
+  async pendingPayments(departmentId?: string, limit = 50): Promise<FinancialTransaction[]> {
+    const where: Record<string, unknown> = {
+      status: TransactionStatus.PENDING,
+      type: TransactionType.PAYMENT,
+    };
+
+    if (departmentId) {
+      // Filter by department through contract relation
+      where.contract = {
+        departmentId,
+      };
+    }
+
+    const transactions = await this.prisma.financialTransaction.findMany({
+      where,
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { dueDate: 'asc' },
+      take: limit,
+    });
+
+    return transactions.map((item) => ({
+      ...item,
+      amount: this.decimalToNumber(item.amount),
+      occurredAt: item.occurredAt,
+      dueDate: item.dueDate,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    })) as unknown as FinancialTransaction[];
+  }
+
+  /**
+   * Create a new financial transaction
+   */
+  async createTransaction(
+    input: CreateFinancialTransactionInput,
+    userId: string
+  ): Promise<FinancialTransaction> {
+    const { metadata, ...rest } = input;
+
+    // Verify contract exists
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: input.contractId },
+    });
+
+    if (!contract) {
+      throw new NotFoundException(`Contract with ID ${input.contractId} not found`);
+    }
+
+    const transaction = await this.prisma.financialTransaction.create({
+      data: {
+        ...rest,
+        occurredAt: input.occurredAt ? new Date(input.occurredAt) : new Date(),
+        dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        amount: input.amount,
+        status: input.status || TransactionStatus.PENDING,
+        currency: input.currency || 'CNY',
+        metadata: metadata ? JSON.parse(metadata) : null,
+        createdBy: userId,
+      },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Created financial transaction ${transaction.id} for contract ${input.contractId}`);
+
+    return {
+      ...transaction,
+      amount: this.decimalToNumber(transaction.amount),
+      occurredAt: transaction.occurredAt,
+      dueDate: transaction.dueDate,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
+    } as unknown as FinancialTransaction;
+  }
+
+  /**
+   * Update an existing financial transaction
+   */
+  async updateTransaction(
+    id: string,
+    input: UpdateFinancialTransactionInput
+  ): Promise<FinancialTransaction> {
+    // Check if transaction exists
+    const existing = await this.prisma.financialTransaction.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Financial transaction with ID ${id} not found`);
+    }
+
+    const updateData: Record<string, unknown> = {};
+
+    if (input.type !== undefined) updateData.type = input.type;
+    if (input.amount !== undefined) updateData.amount = input.amount;
+    if (input.currency !== undefined) updateData.currency = input.currency;
+    if (input.category !== undefined) updateData.category = input.category;
+    if (input.status !== undefined) updateData.status = input.status;
+    if (input.occurredAt !== undefined) updateData.occurredAt = new Date(input.occurredAt);
+    if (input.dueDate !== undefined) updateData.dueDate = input.dueDate ? new Date(input.dueDate) : null;
+    if (input.description !== undefined) updateData.description = input.description;
+    if (input.metadata !== undefined) updateData.metadata = JSON.parse(input.metadata);
+
+    const transaction = await this.prisma.financialTransaction.update({
+      where: { id },
+      data: updateData,
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Updated financial transaction ${id}`);
+
+    return {
+      ...transaction,
+      amount: this.decimalToNumber(transaction.amount),
+      occurredAt: transaction.occurredAt,
+      dueDate: transaction.dueDate,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
+    } as unknown as FinancialTransaction;
+  }
+
+  /**
+   * Delete a financial transaction
+   */
+  async deleteTransaction(id: string): Promise<boolean> {
+    // Check if transaction exists
+    const existing = await this.prisma.financialTransaction.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Financial transaction with ID ${id} not found`);
+    }
+
+    await this.prisma.financialTransaction.delete({
+      where: { id },
+    });
+
+    this.logger.log(`Deleted financial transaction ${id}`);
+
+    return true;
+  }
+
+  /**
+   * Record a payment (convenience method)
+   */
+  async recordPayment(input: RecordPaymentInput, userId: string): Promise<FinancialTransaction> {
+    // Verify contract exists
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: input.contractId },
+    });
+
+    if (!contract) {
+      throw new NotFoundException(`Contract with ID ${input.contractId} not found`);
+    }
+
+    const transaction = await this.prisma.financialTransaction.create({
+      data: {
+        contractId: input.contractId,
+        type: TransactionType.PAYMENT,
+        amount: input.amount,
+        currency: 'CNY',
+        category: input.category || 'services',
+        status: TransactionStatus.PENDING,
+        occurredAt: input.paymentDate ? new Date(input.paymentDate) : new Date(),
+        dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        description: input.description,
+        createdBy: userId,
+      },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Recorded payment of ${input.amount} for contract ${input.contractId}`);
+
+    return {
+      ...transaction,
+      amount: this.decimalToNumber(transaction.amount),
+      occurredAt: transaction.occurredAt,
+      dueDate: transaction.dueDate,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
+    } as unknown as FinancialTransaction;
+  }
+
+  /**
+   * Build filter for financial transactions
+   */
+  private buildTransactionFilter(filter?: FinancialTransactionFilterInput): Record<string, unknown> {
+    if (!filter) return {};
+
+    const where: Record<string, unknown> = {};
+
+    if (filter.contractId) {
+      where.contractId = filter.contractId;
+    }
+
+    if (filter.type) {
+      where.type = filter.type;
+    }
+
+    if (filter.status) {
+      where.status = filter.status;
+    }
+
+    if (filter.category) {
+      where.category = filter.category;
+    }
+
+    if (filter.startDate || filter.endDate) {
+      where.occurredAt = {};
+      if (filter.startDate) {
+        (where.occurredAt as Record<string, Date>).gte = new Date(filter.startDate);
+      }
+      if (filter.endDate) {
+        (where.occurredAt as Record<string, Date>).lte = new Date(filter.endDate);
+      }
+    }
+
+    return where;
   }
 }

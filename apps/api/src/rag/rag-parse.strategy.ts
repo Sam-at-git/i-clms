@@ -77,8 +77,8 @@ export class RAGParseStrategy implements ParseStrategyExecutor {
       }
 
       // First, index the contract for RAG
-      const contractId = options.contractId as number | undefined;
-      const tempContractId = contractId || Date.now(); // Use timestamp as temp ID
+      const contractId = options.contractId as string | undefined;
+      const tempContractId = contractId || `temp-${Date.now()}`; // Use timestamp as temp ID
 
       try {
         await this.rag.indexContract(tempContractId, content);

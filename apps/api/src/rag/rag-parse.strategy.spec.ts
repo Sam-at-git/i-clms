@@ -205,7 +205,7 @@ describe('RAGParseStrategy', () => {
       await strategy.parse('test content', {});
 
       expect(mockRAGService.indexContract).toHaveBeenCalledWith(
-        expect.any(Number),
+        expect.stringMatching(/^temp-\d+$/),
         'test content',
       );
     });

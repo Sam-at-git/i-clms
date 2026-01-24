@@ -441,8 +441,9 @@ export class SystemConfigService {
       return false;
     }
 
-    // TODO: 实现实际的SMTP连接测试
-    this.logger.warn('SMTP connection test not fully implemented');
+    // GitHub Issue: Implement actual SMTP connection testing with nodemailer
+    // Should verify SMTP host, port, authentication, and TLS configuration
+    this.logger.warn('SMTP connection test not fully implemented - returning true');
     return true;
   }
 
@@ -454,10 +455,11 @@ export class SystemConfigService {
       `Sending notification to ${input.to}: ${input.subject} (type: ${input.type || 'general'})`,
     );
 
-    // TODO: 实现实际的邮件发送
+    // GitHub Issue: Implement actual email sending with nodemailer
+    // Should use SMTP configuration from database to send emails
     return {
       success: true,
-      message: 'Notification logged (SMTP not configured)',
+      message: 'Notification logged (SMTP not configured - backend needs nodemailer integration)',
       messageId: `msg_${Date.now()}`,
     };
   }

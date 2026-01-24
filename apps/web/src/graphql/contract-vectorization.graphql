@@ -1,0 +1,55 @@
+# 合同向量化相关的GraphQL操作
+
+# 向量化单个合同
+mutation VectorizeContract($id: ID!, $method: String, $force: Boolean) {
+  vectorizeContract(id: $id, method: $method, force: $force) {
+    success
+    message
+    chunkCount
+    vectorizedAt
+    error
+  }
+}
+
+# 批量向量化合同
+mutation BatchVectorizeContracts($ids: [ID!]!, $method: String, $force: Boolean) {
+  batchVectorizeContracts(ids: $ids, method: $method, force: $force) {
+    success
+    processed
+    failed
+    errors {
+      contractId
+      error
+    }
+  }
+}
+
+# 移除合同向量化数据
+mutation RemoveContractVectorization($id: ID!) {
+  removeContractVectorization(id: $id)
+}
+
+# 检查合同是否可以向量化的条件
+query CanVectorizeContract($id: ID!) {
+  canVectorizeContract(id: $id) {
+    canVectorize
+    reason
+  }
+}
+
+# RAG问答搜索
+query RAGQuestionAnswer($question: String!, $limit: Int, $threshold: Float) {
+  ragQuestionAnswer(question: $question, limit: $limit, threshold: $threshold) {
+    contractId
+    contractNo
+    contractName
+    customerName
+    chunkContent
+    similarity
+    chunkMetadata {
+      title
+      articleNumber
+      chunkType
+    }
+  }
+}

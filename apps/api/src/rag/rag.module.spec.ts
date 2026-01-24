@@ -5,6 +5,7 @@ import { RAGResolver } from './rag.resolver';
 import { SemanticChunkerService } from '../llm-parser/semantic-chunker.service';
 import { VectorStoreService } from '../vector-store/vector-store.service';
 import { TopicRegistryService } from '../llm-parser/topics/topic-registry.service';
+import { PrismaService } from '../prisma';
 
 describe('RAGModule', () => {
   it('should compile the module', async () => {
@@ -16,6 +17,8 @@ describe('RAGModule', () => {
       .overrideProvider(VectorStoreService)
       .useValue({})
       .overrideProvider(TopicRegistryService)
+      .useValue({})
+      .overrideProvider(PrismaService)
       .useValue({})
       .compile();
 
@@ -32,6 +35,8 @@ describe('RAGModule', () => {
       .overrideProvider(VectorStoreService)
       .useValue({})
       .overrideProvider(TopicRegistryService)
+      .useValue({})
+      .overrideProvider(PrismaService)
       .useValue({})
       .compile();
 
@@ -51,6 +56,8 @@ describe('RAGModule', () => {
       .overrideProvider(VectorStoreService)
       .useValue({})
       .overrideProvider(TopicRegistryService)
+      .useValue({})
+      .overrideProvider(PrismaService)
       .useValue({})
       .compile();
 

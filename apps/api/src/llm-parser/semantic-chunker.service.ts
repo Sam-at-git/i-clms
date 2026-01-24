@@ -40,10 +40,14 @@ export interface SemanticSegmentDetection {
  * 2. 识别章节标题、条款编号
  * 3. 为每个chunk标记相关字段，支持RAG检索
  * 4. 支持页码提示（如果有）
+ * 5. 支持最大长度限制，章节过大时按条款二次分割
  */
 @Injectable()
 export class SemanticChunkerService {
   private readonly logger = new Logger(SemanticChunkerService.name);
+
+  // 默认最大chunk长度（字符数）
+  private readonly DEFAULT_MAX_CHUNK_LENGTH = 1000;
 
   // 章节模式定义
   private readonly SECTION_PATTERNS: SemanticSegmentDetection[] = [
@@ -125,24 +129,33 @@ export class SemanticChunkerService {
    * 分段策略（按优先级）：
    * 1. 优先按Markdown章节标题分割（#, ##, ###等）
    * 2. 如果无法识别章节，按合同结构切分（header/financial/schedule/party/article）
+   * 3. 章节过长时按条款二次分割，确保不超过maxLength
    *
    * @param text 合同全文（Markdown格式）
    * @param minChunkSize 最小chunk大小（防止过小的片段）
+   * @param maxLength 最大chunk长度（默认1000字符）
    * @returns 语义分段的chunk数组
    */
-  chunkBySemanticStructure(text: string, minChunkSize = 500): SemanticChunk[] {
-    this.logger.log(`[SemanticChunking] Starting: ${text.length} chars`);
+  chunkBySemanticStructure(text: string, minChunkSize = 500, maxLength = this.DEFAULT_MAX_CHUNK_LENGTH): SemanticChunk[] {
+    this.logger.log(`[SemanticChunking] Starting: ${text.length} chars, maxLength: ${maxLength}`);
 
     // 尝试按章节结构分割（优先）
     const chapterChunks = this.chunkByChapterStructure(text);
     if (chapterChunks.length > 1) {
       this.logger.log(`[SemanticChunking] Using chapter-based splitting: ${chapterChunks.length} chapters`);
-      return this.enrichChunksWithMetadata(chapterChunks);
+
+      // 先添加元数据
+      let chunks = this.enrichChunksWithMetadata(chapterChunks);
+
+      // 检查并分割过长的章节
+      chunks = this.splitLongChucks(chunks, maxLength);
+
+      return chunks;
     }
 
     // 如果没有识别出章节，回退到按合同结构分割
     this.logger.log(`[SemanticChunking] No chapters found, using structure-based splitting`);
-    return this.chunkByContractStructure(text, minChunkSize);
+    return this.chunkByContractStructure(text, minChunkSize, maxLength);
   }
 
   /**
@@ -295,7 +308,7 @@ export class SemanticChunkerService {
   /**
    * 按合同结构切分（回退方案，当无法识别章节时使用）
    */
-  private chunkByContractStructure(text: string, minChunkSize: number): SemanticChunk[] {
+  private chunkByContractStructure(text: string, minChunkSize: number, maxLength = this.DEFAULT_MAX_CHUNK_LENGTH): SemanticChunk[] {
     this.logger.log(`[SemanticChunking] Using contract structure splitting`);
 
     const chunks: SemanticChunk[] = [];
@@ -526,6 +539,215 @@ export class SemanticChunkerService {
     }
 
     return merged;
+  }
+
+  /**
+   * 分割过长的chunk
+   *
+   * 如果chunk长度超过maxLength，按以下策略分割：
+   * 1. 尝试按条款（第X条、数字编号）分割
+   * 2. 如果无法识别条款，按自然段分割
+   * 3. 确保不跨自然段
+   *
+   * @param chunks 原始chunks
+   * @param maxLength 最大长度限制
+   * @returns 处理后的chunks
+   */
+  private splitLongChucks(chunks: SemanticChunk[], maxLength: number): SemanticChunk[] {
+    const result: SemanticChunk[] = [];
+
+    for (const chunk of chunks) {
+      if (chunk.text.length <= maxLength) {
+        result.push(chunk);
+        continue;
+      }
+
+      // Chunk过长，需要分割
+      this.logger.debug(`[SemanticChunking] Splitting long chunk ${chunk.id}: ${chunk.text.length} chars > ${maxLength}`);
+
+      const subChunks = this.splitLongChunk(chunk, maxLength);
+      result.push(...subChunks);
+    }
+
+    // 更新chunk ID
+    return result.map((chunk, index) => ({
+      ...chunk,
+      id: `chunk-${index}`,
+    }));
+  }
+
+  /**
+   * 分割单个过长的chunk
+   *
+   * @param chunk 过长的chunk
+   * @param maxLength 最大长度限制
+   * @returns 分割后的子chunks
+   */
+  private splitLongChunk(chunk: SemanticChunk, maxLength: number): SemanticChunk[] {
+    const { text, metadata } = chunk;
+    const subChunks: SemanticChunk[] = [];
+
+    // 首先尝试按条款分割
+    const articleSplits = this.splitByArticles(text);
+
+    if (articleSplits.length > 1) {
+      // 成功按条款分割，合并相邻的小段直到达到maxLength
+      let currentText = '';
+      let startIndex = 0;
+
+      for (let i = 0; i < articleSplits.length; i++) {
+        const split = articleSplits[i];
+        const potentialLength = currentText ? currentText.length + split.text.length + 2 : split.text.length;
+
+        if (currentText && potentialLength > maxLength) {
+          // 当前段已满，保存并开始新的
+          subChunks.push(this.createSubChunk(currentText, metadata, startIndex, startIndex + currentText.length, subChunks.length));
+          startIndex += currentText.length + 2;
+          currentText = split.text;
+        } else {
+          // 继续累积
+          currentText = currentText ? `${currentText}\n\n${split.text}` : split.text;
+        }
+      }
+
+      // 保存最后一段
+      if (currentText) {
+        subChunks.push(this.createSubChunk(currentText, metadata, startIndex, startIndex + currentText.length, subChunks.length));
+      }
+    } else {
+      // 无法按条款分割，按自然段分割
+      const paragraphSplits = this.splitByParagraphs(text, maxLength);
+      subChunks.push(...paragraphSplits);
+    }
+
+    this.logger.debug(`[SemanticChunking] Split into ${subChunks.length} sub-chunks`);
+    return subChunks;
+  }
+
+  /**
+   * 按条款分割文本
+   *
+   * 识别以下模式：
+   * - 第X条、第X章
+   * - 数字编号：1.、2.、3. 等
+   *
+   * @param text 文本
+   * @returns 分割后的段萂数组
+   */
+  private splitByArticles(text: string): Array<{ text: string; articleNumber?: string }> {
+    const splits: Array<{ text: string; articleNumber?: string }> = [];
+
+    // 条款分割模式
+    const articlePattern = /(?:^|\n)\s*(第[一二三四五六七八九十百千\d]+[条款章]|(?:^|\n)\s*\d+[\.\、]\s+)/gm;
+
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let currentArticleNumber: string | undefined;
+
+    // 重置正则表达式索引
+    articlePattern.lastIndex = 0;
+
+    while ((match = articlePattern.exec(text)) !== null) {
+      // 保存上一段
+      if (match.index > lastIndex) {
+        const segmentText = text.substring(lastIndex, match.index).trim();
+        if (segmentText) {
+          splits.push({ text: segmentText, articleNumber: currentArticleNumber });
+        }
+      }
+
+      // 提取条款编号
+      const articleMatch = match[1].match(/第([一二三四五六七八九十百千\d]+)[条款章]/);
+      const numberMatch = match[1].match(/(\d+)[\.\、]/);
+      currentArticleNumber = articleMatch ? articleMatch[1] : (numberMatch ? numberMatch[1] : undefined);
+
+      lastIndex = match.index;
+    }
+
+    // 保存最后一段
+    if (lastIndex < text.length) {
+      const segmentText = text.substring(lastIndex).trim();
+      if (segmentText) {
+        splits.push({ text: segmentText, articleNumber: currentArticleNumber });
+      }
+    }
+
+    return splits.length > 1 ? splits : [{ text }];
+  }
+
+  /**
+   * 按自然段分割文本（不跨段）
+   *
+   * @param text 文本
+   * @param maxLength 每段最大长度
+   * @returns 分割后的chunks
+   */
+  private splitByParagraphs(text: string, maxLength: number): SemanticChunk[] {
+    const chunks: SemanticChunk[] = [];
+
+    // 按自然段分割（空行或换行）
+    const paragraphs = text.split(/\n\s*\n/);
+
+    let currentText = '';
+    let currentIndex = 0;
+
+    for (const para of paragraphs) {
+      const trimmedPara = para.trim();
+      if (!trimmedPara) continue;
+
+      const potentialLength = currentText ? currentText.length + trimmedPara.length + 2 : trimmedPara.length;
+
+      if (currentText && potentialLength > maxLength) {
+        // 当前段落已满，保存并开始新的
+        chunks.push(this.createSubChunk(currentText, {}, currentIndex, currentIndex + currentText.length, chunks.length));
+        currentIndex += currentText.length + 2;
+        currentText = trimmedPara;
+      } else {
+        // 继续累积
+        currentText = currentText ? `${currentText}\n\n${trimmedPara}` : trimmedPara;
+      }
+    }
+
+    // 保存最后一段
+    if (currentText) {
+      chunks.push(this.createSubChunk(currentText, {}, currentIndex, currentIndex + currentText.length, chunks.length));
+    }
+
+    return chunks;
+  }
+
+  /**
+   * 创建子chunk
+   *
+   * @param text 文本内容
+   * @param parentMetadata 父chunk的元数据（继承）
+   * @param start 起始位置
+   * @param end 结束位置
+   * @param index chunk索引
+   * @returns 新的SemanticChunk
+   */
+  private createSubChunk(
+    text: string,
+    parentMetadata: Partial<SemanticChunk['metadata']>,
+    start: number,
+    end: number,
+    index: number
+  ): SemanticChunk {
+    return {
+      id: `chunk-${index}`,
+      text,
+      metadata: {
+        type: parentMetadata.type || 'article',
+        title: parentMetadata.title,
+        articleNumber: parentMetadata.articleNumber,
+        priority: parentMetadata.priority || 50,
+        fieldRelevance: parentMetadata.fieldRelevance || [],
+      },
+      position: {
+        start,
+        end,
+      },
+    };
   }
 
   /**

@@ -83,6 +83,11 @@ export class CreateContractInput {
   @Field(() => String, { nullable: true })
   parentContractId?: string;
 
+  // ==================== 向量化相关字段 ====================
+
+  @Field(() => String, { nullable: true, description: 'Docling生成的markdown文本，用于向量化' })
+  markdownText?: string;
+
   // ==================== 类型特定详情（LLM解析的扩展字段） ====================
 
   @Field(() => ProjectOutsourcingDetailInput, { nullable: true, description: '项目外包合同详情（里程碑等）' })

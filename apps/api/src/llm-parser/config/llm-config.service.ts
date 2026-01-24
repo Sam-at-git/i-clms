@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma';
 
@@ -44,6 +44,8 @@ let cachedTimeout: number | null = null;
 
 @Injectable()
 export class LlmConfigService implements OnModuleInit {
+  private readonly logger = new Logger(LlmConfigService.name);
+
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
@@ -76,7 +78,7 @@ export class LlmConfigService implements OnModuleInit {
       cachedMaxTokens = newMaxTokensStr ? parseInt(newMaxTokensStr, 10) : null;
       cachedTimeout = newTimeoutStr ? parseInt(newTimeoutStr, 10) : null;
 
-      console.log(`[LlmConfigService] Refreshed config from database: provider="${cachedProvider}", model="${cachedModel}", baseUrl="${cachedBaseUrl}", apiKey="***"`);
+      this.logger.log(`[LlmConfigService] Refreshed config from database: provider="${cachedProvider}", model="${cachedModel}", baseUrl="${cachedBaseUrl}", apiKey="***"`);
     } catch (error) {
       console.warn('[LlmConfigService] Failed to refresh config from database, using defaults', error);
       // 保持原有缓存不变，不清空
@@ -96,9 +98,9 @@ export class LlmConfigService implements OnModuleInit {
       if (dbConfig && dbConfig.value !== undefined && dbConfig.value !== null) {
         // 敏感信息不记录日志
         if (key === CONFIG_KEYS.LLM_API_KEY) {
-          console.log(`[LlmConfigService] Found in database: ${key}="***" (hidden)`);
+          this.logger.log(`[LlmConfigService] Found in database: ${key}="***" (hidden)`);
         } else {
-          console.log(`[LlmConfigService] Found in database: ${key}="${dbConfig.value}"`);
+          this.logger.log(`[LlmConfigService] Found in database: ${key}="${dbConfig.value}"`);
         }
         return dbConfig.value;
       }
@@ -110,7 +112,7 @@ export class LlmConfigService implements OnModuleInit {
     // 回退到环境变量
     const envValue = this.getEnvValue(key);
     if (envValue && key !== CONFIG_KEYS.LLM_API_KEY) {
-      console.log(`[LlmConfigService] Using env value for ${key}: "${envValue}"`);
+      this.logger.log(`[LlmConfigService] Using env value for ${key}: "${envValue}"`);
     }
     return envValue;
   }
@@ -157,7 +159,7 @@ export class LlmConfigService implements OnModuleInit {
     const maxTokens = cachedMaxTokens ?? this.configService.get<number>('LLM_MAX_TOKENS', DEFAULT_CONFIG.llmMaxTokens);
     const timeout = cachedTimeout ?? this.configService.get<number>('LLM_TIMEOUT', DEFAULT_CONFIG.llmTimeout);
 
-    console.log(`[LlmConfigService] getActiveConfig: provider="${provider}", baseUrl="${baseUrl}", apiKey="***", using cached: ${cachedProvider !== null}`);
+    this.logger.log(`[LlmConfigService] getActiveConfig: provider="${provider}", baseUrl="${baseUrl}", apiKey="***", using cached: ${cachedProvider !== null}`);
 
     // 规范化baseUrl：确保以 /v1 结尾（Ollama需要）
     const normalizeBaseUrl = (url: string): string => {
@@ -209,7 +211,7 @@ export class LlmConfigService implements OnModuleInit {
 
   getProviderName(): string {
     const provider = cachedProvider || this.configService.get<string>('ACTIVE_LLM_PROVIDER', DEFAULT_CONFIG.llmProvider);
-    console.log(`[LlmConfigService] getProviderName: returning "${provider}"`);
+    this.logger.log(`[LlmConfigService] getProviderName: returning "${provider}"`);
     return provider;
   }
 }

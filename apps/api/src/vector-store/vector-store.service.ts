@@ -13,7 +13,7 @@ export interface LlmCacheResult {
 }
 
 export interface ContractChunkData {
-  contractId: number;
+  contractId: string;
   chunkIndex: number;
   content: string;
   chunkType?: string;
@@ -27,9 +27,10 @@ export interface ContractChunkResult {
 }
 
 export interface SimilarChunkResult {
-  contractId: number;
+  contractId: string;
   content: string;
   similarity: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface CacheCleanupResult {
@@ -229,12 +230,12 @@ export class VectorStoreService {
 
     try {
       const results = await this.prisma.$queryRaw<
-        Array<{ contract_id: number; content: string; similarity: number }>
+        Array<{ contract_id: string; content: string; similarity: number; metadata: Record<string, unknown> | null }>
       >`
-        SELECT contract_id, content, 1 - (embedding < ${embeddingStr}::vector) AS similarity
+        SELECT contract_id, content, metadata, 1 - (embedding <=> ${embeddingStr}::vector) AS similarity
         FROM contract_chunks
         WHERE embedding IS NOT NULL
-        ORDER BY embedding < ${embeddingStr}::vector
+        ORDER BY embedding <=> ${embeddingStr}::vector
         LIMIT ${limit}
       `;
 
@@ -244,6 +245,7 @@ export class VectorStoreService {
           contractId: r.contract_id,
           content: r.content,
           similarity: r.similarity,
+          metadata: r.metadata || undefined,
         }));
     } catch (error) {
       this.logger.error(`Failed to search similar chunks: ${this.errorMessage(error)}`);
@@ -254,7 +256,7 @@ export class VectorStoreService {
   /**
    * Get all chunks for a contract
    */
-  async getContractChunks(contractId: number): Promise<ContractChunkResult[]> {
+  async getContractChunks(contractId: string): Promise<ContractChunkResult[]> {
     try {
       const chunks = await this.prisma.$queryRaw<
         Array<{ chunk_index: number; content: string; chunk_type: string | null }>
@@ -279,7 +281,7 @@ export class VectorStoreService {
   /**
    * Delete all chunks for a contract
    */
-  async deleteContractChunks(contractId: number): Promise<void> {
+  async deleteContractChunks(contractId: string): Promise<void> {
     try {
       await this.prisma.$executeRaw`
         DELETE FROM contract_chunks

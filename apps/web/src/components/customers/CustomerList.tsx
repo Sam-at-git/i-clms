@@ -63,7 +63,6 @@ export function CustomerList({ search, industry, status, refreshKey }: CustomerL
 
   const [deleteCustomer, { loading: deleting }] = useMutation(DELETE_CUSTOMER, {
     onCompleted: (data) => {
-      console.log('Customer deleted:', data.deleteCustomer);
       refetch();
     },
     onError: (error) => {

@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { Link } from 'react-router-dom';
+import { useVectorizeContractMutation } from '@i-clms/shared/generated/graphql';
 import { ContractUploadUnified } from './ContractUploadUnified';
 import { ContractDelete } from './ContractDelete';
 import { ContractFilter } from './ContractFilter';
 import { ContractSearch } from './ContractSearch';
 import { AdvancedSearchPanel } from './AdvancedSearchPanel';
 import { SemanticSearch } from './SemanticSearch';
+import { RAGQuestionAnswer } from './RAGQuestionAnswer';
 import {
   HighlightedContractName,
   HighlightedContractNo,
@@ -38,6 +40,9 @@ const GET_CONTRACTS = gql`
         currency
         signedAt
         parseStatus
+        isVectorized
+        vectorizedAt
+        chunkCount
         customer {
           id
           name
@@ -66,6 +71,9 @@ interface Contract {
   currency: string;
   signedAt: string | null;
   parseStatus: string;
+  isVectorized: boolean;
+  vectorizedAt: string | null;
+  chunkCount: number | null;
   customer: {
     id: string;
     name: string;
@@ -146,6 +154,20 @@ export function ContractListEnhanced() {
       fetchPolicy: 'cache-and-network',
     }
   );
+
+  const [vectorizeContract, { loading: vectorizing }] = useVectorizeContractMutation({
+    refetchQueries: () => ['GetContractsWithFilterAdvanced'],
+    onCompleted: (data) => {
+      if (data.vectorizeContract?.success) {
+        alert(`向量化成功！创建了 ${data.vectorizeContract.chunkCount} 个分块`);
+      } else {
+        alert(`向量化失败: ${data.vectorizeContract?.message || '未知错误'}`);
+      }
+    },
+    onError: (error) => {
+      alert(`向量化出错: ${error.message}`);
+    },
+  });
 
   if (loading && !data) {
     return (
@@ -231,6 +253,14 @@ export function ContractListEnhanced() {
     return new Date(dateStr).toLocaleDateString('zh-CN');
   };
 
+  const handleVectorize = async (contractId: string) => {
+    if (vectorizing) return;
+    const confirmed = window.confirm('确定要对合同执行向量化吗？');
+    if (confirmed) {
+      await vectorizeContract({ variables: { id: contractId, method: 'MANUAL' } });
+    }
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -279,6 +309,16 @@ export function ContractListEnhanced() {
         >
           语义搜索
         </button>
+        <button
+          onClick={() => setSearchMode('rag')}
+          style={{
+            ...searchModeStyles.button,
+            ...(searchMode === 'rag' ? searchModeStyles.activeButton : {}),
+          }}
+          type="button"
+        >
+          RAG 问答
+        </button>
       </div>
 
       {/* Search and Filter - Simple Mode */}
@@ -297,6 +337,11 @@ export function ContractListEnhanced() {
       {/* Semantic Search */}
       {searchMode === 'semantic' && (
         <SemanticSearch onResultClick={() => refetch()} />
+      )}
+
+      {/* RAG Question Answer */}
+      {searchMode === 'rag' && (
+        <RAGQuestionAnswer onResultClick={() => refetch()} />
       )}
 
       {/* Batch Actions */}
@@ -376,6 +421,7 @@ export function ContractListEnhanced() {
               <th style={styles.th}>金额</th>
               <th style={styles.th}>签订日期</th>
               <th style={styles.th}>状态</th>
+              <th style={styles.th}>向量化</th>
               <th style={styles.th}>操作</th>
             </tr>
           </thead>
@@ -428,6 +474,23 @@ export function ContractListEnhanced() {
                   >
                     {CONTRACT_STATUS_LABELS[contract.status] || contract.status}
                   </span>
+                </td>
+                <td style={styles.td}>
+                  {contract.isVectorized ? (
+                    <span style={styles.vectorizedBadge}>已向量化</span>
+                  ) : (
+                    <button
+                      onClick={() => handleVectorize(contract.id)}
+                      disabled={vectorizing}
+                      style={{
+                        ...styles.vectorizeButton,
+                        ...(vectorizing ? styles.vectorizeButtonDisabled : {}),
+                      }}
+                      title="向量化合同"
+                    >
+                      {vectorizing ? '向量化中...' : '向量化'}
+                    </button>
+                  )}
                 </td>
                 <td style={styles.td}>
                   <div style={styles.actions}>
@@ -674,6 +737,28 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     padding: 0,
     textDecoration: 'none',
+  },
+  vectorizedBadge: {
+    display: 'inline-block',
+    padding: '2px 8px',
+    fontSize: '11px',
+    borderRadius: '4px',
+    backgroundColor: '#dcfce7',
+    color: '#166534',
+  },
+  vectorizeButton: {
+    background: 'none',
+    border: '1px solid #3b82f6',
+    color: '#3b82f6',
+    fontSize: '12px',
+    cursor: 'pointer',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    transition: 'background 0.2s',
+  },
+  vectorizeButtonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
   },
   cardGrid: {
     display: 'grid',

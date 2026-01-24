@@ -156,7 +156,7 @@ describe('VectorStoreService', () => {
 
       // Act
       await service.saveContractChunk(
-        { contractId: 1, chunkIndex: 0, content: 'test content' },
+        { contractId: '1', chunkIndex: 0, content: 'test content' },
         [0.1, 0.2, 0.3]
       );
 
@@ -172,8 +172,8 @@ describe('VectorStoreService', () => {
 
       // Act
       const chunks = [
-        { contractId: 1, chunkIndex: 0, content: 'chunk 1', embedding: [0.1, 0.2] },
-        { contractId: 1, chunkIndex: 1, content: 'chunk 2', embedding: [0.3, 0.4] },
+        { contractId: '1', chunkIndex: 0, content: 'chunk 1', embedding: [0.1, 0.2] },
+        { contractId: '1', chunkIndex: 1, content: 'chunk 2', embedding: [0.3, 0.4] },
       ];
 
       await service.saveContractChunks(chunks);
@@ -187,8 +187,8 @@ describe('VectorStoreService', () => {
     it('TEST-008: should return similar chunks', async () => {
       // Arrange
       const mockResults = [
-        { contract_id: 1, content: 'similar content 1', similarity: 0.85 },
-        { contract_id: 2, content: 'similar content 2', similarity: 0.75 },
+        { contract_id: '1', content: 'similar content 1', similarity: 0.85 },
+        { contract_id: '2', content: 'similar content 2', similarity: 0.75 },
       ];
       mockPrisma.$queryRaw.mockResolvedValue(mockResults);
 
@@ -198,7 +198,7 @@ describe('VectorStoreService', () => {
       // Assert
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
-        contractId: 1,
+        contractId: '1',
         content: 'similar content 1',
         similarity: 0.85,
       });
@@ -207,8 +207,8 @@ describe('VectorStoreService', () => {
     it('should filter results by threshold', async () => {
       // Arrange
       const mockResults = [
-        { contract_id: 1, content: 'similar content', similarity: 0.85 },
-        { contract_id: 2, content: 'dissimilar content', similarity: 0.65 },
+        { contract_id: '1', content: 'similar content', similarity: 0.85 },
+        { contract_id: '2', content: 'dissimilar content', similarity: 0.65 },
       ];
       mockPrisma.$queryRaw.mockResolvedValue(mockResults);
 
@@ -242,7 +242,7 @@ describe('VectorStoreService', () => {
       mockPrisma.$queryRaw.mockResolvedValue(mockChunks);
 
       // Act
-      const result = await service.getContractChunks(1);
+      const result = await service.getContractChunks('1');
 
       // Assert
       expect(result).toHaveLength(2);
@@ -257,7 +257,7 @@ describe('VectorStoreService', () => {
       ]);
 
       // Act
-      const result = await service.getContractChunks(1);
+      const result = await service.getContractChunks('1');
 
       // Assert
       expect(result[0].chunkType).toBe('other');
@@ -268,7 +268,7 @@ describe('VectorStoreService', () => {
       mockPrisma.$queryRaw.mockRejectedValue(new Error('Database error'));
 
       // Act
-      const result = await service.getContractChunks(1);
+      const result = await service.getContractChunks('1');
 
       // Assert
       expect(result).toEqual([]);
@@ -281,7 +281,7 @@ describe('VectorStoreService', () => {
       mockPrisma.$executeRaw.mockResolvedValue({ rowCount: 5 });
 
       // Act
-      await service.deleteContractChunks(1);
+      await service.deleteContractChunks('1');
 
       // Assert
       expect(mockPrisma.$executeRaw).toHaveBeenCalled();

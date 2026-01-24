@@ -1,0 +1,25 @@
+query GetCacheStats {
+  cacheStats {
+    level1 {
+      size
+      hits
+      misses
+      hitRate
+    }
+    level2 {
+      count
+    }
+    level3 {
+      count
+      expiredCount
+    }
+  }
+}
+
+mutation ClearAllCache {
+  clearAllCache
+}
+
+mutation CleanExpiredCache {
+  cleanExpiredCache
+}

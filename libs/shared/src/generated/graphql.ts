@@ -123,6 +123,26 @@ export type BasicInfo = {
   status?: Maybe<Scalars['String']['output']>;
 };
 
+export type BatchVectorizationError = {
+  __typename?: 'BatchVectorizationError';
+  /** Contract ID */
+  contractId: Scalars['String']['output'];
+  /** Error message */
+  error: Scalars['String']['output'];
+};
+
+export type BatchVectorizationResult = {
+  __typename?: 'BatchVectorizationResult';
+  /** List of errors */
+  errors?: Maybe<Array<BatchVectorizationError>>;
+  /** Number of contracts failed */
+  failed: Scalars['Int']['output'];
+  /** Number of contracts processed */
+  processed: Scalars['Int']['output'];
+  /** Whether all vectorizations succeeded */
+  success: Scalars['Boolean']['output'];
+};
+
 /** L2 向量嵌入缓存统计 */
 export type CacheLevel2Stats = {
   __typename?: 'CacheLevel2Stats';
@@ -161,6 +181,14 @@ export type CacheStats = {
   level2: CacheLevel2Stats;
   /** L3 LLM结果缓存统计 */
   level3: CacheLevel3Stats;
+};
+
+export type CanVectorizeResult = {
+  __typename?: 'CanVectorizeResult';
+  /** Whether contract can be vectorized */
+  canVectorize: Scalars['Boolean']['output'];
+  /** Reason if cannot vectorize */
+  reason?: Maybe<Scalars['String']['output']>;
 };
 
 export type CaseOverview = {
@@ -309,6 +337,8 @@ export type Contract = {
   __typename?: 'Contract';
   amountWithTax: Scalars['String']['output'];
   amountWithoutTax?: Maybe<Scalars['String']['output']>;
+  /** 分块数量 */
+  chunkCount?: Maybe<Scalars['Int']['output']>;
   contractNo: Scalars['String']['output'];
   copies?: Maybe<Scalars['Int']['output']>;
   createdAt: Scalars['DateTime']['output'];
@@ -322,6 +352,8 @@ export type Contract = {
   fileUrl?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   industry?: Maybe<Scalars['String']['output']>;
+  /** 是否已向量化 */
+  isVectorized: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   needsManualReview: Scalars['Boolean']['output'];
   ourEntity: Scalars['String']['output'];
@@ -345,6 +377,10 @@ export type Contract = {
   type: ContractType;
   updatedAt: Scalars['DateTime']['output'];
   uploadedBy: User;
+  /** 向量化方式：AUTO/MANUAL */
+  vectorizationMethod?: Maybe<Scalars['String']['output']>;
+  /** 向量化时间 */
+  vectorizedAt?: Maybe<Scalars['DateTime']['output']>;
 };
 
 /** 合同段落信息 */
@@ -644,6 +680,8 @@ export type CreateContractInput = {
   fileType?: InputMaybe<Scalars['String']['input']>;
   fileUrl?: InputMaybe<Scalars['String']['input']>;
   industry?: InputMaybe<Scalars['String']['input']>;
+  /** Docling生成的markdown文本，用于向量化 */
+  markdownText?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
   ourEntity: Scalars['String']['input'];
   parentContractId?: InputMaybe<Scalars['String']['input']>;
@@ -1457,6 +1495,8 @@ export type Mutation = {
   assignTagsToContract: Scalars['Boolean']['output'];
   /** 自动分类合同 */
   autoClassifyContract: ClassificationResult;
+  /** Vectorize multiple contracts */
+  batchVectorizeContracts: BatchVectorizationResult;
   /** Change your own password */
   changePassword: ChangePasswordResult;
   /** 对合同文本进行语义分段 - 返回分段的元数据和位置信息 */
@@ -1553,6 +1593,8 @@ export type Mutation = {
   register: User;
   /** 拒绝里程碑 */
   rejectMilestone: MilestoneDetail;
+  /** Remove vectorization data from a contract */
+  removeContractVectorization: Scalars['Boolean']['output'];
   removeCustomerContact: CustomerContact;
   /** Remove a tag from a contract */
   removeTagFromContract: Scalars['Boolean']['output'];
@@ -1615,6 +1657,8 @@ export type Mutation = {
   uploadDeliverable: MilestoneDetail;
   /** 创建或更新数据保护条款 */
   upsertDataProtection: ContractDataProtection;
+  /** Vectorize a contract for RAG search */
+  vectorizeContract: VectorizationResult;
 };
 
 
@@ -1643,6 +1687,13 @@ export type MutationAssignTagsToContractArgs = {
 
 export type MutationAutoClassifyContractArgs = {
   contractId: Scalars['String']['input'];
+};
+
+
+export type MutationBatchVectorizeContractsArgs = {
+  force?: InputMaybe<Scalars['Boolean']['input']>;
+  ids: Array<Scalars['ID']['input']>;
+  method?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1813,7 +1864,7 @@ export type MutationExtractTagsArgs = {
 
 
 export type MutationExtractWithRagArgs = {
-  contractId: Scalars['Float']['input'];
+  contractId: Scalars['ID']['input'];
   queries: Array<TopicQueryDto>;
 };
 
@@ -1825,7 +1876,7 @@ export type MutationGenerateProfileArgs = {
 
 export type MutationIndexContractArgs = {
   content: Scalars['String']['input'];
-  contractId: Scalars['Float']['input'];
+  contractId: Scalars['ID']['input'];
 };
 
 
@@ -1903,6 +1954,11 @@ export type MutationRegisterArgs = {
 
 export type MutationRejectMilestoneArgs = {
   input: RejectMilestoneInput;
+};
+
+
+export type MutationRemoveContractVectorizationArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -2093,6 +2149,13 @@ export type MutationUploadDeliverableArgs = {
 
 export type MutationUpsertDataProtectionArgs = {
   input: CreateDataProtectionInput;
+};
+
+
+export type MutationVectorizeContractArgs = {
+  force?: InputMaybe<Scalars['Boolean']['input']>;
+  id: Scalars['ID']['input'];
+  method?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type NotificationResult = {
@@ -2457,6 +2520,8 @@ export type Query = {
   calculateCompleteness: CompletenessScore;
   /** 计算主题完整性分数 */
   calculateTopicCompleteness: TopicCompletenessScore;
+  /** Check if a contract can be vectorized */
+  canVectorizeContract: CanVectorizeResult;
   /** 获取案例库概览 */
   caseOverview: CaseOverview;
   /** 获取现金流预测 */
@@ -2581,6 +2646,8 @@ export type Query = {
   projectMilestones: Array<ProjectMilestoneWithContract>;
   /** 获取项目交付概览 */
   projectOverview: ProjectOverview;
+  /** RAG Question Answer - search contracts by natural language question */
+  ragQuestionAnswer: Array<RagQuestionAnswerResult>;
   /** 获取续约看板 */
   renewalOverview: RenewalOverview;
   /** 获取资源利用率 */
@@ -2669,6 +2736,11 @@ export type QueryCalculateTopicCompletenessArgs = {
 };
 
 
+export type QueryCanVectorizeContractArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type QueryCashFlowForecastArgs = {
   months?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -2696,7 +2768,7 @@ export type QueryContractByNoArgs = {
 
 
 export type QueryContractChunksArgs = {
-  contractId: Scalars['Float']['input'];
+  contractId: Scalars['ID']['input'];
 };
 
 
@@ -2899,6 +2971,13 @@ export type QueryParseDocumentArgs = {
 };
 
 
+export type QueryRagQuestionAnswerArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  question: Scalars['String']['input'];
+  threshold?: InputMaybe<Scalars['Float']['input']>;
+};
+
+
 export type QueryRevenueStatsArgs = {
   filter?: InputMaybe<RevenueFilterInput>;
 };
@@ -2978,6 +3057,16 @@ export type QueryUsersArgs = {
   pageSize?: Scalars['Int']['input'];
 };
 
+export type RagChunkMetadata = {
+  __typename?: 'RAGChunkMetadata';
+  /** 条款编号 */
+  articleNumber?: Maybe<Scalars['String']['output']>;
+  /** chunk类型 */
+  chunkType?: Maybe<Scalars['String']['output']>;
+  /** 章节标题 */
+  title?: Maybe<Scalars['String']['output']>;
+};
+
 export type RagContractChunk = {
   __typename?: 'RAGContractChunk';
   chunkType: Scalars['String']['output'];
@@ -2991,6 +3080,24 @@ export type RagExtractResult = {
   query: Scalars['String']['output'];
   retrievedChunks: Array<RetrievedChunk>;
   topic: Scalars['String']['output'];
+};
+
+export type RagQuestionAnswerResult = {
+  __typename?: 'RAGQuestionAnswerResult';
+  /** 相关文本片段 */
+  chunkContent: Scalars['String']['output'];
+  /** chunk元数据 */
+  chunkMetadata?: Maybe<RagChunkMetadata>;
+  /** 合同ID */
+  contractId: Scalars['ID']['output'];
+  /** 合同名称 */
+  contractName: Scalars['String']['output'];
+  /** 合同编号 */
+  contractNo: Scalars['String']['output'];
+  /** 客户名称 */
+  customerName: Scalars['String']['output'];
+  /** 相似度得分 (0-1) */
+  similarity: Scalars['Float']['output'];
 };
 
 export type RagParseInput = {
@@ -3614,6 +3721,8 @@ export type UpdateContractInput = {
   fileType?: InputMaybe<Scalars['String']['input']>;
   fileUrl?: InputMaybe<Scalars['String']['input']>;
   industry?: InputMaybe<Scalars['String']['input']>;
+  /** Docling生成的markdown文本，用于向量化 */
+  markdownText?: InputMaybe<Scalars['String']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   needsManualReview?: InputMaybe<Scalars['Boolean']['input']>;
   ourEntity?: InputMaybe<Scalars['String']['input']>;
@@ -3758,6 +3867,20 @@ export type VectorCacheStats = {
   llmCacheCount: Scalars['Int']['output'];
 };
 
+export type VectorizationResult = {
+  __typename?: 'VectorizationResult';
+  /** Number of chunks created */
+  chunkCount?: Maybe<Scalars['Int']['output']>;
+  /** Error code if failed */
+  error?: Maybe<Scalars['String']['output']>;
+  /** Result message */
+  message: Scalars['String']['output'];
+  /** Whether vectorization succeeded */
+  success: Scalars['Boolean']['output'];
+  /** Vectorization timestamp */
+  vectorizedAt?: Maybe<Scalars['DateTime']['output']>;
+};
+
 export type VoteResult = {
   __typename?: 'VoteResult';
   agreedValue?: Maybe<Scalars['JSONObject']['output']>;
@@ -3814,7 +3937,7 @@ export type GetContractWithTagsQueryVariables = Exact<{
 }>;
 
 
-export type GetContractWithTagsQuery = { __typename?: 'Query', contract?: { __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, amountWithoutTax?: string | null, currency: string, taxRate?: string | null, taxAmount?: string | null, paymentMethod?: string | null, paymentTerms?: string | null, signedAt?: string | null, effectiveAt?: string | null, expiresAt?: string | null, duration?: string | null, fileUrl?: string | null, fileType?: string | null, industry?: string | null, salesPerson?: string | null, parseStatus: ParseStatus, parsedAt?: string | null, parseConfidence?: number | null, needsManualReview: boolean, createdAt: string, updatedAt: string, tags: Array<{ __typename?: 'Tag', id: string, name: string, category: string, color: string, isActive: boolean, isSystem: boolean }>, staffAugmentationDetail?: { __typename?: 'StaffAugmentationDetail', id: string, estimatedTotalHours?: string | null, monthlyHoursCap?: string | null, yearlyHoursCap?: string | null, settlementCycle?: string | null, timesheetApprovalFlow?: string | null, adjustmentMechanism?: string | null, rateItems: Array<{ __typename?: 'StaffRateItem', id: string, role: string, rateType: RateType, rate: string, rateEffectiveFrom?: string | null, rateEffectiveTo?: string | null }> } | null, projectOutsourcingDetail?: { __typename?: 'ProjectOutsourcingDetail', id: string, sowSummary?: string | null, deliverables?: string | null, acceptanceCriteria?: string | null, acceptanceFlow?: string | null, changeManagementFlow?: string | null, milestones: Array<{ __typename?: 'ProjectMilestone', id: string, sequence: number, name: string, deliverables?: string | null, amount?: string | null, paymentPercentage?: string | null, plannedDate?: string | null, actualDate?: string | null, acceptanceCriteria?: string | null, status: MilestoneStatus }> } | null, productSalesDetail?: { __typename?: 'ProductSalesDetail', id: string, deliveryContent?: string | null, deliveryDate?: string | null, deliveryLocation?: string | null, shippingResponsibility?: string | null, ipOwnership?: string | null, warrantyPeriod?: string | null, afterSalesTerms?: string | null, lineItems: Array<{ __typename?: 'ProductLineItem', id: string, productName: string, specification?: string | null, quantity: number, unit: string, unitPriceWithTax: string, unitPriceWithoutTax?: string | null, subtotal: string }> } | null, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, creditCode?: string | null, industry?: string | null, address?: string | null, contactPerson?: string | null, contactPhone?: string | null, contactEmail?: string | null }, department: { __typename?: 'Department', id: string, name: string, code: string }, uploadedBy: { __typename?: 'User', id: string, name: string, email: string } } | null };
+export type GetContractWithTagsQuery = { __typename?: 'Query', contract?: { __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, amountWithoutTax?: string | null, currency: string, taxRate?: string | null, taxAmount?: string | null, paymentMethod?: string | null, paymentTerms?: string | null, signedAt?: string | null, effectiveAt?: string | null, expiresAt?: string | null, duration?: string | null, fileUrl?: string | null, fileType?: string | null, industry?: string | null, salesPerson?: string | null, parseStatus: ParseStatus, parsedAt?: string | null, parseConfidence?: number | null, needsManualReview: boolean, isVectorized: boolean, vectorizedAt?: string | null, vectorizationMethod?: string | null, chunkCount?: number | null, createdAt: string, updatedAt: string, tags: Array<{ __typename?: 'Tag', id: string, name: string, category: string, color: string, isActive: boolean, isSystem: boolean }>, staffAugmentationDetail?: { __typename?: 'StaffAugmentationDetail', id: string, estimatedTotalHours?: string | null, monthlyHoursCap?: string | null, yearlyHoursCap?: string | null, settlementCycle?: string | null, timesheetApprovalFlow?: string | null, adjustmentMechanism?: string | null, rateItems: Array<{ __typename?: 'StaffRateItem', id: string, role: string, rateType: RateType, rate: string, rateEffectiveFrom?: string | null, rateEffectiveTo?: string | null }> } | null, projectOutsourcingDetail?: { __typename?: 'ProjectOutsourcingDetail', id: string, sowSummary?: string | null, deliverables?: string | null, acceptanceCriteria?: string | null, acceptanceFlow?: string | null, changeManagementFlow?: string | null, milestones: Array<{ __typename?: 'ProjectMilestone', id: string, sequence: number, name: string, deliverables?: string | null, amount?: string | null, paymentPercentage?: string | null, plannedDate?: string | null, actualDate?: string | null, acceptanceCriteria?: string | null, status: MilestoneStatus }> } | null, productSalesDetail?: { __typename?: 'ProductSalesDetail', id: string, deliveryContent?: string | null, deliveryDate?: string | null, deliveryLocation?: string | null, shippingResponsibility?: string | null, ipOwnership?: string | null, warrantyPeriod?: string | null, afterSalesTerms?: string | null, lineItems: Array<{ __typename?: 'ProductLineItem', id: string, productName: string, specification?: string | null, quantity: number, unit: string, unitPriceWithTax: string, unitPriceWithoutTax?: string | null, subtotal: string }> } | null, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null, creditCode?: string | null, industry?: string | null, address?: string | null, contactPerson?: string | null, contactPhone?: string | null, contactEmail?: string | null }, department: { __typename?: 'Department', id: string, name: string, code: string }, uploadedBy: { __typename?: 'User', id: string, name: string, email: string } } | null };
 
 export type UpdateContractMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -3848,7 +3971,7 @@ export type GetContractsWithFilterAdvancedQueryVariables = Exact<{
 }>;
 
 
-export type GetContractsWithFilterAdvancedQuery = { __typename?: 'Query', contracts: { __typename?: 'ContractConnection', totalCount: number, hasNextPage: boolean, hasPreviousPage: boolean, nodes: Array<{ __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, currency: string, signedAt?: string | null, parseStatus: ParseStatus, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null }, department: { __typename?: 'Department', id: string, name: string } }> } };
+export type GetContractsWithFilterAdvancedQuery = { __typename?: 'Query', contracts: { __typename?: 'ContractConnection', totalCount: number, hasNextPage: boolean, hasPreviousPage: boolean, nodes: Array<{ __typename?: 'Contract', id: string, contractNo: string, name: string, type: ContractType, status: ContractStatus, ourEntity: string, amountWithTax: string, currency: string, signedAt?: string | null, parseStatus: ParseStatus, isVectorized: boolean, vectorizedAt?: string | null, chunkCount?: number | null, customer: { __typename?: 'Customer', id: string, name: string, shortName?: string | null }, department: { __typename?: 'Department', id: string, name: string } }> } };
 
 export type GetRelatedContractsQueryVariables = Exact<{
   customerId?: InputMaybe<Scalars['String']['input']>;
@@ -3878,6 +4001,15 @@ export type GetContractLegalClausesQueryVariables = Exact<{
 
 
 export type GetContractLegalClausesQuery = { __typename?: 'Query', contractLegalClauses: Array<{ __typename?: 'ContractLegalClause', id: number, contractId: string, clauseType: LegalClauseType, licenseType?: string | null, licenseFee?: string | null, guarantor?: string | null, guaranteeType?: string | null, guaranteeAmount?: string | null, guaranteePeriod?: string | null, liabilityLimit?: string | null, exclusions?: string | null, compensationMethod?: string | null, terminationNotice?: string | null, breachLiability?: string | null, disputeResolution?: string | null, disputeLocation?: string | null, confidence?: number | null, originalText?: string | null }>, contractDataProtection?: { __typename?: 'ContractDataProtection', id: number, contractId: string, involvesPersonalData: boolean, personalDataType?: string | null, processingLocation?: string | null, crossBorderTransfer?: string | null, securityMeasures?: string | null, dataRetention?: string | null, riskLevel: DataProtectionRisk, confidence?: number | null, originalText?: string | null } | null };
+
+export type RagQuestionAnswerQueryVariables = Exact<{
+  question: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  threshold?: InputMaybe<Scalars['Float']['input']>;
+}>;
+
+
+export type RagQuestionAnswerQuery = { __typename?: 'Query', ragQuestionAnswer: Array<{ __typename?: 'RAGQuestionAnswerResult', contractId: string, contractNo: string, contractName: string, customerName: string, chunkContent: string, similarity: number, chunkMetadata?: { __typename?: 'RAGChunkMetadata', title?: string | null, articleNumber?: string | null, chunkType?: string | null } | null }> };
 
 export type SemanticSearchQueryVariables = Exact<{
   query: Scalars['String']['input'];
@@ -3939,6 +4071,38 @@ export type DeleteCustomerMutationVariables = Exact<{
 
 
 export type DeleteCustomerMutation = { __typename?: 'Mutation', deleteCustomer: { __typename?: 'Customer', id: string, name: string } };
+
+export type VectorizeContractMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  method?: InputMaybe<Scalars['String']['input']>;
+  force?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type VectorizeContractMutation = { __typename?: 'Mutation', vectorizeContract: { __typename?: 'VectorizationResult', success: boolean, message: string, chunkCount?: number | null, vectorizedAt?: string | null, error?: string | null } };
+
+export type BatchVectorizeContractsMutationVariables = Exact<{
+  ids: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
+  method?: InputMaybe<Scalars['String']['input']>;
+  force?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type BatchVectorizeContractsMutation = { __typename?: 'Mutation', batchVectorizeContracts: { __typename?: 'BatchVectorizationResult', success: boolean, processed: number, failed: number, errors?: Array<{ __typename?: 'BatchVectorizationError', contractId: string, error: string }> | null } };
+
+export type RemoveContractVectorizationMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type RemoveContractVectorizationMutation = { __typename?: 'Mutation', removeContractVectorization: boolean };
+
+export type CanVectorizeContractQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type CanVectorizeContractQuery = { __typename?: 'Query', canVectorizeContract: { __typename?: 'CanVectorizeResult', canVectorize: boolean, reason?: string | null } };
 
 export type GetContractsWithFilterQueryVariables = Exact<{
   filter?: InputMaybe<ContractFilterInput>;
@@ -4671,6 +4835,10 @@ export const GetContractWithTagsDocument = gql`
     parsedAt
     parseConfidence
     needsManualReview
+    isVectorized
+    vectorizedAt
+    vectorizationMethod
+    chunkCount
     createdAt
     updatedAt
     tags {
@@ -4904,6 +5072,9 @@ export const GetContractsWithFilterAdvancedDocument = gql`
       currency
       signedAt
       parseStatus
+      isVectorized
+      vectorizedAt
+      chunkCount
       customer {
         id
         name
@@ -5086,6 +5257,42 @@ export type GetContractLegalClausesQueryHookResult = ReturnType<typeof useGetCon
 export type GetContractLegalClausesLazyQueryHookResult = ReturnType<typeof useGetContractLegalClausesLazyQuery>;
 export type GetContractLegalClausesSuspenseQueryHookResult = ReturnType<typeof useGetContractLegalClausesSuspenseQuery>;
 export type GetContractLegalClausesQueryResult = ApolloReactCommon.QueryResult<GetContractLegalClausesQuery, GetContractLegalClausesQueryVariables>;
+export const RagQuestionAnswerDocument = gql`
+    query RAGQuestionAnswer($question: String!, $limit: Int, $threshold: Float) {
+  ragQuestionAnswer(question: $question, limit: $limit, threshold: $threshold) {
+    contractId
+    contractNo
+    contractName
+    customerName
+    chunkContent
+    similarity
+    chunkMetadata {
+      title
+      articleNumber
+      chunkType
+    }
+  }
+}
+    `;
+export function useRagQuestionAnswerQuery(baseOptions: ApolloReactHooks.QueryHookOptions<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables> & ({ variables: RagQuestionAnswerQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables>(RagQuestionAnswerDocument, options);
+      }
+export function useRagQuestionAnswerLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables>(RagQuestionAnswerDocument, options);
+        }
+// @ts-ignore
+export function useRagQuestionAnswerSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables>;
+export function useRagQuestionAnswerSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<RagQuestionAnswerQuery | undefined, RagQuestionAnswerQueryVariables>;
+export function useRagQuestionAnswerSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables>(RagQuestionAnswerDocument, options);
+        }
+export type RagQuestionAnswerQueryHookResult = ReturnType<typeof useRagQuestionAnswerQuery>;
+export type RagQuestionAnswerLazyQueryHookResult = ReturnType<typeof useRagQuestionAnswerLazyQuery>;
+export type RagQuestionAnswerSuspenseQueryHookResult = ReturnType<typeof useRagQuestionAnswerSuspenseQuery>;
+export type RagQuestionAnswerQueryResult = ApolloReactCommon.QueryResult<RagQuestionAnswerQuery, RagQuestionAnswerQueryVariables>;
 export const SemanticSearchDocument = gql`
     query SemanticSearch($query: String!, $limit: Int) {
   semanticSearch(query: $query, limit: $limit) {
@@ -5377,6 +5584,86 @@ export function useDeleteCustomerMutation(baseOptions?: ApolloReactHooks.Mutatio
 export type DeleteCustomerMutationHookResult = ReturnType<typeof useDeleteCustomerMutation>;
 export type DeleteCustomerMutationResult = ApolloReactCommon.MutationResult<DeleteCustomerMutation>;
 export type DeleteCustomerMutationOptions = ApolloReactCommon.BaseMutationOptions<DeleteCustomerMutation, DeleteCustomerMutationVariables>;
+export const VectorizeContractDocument = gql`
+    mutation VectorizeContract($id: ID!, $method: String, $force: Boolean) {
+  vectorizeContract(id: $id, method: $method, force: $force) {
+    success
+    message
+    chunkCount
+    vectorizedAt
+    error
+  }
+}
+    `;
+export type VectorizeContractMutationFn = ApolloReactCommon.MutationFunction<VectorizeContractMutation, VectorizeContractMutationVariables>;
+export function useVectorizeContractMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<VectorizeContractMutation, VectorizeContractMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<VectorizeContractMutation, VectorizeContractMutationVariables>(VectorizeContractDocument, options);
+      }
+export type VectorizeContractMutationHookResult = ReturnType<typeof useVectorizeContractMutation>;
+export type VectorizeContractMutationResult = ApolloReactCommon.MutationResult<VectorizeContractMutation>;
+export type VectorizeContractMutationOptions = ApolloReactCommon.BaseMutationOptions<VectorizeContractMutation, VectorizeContractMutationVariables>;
+export const BatchVectorizeContractsDocument = gql`
+    mutation BatchVectorizeContracts($ids: [ID!]!, $method: String, $force: Boolean) {
+  batchVectorizeContracts(ids: $ids, method: $method, force: $force) {
+    success
+    processed
+    failed
+    errors {
+      contractId
+      error
+    }
+  }
+}
+    `;
+export type BatchVectorizeContractsMutationFn = ApolloReactCommon.MutationFunction<BatchVectorizeContractsMutation, BatchVectorizeContractsMutationVariables>;
+export function useBatchVectorizeContractsMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<BatchVectorizeContractsMutation, BatchVectorizeContractsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<BatchVectorizeContractsMutation, BatchVectorizeContractsMutationVariables>(BatchVectorizeContractsDocument, options);
+      }
+export type BatchVectorizeContractsMutationHookResult = ReturnType<typeof useBatchVectorizeContractsMutation>;
+export type BatchVectorizeContractsMutationResult = ApolloReactCommon.MutationResult<BatchVectorizeContractsMutation>;
+export type BatchVectorizeContractsMutationOptions = ApolloReactCommon.BaseMutationOptions<BatchVectorizeContractsMutation, BatchVectorizeContractsMutationVariables>;
+export const RemoveContractVectorizationDocument = gql`
+    mutation RemoveContractVectorization($id: ID!) {
+  removeContractVectorization(id: $id)
+}
+    `;
+export type RemoveContractVectorizationMutationFn = ApolloReactCommon.MutationFunction<RemoveContractVectorizationMutation, RemoveContractVectorizationMutationVariables>;
+export function useRemoveContractVectorizationMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<RemoveContractVectorizationMutation, RemoveContractVectorizationMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<RemoveContractVectorizationMutation, RemoveContractVectorizationMutationVariables>(RemoveContractVectorizationDocument, options);
+      }
+export type RemoveContractVectorizationMutationHookResult = ReturnType<typeof useRemoveContractVectorizationMutation>;
+export type RemoveContractVectorizationMutationResult = ApolloReactCommon.MutationResult<RemoveContractVectorizationMutation>;
+export type RemoveContractVectorizationMutationOptions = ApolloReactCommon.BaseMutationOptions<RemoveContractVectorizationMutation, RemoveContractVectorizationMutationVariables>;
+export const CanVectorizeContractDocument = gql`
+    query CanVectorizeContract($id: ID!) {
+  canVectorizeContract(id: $id) {
+    canVectorize
+    reason
+  }
+}
+    `;
+export function useCanVectorizeContractQuery(baseOptions: ApolloReactHooks.QueryHookOptions<CanVectorizeContractQuery, CanVectorizeContractQueryVariables> & ({ variables: CanVectorizeContractQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<CanVectorizeContractQuery, CanVectorizeContractQueryVariables>(CanVectorizeContractDocument, options);
+      }
+export function useCanVectorizeContractLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<CanVectorizeContractQuery, CanVectorizeContractQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<CanVectorizeContractQuery, CanVectorizeContractQueryVariables>(CanVectorizeContractDocument, options);
+        }
+// @ts-ignore
+export function useCanVectorizeContractSuspenseQuery(baseOptions?: ApolloReactHooks.SuspenseQueryHookOptions<CanVectorizeContractQuery, CanVectorizeContractQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<CanVectorizeContractQuery, CanVectorizeContractQueryVariables>;
+export function useCanVectorizeContractSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<CanVectorizeContractQuery, CanVectorizeContractQueryVariables>): ApolloReactHooks.UseSuspenseQueryResult<CanVectorizeContractQuery | undefined, CanVectorizeContractQueryVariables>;
+export function useCanVectorizeContractSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<CanVectorizeContractQuery, CanVectorizeContractQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<CanVectorizeContractQuery, CanVectorizeContractQueryVariables>(CanVectorizeContractDocument, options);
+        }
+export type CanVectorizeContractQueryHookResult = ReturnType<typeof useCanVectorizeContractQuery>;
+export type CanVectorizeContractLazyQueryHookResult = ReturnType<typeof useCanVectorizeContractLazyQuery>;
+export type CanVectorizeContractSuspenseQueryHookResult = ReturnType<typeof useCanVectorizeContractSuspenseQuery>;
+export type CanVectorizeContractQueryResult = ApolloReactCommon.QueryResult<CanVectorizeContractQuery, CanVectorizeContractQueryVariables>;
 export const GetContractsWithFilterDocument = gql`
     query GetContractsWithFilter($filter: ContractFilterInput, $skip: Int, $take: Int, $orderBy: ContractOrderInput) {
   contracts(filter: $filter, skip: $skip, take: $take, orderBy: $orderBy) {

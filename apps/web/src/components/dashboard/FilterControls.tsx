@@ -35,12 +35,10 @@ export function FilterControls({
   };
 
   const handleExport = (format: 'excel' | 'pdf') => {
-    console.log(`Exporting as ${format}`);
     // TODO: Implement export functionality
   };
 
   const handleRefresh = () => {
-    console.log('Refreshing data...');
     onFilterChange?.(filters);
   };
 

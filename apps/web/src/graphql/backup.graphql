@@ -1,0 +1,19 @@
+query ListBackups {
+  listBackups
+}
+
+mutation CreateBackup {
+  createBackup
+}
+
+mutation DeleteBackup($filename: String!) {
+  deleteBackup(filename: $filename)
+}
+
+mutation RestoreBackup($filename: String!) {
+  restoreBackup(filename: $filename)
+}
+
+query ExportConfig {
+  exportConfig
+}
