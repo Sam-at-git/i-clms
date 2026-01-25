@@ -115,21 +115,62 @@ docker compose -f docker/docker-compose.yml ps
 # 复制环境变量模板
 cp .env.example .env
 
-# 默认配置已可直接使用，无需修改
+# 生成 JWT 密钥（必需）
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# 将生成的值填入 .env 文件的 JWT_SECRET
 ```
+
+**必需配置项：**
+- `JWT_SECRET` - JWT 认证密钥（必须设置）
+- `DATABASE_URL` - 数据库连接（默认值通常可用）
 
 ### 4. 初始化数据库
 
+系统使用 PostgreSQL + pgvector 扩展支持向量搜索功能。
+
+**首次安装（完整步骤）：**
+
 ```bash
-# 运行数据库迁移
-pnpm nx prisma:migrate api
+# 1. 安装 pgvector 扩展（二选一）
 
-# 生成 Prisma Client
-pnpm nx prisma:generate api
+# 方式A：如果 PostgreSQL 运行在 Docker 中
+docker compose -f docker/docker-compose.yml exec postgres psql -U iclms -d iclms -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
-# 填充初始数据（可选）
+# 方式B：如果使用本地 PostgreSQL
+sudo apt install postgresql-16-pgvector  # 根据版本调整
+psql -U iclms -d iclms -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# 2. 生成 Prisma Client
+pnpm prisma generate
+
+# 3. 推送数据库结构
+pnpm prisma db push
+
+# 4. 填充初始数据
 pnpm prisma db seed
 ```
+
+**重置数据库（清空所有数据重新开始）：**
+
+```bash
+# 1. 删除并重建数据库
+docker compose -f docker/docker-compose.yml exec postgres psql -U iclms -d postgres -c "DROP DATABASE IF EXISTS iclms;"
+docker compose -f docker/docker-compose.yml exec postgres psql -U iclms -d postgres -c "CREATE DATABASE iclms;"
+
+# 2. 安装 pgvector 扩展
+docker compose -f docker/docker-compose.yml exec postgres psql -U iclms -d iclms -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# 3. 推送数据库结构
+pnpm prisma db push
+
+# 4. 填充初始数据
+pnpm prisma db seed
+```
+
+**测试账号（seed 后可用）：**
+- 邮箱：`admin@iclms.com`
+- 密码：`admin123`
 
 ### 5. 启动开发服务
 
