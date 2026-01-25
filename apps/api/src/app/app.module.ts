@@ -11,7 +11,6 @@ import { StorageModule } from '../storage';
 import { ParserModule } from '../parser';
 import { LlmParserModule } from '../llm-parser/llm-parser.module';
 import { ContractModule } from '../contract';
-import { ContractTemplateModule } from '../contract-template/contract-template.module';
 import { AuthModule } from '../auth';
 import { FinanceModule } from '../finance';
 import { DeliveryModule } from '../delivery';
@@ -38,6 +37,8 @@ import { LegalClausesModule } from '../legal-clauses/legal-clauses.module';
 import { DataProtectionModule } from '../data-protection/data-protection.module';
 import { NotificationModule } from '../notification/notification.module';
 import { BackupModule } from '../backup/backup.module';
+import { RagCorrectionModule } from '../rag-correction/rag-correction.module';
+import { CaseStudyModule } from '../case-study/case-study.module';
 
 @Module({
   imports: [
@@ -86,6 +87,8 @@ import { BackupModule } from '../backup/backup.module';
     DataProtectionModule,
     NotificationModule,
     BackupModule,
+    RagCorrectionModule,
+    CaseStudyModule,
   ],
   controllers: [AppController],
   providers: [AppService, DateTimeScalar, DecimalScalar, JSONScalar],

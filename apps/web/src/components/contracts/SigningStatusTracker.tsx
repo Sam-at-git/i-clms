@@ -1,25 +1,26 @@
-import { useQuery } from '@apollo/client';
-import { gql } from '@apollo/client';
+// TODO: 签署记录功能待后端实现
+// import { useQuery } from '@apollo/client';
+// import { gql } from '@apollo/client';
 
-const GET_CONTRACT_SIGNING = gql`
-  query GetContractSigning($contractId: ID!) {
-    contractSigningRecords(contractId: $contractId) {
-      id
-      signerName
-      signerTitle
-      signerEmail
-      signerCompany
-      signerType
-      status
-      signedAt
-      signatureUrl
-      sequence
-      isCurrentSigner
-      rejectedAt
-      rejectedReason
-    }
-  }
-`;
+// const GET_CONTRACT_SIGNING = gql`
+//   query GetContractSigning($contractId: ID!) {
+//     contractSigningRecords(contractId: $contractId) {
+//       id
+//       signerName
+//       signerTitle
+//       signerEmail
+//       signerCompany
+//       signerType
+//       status
+//       signedAt
+//       signatureUrl
+//       sequence
+//       isCurrentSigner
+//       rejectedAt
+//       rejectedReason
+//     }
+//   }
+// `;
 
 interface SigningStatusTrackerProps {
   contractId: string;
@@ -56,12 +57,15 @@ export function SigningStatusTracker({
   contractId,
   contractNo,
 }: SigningStatusTrackerProps) {
-  const { data, loading, refetch } = useQuery(GET_CONTRACT_SIGNING, {
-    variables: { contractId },
-    fetchPolicy: 'cache-and-network',
-  });
+  // TODO: 签署记录功能待后端实现
+  // const { data, loading, refetch } = useQuery(GET_CONTRACT_SIGNING, {
+  //   variables: { contractId },
+  //   fetchPolicy: 'cache-and-network',
+  // });
+  // const signingRecords = data?.contractSigningRecords || [];
 
-  const signingRecords = data?.contractSigningRecords || [];
+  const loading = false;
+  const signingRecords: any[] = [];
 
   // Sort by sequence
   const sortedRecords = [...signingRecords].sort((a: any, b: any) => a.sequence - b.sequence);

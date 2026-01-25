@@ -122,3 +122,11 @@ mutation RemoveCustomerContact($contactId: ID!) {
     name
   }
 }
+
+mutation SetPrimaryContact($contactId: ID!) {
+  setPrimaryContact(contactId: $contactId) {
+    id
+    name
+    isPrimary
+  }
+}

@@ -194,10 +194,10 @@ describe('LegalClausesService', () => {
     it('should return stats with total count', async () => {
       mockPrismaService.contractLegalClause.count.mockResolvedValue(10);
       mockPrismaService.$queryRaw.mockResolvedValue([
-        { clausetype: LegalClauseType.INTELLECTUAL_PROPERTY, count: BigInt(3) },
-        { clausetype: LegalClauseType.GUARANTEE, count: BigInt(2) },
-        { clausetype: LegalClauseType.LIABILITY_LIMITATION, count: BigInt(3) },
-        { clausetype: LegalClauseType.TERMINATION_DISPUTE, count: BigInt(2) },
+        { clauseType: LegalClauseType.INTELLECTUAL_PROPERTY, count: BigInt(3) },
+        { clauseType: LegalClauseType.GUARANTEE, count: BigInt(2) },
+        { clauseType: LegalClauseType.LIABILITY_LIMITATION, count: BigInt(3) },
+        { clauseType: LegalClauseType.TERMINATION_DISPUTE, count: BigInt(2) },
       ]);
       mockPrismaService.contractLegalClause.aggregate.mockResolvedValue({
         _avg: { confidence: 0.85 },

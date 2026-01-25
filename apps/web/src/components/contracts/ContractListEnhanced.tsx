@@ -125,7 +125,7 @@ export function ContractListEnhanced() {
   const [deleteContract, setDeleteContract] = useState<Contract | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
-  const [searchMode, setSearchMode] = useState<'simple' | 'advanced' | 'semantic'>('simple');
+  const [searchMode, setSearchMode] = useState<'simple' | 'advanced' | 'semantic' | 'rag'>('simple');
 
   const { filters } = useContractFilters();
 

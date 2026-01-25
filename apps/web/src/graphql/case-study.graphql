@@ -1,0 +1,115 @@
+# Case Study (成功案例) GraphQL Operations
+
+# Fragment for common case study fields
+fragment CaseStudyFields on GeneratedCaseStudy {
+  id
+  contractId
+  title
+  subtitle
+  status
+  summary
+  challenges
+  solution
+  results
+  testimonial
+  techStack
+  timeline
+  teamSize
+  fullMarkdown
+  isDesensitized
+  desensitizeConfig
+  displayCustomerName
+  displayAmount
+  displayIndustry
+  llmModel
+  llmProvider
+  generatedAt
+  confidence
+  isManuallyEdited
+  lastEditedAt
+  lastEditedBy
+  version
+  tags
+  createdById
+  createdAt
+  updatedAt
+  contract {
+    id
+    contractNo
+    name
+    industry
+    ourEntity
+  }
+  createdBy {
+    id
+    name
+    email
+  }
+}
+
+# Queries
+
+query GetCaseStudies($contractId: String, $status: CaseStudyStatus, $limit: Int, $offset: Int) {
+  caseStudies(contractId: $contractId, status: $status, limit: $limit, offset: $offset) {
+    items {
+      ...CaseStudyFields
+    }
+    total
+  }
+}
+
+query GetCaseStudy($id: String!) {
+  caseStudy(id: $id) {
+    ...CaseStudyFields
+  }
+}
+
+query GetCaseStudiesByContract($contractId: String!) {
+  caseStudiesByContract(contractId: $contractId) {
+    ...CaseStudyFields
+  }
+}
+
+# Mutations
+
+mutation GenerateCaseStudy($input: GenerateCaseStudyInput!) {
+  generateCaseStudy(input: $input) {
+    success
+    error
+    caseStudy {
+      ...CaseStudyFields
+    }
+  }
+}
+
+mutation RegenerateCaseStudy($id: String!, $input: RegenerateCaseStudyInput) {
+  regenerateCaseStudy(id: $id, input: $input) {
+    success
+    error
+    caseStudy {
+      ...CaseStudyFields
+    }
+  }
+}
+
+mutation CreateCaseStudy($input: CreateCaseStudyInput!) {
+  createCaseStudy(input: $input) {
+    ...CaseStudyFields
+  }
+}
+
+mutation UpdateCaseStudy($id: String!, $input: UpdateCaseStudyInput!) {
+  updateCaseStudy(id: $id, input: $input) {
+    ...CaseStudyFields
+  }
+}
+
+mutation UpdateCaseStudyStatus($id: String!, $input: UpdateCaseStudyStatusInput!) {
+  updateCaseStudyStatus(id: $id, input: $input) {
+    ...CaseStudyFields
+  }
+}
+
+mutation DeleteCaseStudy($id: String!) {
+  deleteCaseStudy(id: $id)
+}

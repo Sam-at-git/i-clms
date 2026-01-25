@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@apollo/client/react';
+import { useLazyQuery, useMutation } from '@apollo/client/react';
 import { gql } from '@apollo/client';
 
 interface BackupFile {
@@ -8,32 +8,33 @@ interface BackupFile {
   createdAt: string;
 }
 
-const LIST_BACKUPS = gql`
-  query ListBackups {
+// Using inline GraphQL with unique names to avoid conflicts with backup.graphql
+const LIST_BACKUPS_INLINE = gql`
+  query ListBackupsInline {
     listBackups
   }
 `;
 
-const CREATE_BACKUP = gql`
-  mutation CreateBackup {
+const CREATE_BACKUP_INLINE = gql`
+  mutation CreateBackupInline {
     createBackup
   }
 `;
 
-const DELETE_BACKUP = gql`
-  mutation DeleteBackup($filename: String!) {
+const DELETE_BACKUP_INLINE = gql`
+  mutation DeleteBackupInline($filename: String!) {
     deleteBackup(filename: $filename)
   }
 `;
 
-const RESTORE_BACKUP = gql`
-  mutation RestoreBackup($filename: String!) {
+const RESTORE_BACKUP_INLINE = gql`
+  mutation RestoreBackupInline($filename: String!) {
     restoreBackup(filename: $filename)
   }
 `;
 
-const EXPORT_CONFIG = gql`
-  query ExportConfig {
+const EXPORT_CONFIG_INLINE = gql`
+  mutation ExportConfigInline {
     exportConfig
   }
 `;
@@ -45,23 +46,29 @@ export function BackupManagement() {
   const [creating, setCreating] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
 
-  const { refetch } = useQuery(
-    LIST_BACKUPS,
-    {
-      fetchPolicy: 'network-only',
-      onCompleted: (data) => {
-        try {
-          const parsed = JSON.parse(data.listBackups);
-          setBackups(parsed);
-        } catch (e) {
-          console.error('Failed to parse backups:', e);
-        }
-      },
-    }
-  );
+  // List backups query
+  const [listBackupsQuery, { data: listData, refetch }] = useLazyQuery<{ listBackups: string }>(LIST_BACKUPS_INLINE, {
+    fetchPolicy: 'network-only',
+  });
 
-  const [createBackupMutation] = useMutation(CREATE_BACKUP, {
-    onCompleted: (data) => {
+  // Fetch on mount and parse data when received
+  useEffect(() => {
+    listBackupsQuery();
+  }, [listBackupsQuery]);
+
+  useEffect(() => {
+    if (listData?.listBackups) {
+      try {
+        const parsed = JSON.parse(listData.listBackups);
+        setBackups(parsed);
+      } catch (e) {
+        console.error('Failed to parse backups:', e);
+      }
+    }
+  }, [listData]);
+
+  const [createBackupMutation] = useMutation(CREATE_BACKUP_INLINE, {
+    onCompleted: () => {
       setSuccess('备份创建成功');
       setTimeout(() => setSuccess(''), 3000);
       refetch();
@@ -74,7 +81,7 @@ export function BackupManagement() {
     },
   });
 
-  const [deleteBackupMutation] = useMutation(DELETE_BACKUP, {
+  const [deleteBackupMutation] = useMutation(DELETE_BACKUP_INLINE, {
     onCompleted: () => {
       setSuccess('备份删除成功');
       setTimeout(() => setSuccess(''), 3000);
@@ -86,8 +93,8 @@ export function BackupManagement() {
     },
   });
 
-  const [restoreBackupMutation] = useMutation(RESTORE_BACKUP, {
-    onCompleted: (data) => {
+  const [restoreBackupMutation] = useMutation<{ restoreBackup: string }>(RESTORE_BACKUP_INLINE, {
+    onCompleted: (data: { restoreBackup: string }) => {
       try {
         const result = JSON.parse(data.restoreBackup);
         setSuccess(result.message || '恢复成功');
@@ -104,8 +111,8 @@ export function BackupManagement() {
     },
   });
 
-  const [exportConfigMutation] = useMutation(EXPORT_CONFIG, {
-    onCompleted: (data) => {
+  const [exportConfigMutation] = useMutation<{ exportConfig: string }>(EXPORT_CONFIG_INLINE, {
+    onCompleted: (data: { exportConfig: string }) => {
       try {
         const result = JSON.parse(data.exportConfig);
         const blob = new Blob([JSON.stringify(result.config, null, 2)], { type: 'application/json' });

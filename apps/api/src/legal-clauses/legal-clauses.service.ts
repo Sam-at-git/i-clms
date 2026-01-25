@@ -340,7 +340,7 @@ export class LegalClausesService implements OnModuleInit {
   }> {
     const [total, byTypeResult] = await Promise.all([
       this.prisma.contractLegalClause.count(),
-      this.prisma.$queryRaw<Array<{ clausetype: LegalClauseType; count: bigint }>>`
+      this.prisma.$queryRaw<Array<{ clauseType: LegalClauseType; count: bigint }>>`
         SELECT "clauseType", COUNT(*) as count
         FROM "contract_legal_clause"
         GROUP BY "clauseType"
@@ -349,7 +349,7 @@ export class LegalClausesService implements OnModuleInit {
     ]);
 
     const byType = byTypeResult.map((row) => ({
-      type: row.clausetype,
+      type: row.clauseType,
       count: Number(row.count),
     }));
 

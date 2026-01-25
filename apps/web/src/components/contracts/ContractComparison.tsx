@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { gql } from '@apollo/client';
-import { useParams } from 'react-router-dom';
 
 const GET_CONTRACT_COMPARISON = gql`
   query GetContractComparison($id1: ID!, $id2: ID!) {

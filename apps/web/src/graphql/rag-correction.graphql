@@ -1,0 +1,94 @@
+# RAG字段修正相关GraphQL操作
+
+# 获取所有合同字段配置
+query GetContractFieldConfigs {
+  contractFieldConfigs {
+    fieldName
+    displayName
+    fieldType
+    group
+    editable
+    ragSupported
+    ragQuery
+    conservativeThreshold
+  }
+}
+
+# 获取支持RAG修正的字段
+query GetRagSupportedFields {
+  ragSupportedFields {
+    fieldName
+    displayName
+    fieldType
+    group
+    editable
+    ragSupported
+    ragQuery
+    conservativeThreshold
+  }
+}
+
+# 获取批量修正进度
+query GetRagCorrectionProgress($sessionId: String!) {
+  ragCorrectionProgress(sessionId: $sessionId) {
+    sessionId
+    status
+    totalFields
+    completedFields
+    currentField
+    results {
+      fieldName
+      fieldDisplayName
+      originalValue
+      suggestedValue
+      shouldChange
+      confidence
+      evidence
+      reasoning
+    }
+    error
+  }
+}
+
+# 单字段RAG修正
+mutation RagCorrectField($contractId: ID!, $fieldName: String!) {
+  ragCorrectField(contractId: $contractId, fieldName: $fieldName) {
+    fieldName
+    fieldDisplayName
+    originalValue
+    suggestedValue
+    shouldChange
+    confidence
+    evidence
+    reasoning
+  }
+}
+
+# 评估可疑字段
+mutation RagEvaluateSuspiciousFields($contractId: ID!) {
+  ragEvaluateSuspiciousFields(contractId: $contractId) {
+    suspiciousFields
+    reasoning
+  }
+}
+
+# 启动批量修正
+mutation RagBatchCorrectStart($contractId: ID!) {
+  ragBatchCorrectStart(contractId: $contractId)
+}
+
+# 应用修正
+mutation ApplyCorrection($contractId: ID!, $fieldName: String!, $newValue: String!) {
+  applyCorrection(contractId: $contractId, fieldName: $fieldName, newValue: $newValue) {
+    id
+    name
+    contractNo
+    ourEntity
+    amountWithTax
+    amountWithoutTax
+    taxRate
+    signedAt
+    effectiveAt
+    expiresAt
+  }
+}

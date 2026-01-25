@@ -1,3 +1,6 @@
+// Contract field configurations
+export * from './contract-fields.const';
+
 // Contract type labels
 export const CONTRACT_TYPE_LABELS = {
   STAFF_AUGMENTATION: '人力框架合同',

@@ -1,46 +1,47 @@
 import { useState } from 'react';
-import { useQuery } from '@apollo/client';
-import { GET_CUSTOMERS } from '../../graphql/customers';
-import { useMutation } from '@apollo/client';
-import { gql } from '@apollo/client';
+// import { useQuery } from '@apollo/client';
+// import { GET_CUSTOMERS } from '../../graphql/customers';
+// import { useMutation } from '@apollo/client';
+// import { gql } from '@apollo/client';
 
 interface CustomerMergeProps {
   onMerged?: (customerId: string) => void;
   onClose?: () => void;
 }
 
-const FIND_DUPLICATES = gql`
-  query FindDuplicateCustomers($threshold: Float!) {
-    findDuplicateCustomers(threshold: $threshold) {
-      id
-      name
-      shortName
-      creditCode
-      industry
-      status
-      similarity
-      matchReasons
-      duplicates {
-        id
-        name
-        shortName
-        creditCode
-        industry
-        status
-      }
-    }
-  }
-`;
+// TODO: 客户合并功能待后端实现
+// const FIND_DUPLICATES = gql`
+//   query FindDuplicateCustomers($threshold: Float!) {
+//     findDuplicateCustomers(threshold: $threshold) {
+//       id
+//       name
+//       shortName
+//       creditCode
+//       industry
+//       status
+//       similarity
+//       matchReasons
+//       duplicates {
+//         id
+//         name
+//         shortName
+//         creditCode
+//         industry
+//         status
+//       }
+//     }
+//   }
+// `;
 
-const MERGE_CUSTOMERS = gql`
-  mutation MergeCustomers($primaryId: ID!, $duplicateIds: [ID!]!) {
-    mergeCustomers(primaryId: $primaryId, duplicateIds: $duplicateIds) {
-      id
-      name
-      mergedCount
-    }
-  }
-`;
+// const MERGE_CUSTOMERS = gql`
+//   mutation MergeCustomers($primaryId: ID!, $duplicateIds: [ID!]!) {
+//     mergeCustomers(primaryId: $primaryId, duplicateIds: $duplicateIds) {
+//       id
+//       name
+//       mergedCount
+//     }
+//   }
+// `;
 
 export function CustomerMerge({ onMerged, onClose }: CustomerMergeProps) {
   const [threshold, setThreshold] = useState(0.85);
@@ -48,28 +49,11 @@ export function CustomerMerge({ onMerged, onClose }: CustomerMergeProps) {
   const [selectedDuplicates, setSelectedDuplicates] = useState<Set<string>>(new Set());
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const { data, loading, refetch } = useQuery(FIND_DUPLICATES, {
-    variables: { threshold },
-    fetchPolicy: 'cache-and-network',
-  });
-
-  const [mergeCustomers, { loading: merging }] = useMutation(MERGE_CUSTOMERS, {
-    onCompleted: (data) => {
-      alert(`成功合并 ${data.mergeCustomers.mergedCount} 个客户`);
-      if (onMerged) {
-        onMerged(data.mergeCustomers.id);
-      }
-      setShowConfirm(false);
-      setSelectedPrimary(null);
-      setSelectedDuplicates(new Set());
-      refetch();
-    },
-    onError: (error) => {
-      alert(`合并失败: ${error.message}`);
-    },
-  });
-
-  const duplicates = data?.findDuplicateCustomers || [];
+  // TODO: 客户合并功能待后端实现
+  const loading = false;
+  const merging = false;
+  const refetch = () => {};
+  const duplicates: any[] = [];
 
   const handleSelectPrimary = (id: string) => {
     setSelectedPrimary(id);
@@ -84,12 +68,9 @@ export function CustomerMerge({ onMerged, onClose }: CustomerMergeProps) {
   const handleMerge = () => {
     if (!selectedPrimary || selectedDuplicates.size === 0) return;
 
-    mergeCustomers({
-      variables: {
-        primaryId: selectedPrimary,
-        duplicateIds: Array.from(selectedDuplicates),
-      },
-    });
+    // TODO: 客户合并功能待后端实现
+    alert('客户合并功能暂未开放');
+    setShowConfirm(false);
   };
 
   return (

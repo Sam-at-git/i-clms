@@ -662,9 +662,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid #e5e7eb',
     borderRadius: '3px',
     cursor: 'pointer',
-    ':hover': {
-      backgroundColor: '#e5e7eb',
-    },
   },
   addFilterButton: {
     padding: '4px 10px',

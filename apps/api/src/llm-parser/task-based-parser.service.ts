@@ -269,9 +269,19 @@ export class TaskBasedParserService implements OnModuleInit {
           InfoType.BASIC_INFO,
           sessionId
         );
+        this.debugLog(`[Step 2b] BASIC_INFO result for contract type detection`, {
+          success: basicInfoResult.success,
+          hasContractType: !!basicInfoResult.data?.contractType,
+          contractTypeValue: basicInfoResult.data?.contractType,
+          allKeys: basicInfoResult.data ? Object.keys(basicInfoResult.data) : [],
+        });
         if (basicInfoResult.success && basicInfoResult.data?.contractType) {
-          detectedContractType = basicInfoResult.data.contractType;
-          this.logger.log(`[Task-based Parser] Contract type detected: ${detectedContractType}`);
+          // 规范化合同类型：处理LLM可能返回中文或非标准格式的情况
+          const rawContractType = basicInfoResult.data.contractType;
+          detectedContractType = this.normalizeContractType(rawContractType);
+          this.logger.log(`[Task-based Parser] Contract type detected: "${rawContractType}" → normalized to "${detectedContractType}"`);
+        } else {
+          this.debugLog(`[Step 2b] Failed to detect contract type from BASIC_INFO task`);
         }
       }
     }
@@ -279,14 +289,33 @@ export class TaskBasedParserService implements OnModuleInit {
     // Step 3: 根据合同类型获取要执行的任务
     // 如果指定了合同类型，使用合同类型对应的主题批次；否则使用 enabledTaskTypes 或全部
     let tasksToUse: InfoType[] | undefined = enabledTaskTypes;
+    this.debugLog(`[Step 3] Before topic selection`, {
+      detectedContractType,
+      enabledTaskTypes,
+      tasksToUse,
+    });
     if (detectedContractType) {
+      // 再次确保合同类型已规范化（处理直接传入的contractType参数）
+      const beforeNormalize = detectedContractType;
+      detectedContractType = this.normalizeContractType(detectedContractType);
+      this.debugLog(`[Step 3] Contract type normalization`, {
+        before: beforeNormalize,
+        after: detectedContractType,
+      });
       const topicNames = this.topicRegistry.getTopicNamesForContractType(detectedContractType);
+      this.debugLog(`[Step 3] Topic names from registry`, {
+        contractType: detectedContractType,
+        topicNames,
+        topicCount: topicNames.length,
+      });
       if (topicNames.length > 0) {
         tasksToUse = topicNames as InfoType[];
         this.logger.log(`[Task-based Parser] Using contract type '${detectedContractType}' topic batch: ${topicNames.join(', ')}`);
       } else {
         this.logger.warn(`[Task-based Parser] No topic batch found for contract type '${detectedContractType}', falling back to enabledTaskTypes or all topics`);
       }
+    } else {
+      this.debugLog(`[Step 3] No contract type detected, will use all tasks`);
     }
 
     // Step 3: 获取要执行的任务
@@ -540,7 +569,17 @@ export class TaskBasedParserService implements OnModuleInit {
       // Extract JSON from markdown code block if present
       // LLM may return: ```json\n{...}\n``` or ```\n{...}\n```
       const jsonContent = this.extractJson(content);
-      let data = JSON.parse(jsonContent);
+
+      // Parse JSON with dedicated error handling
+      let data;
+      try {
+        data = JSON.parse(jsonContent);
+      } catch (parseError) {
+        const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+        this.logger.error(`[Task ${task.infoType}] JSON解析失败: ${errorMessage}`);
+        this.logger.error(`[Task ${task.infoType}] Raw content (first 500 chars): ${jsonContent.substring(0, 500)}`);
+        throw new Error(`LLM返回的JSON格式无效: ${errorMessage}`);
+      }
       this.logger.log(`[Task ${task.infoType}] JSON parsed successfully, keys=${Object.keys(data).join(',')}`);
 
       // 验证并重试（如果启用了 ResultValidatorService）
@@ -726,12 +765,62 @@ export class TaskBasedParserService implements OnModuleInit {
 - 查找关键词："合同编号"、"编号"、"No."、"甲方"、"乙方"、"签约双方"、"签署方"
 
 步骤2：提取每个字段
-- contractNo：查找"合同编号"、"编号"、"No."、"合约编号"后的值
-  ⚠️ 只提取编号本身，不要包含"合同编号："等标签文字
-  ⚠️ 如果编号过长（>50字符），可能提取错误，需重新确认
 
-- contractName：查找合同标题、"项目名称"、"合同名称"
-  ⚠️ 通常在文档开头的标题行
+【contractNo - 合同编号智能识别】
+合同编号格式多样，需要智能推断。遵循以下优先级：
+
+1️⃣ 明确标签后的值（优先级最高）
+   - 查找："合同编号"、"编号"、"协议编号"、"合约编号"、"Contract No"、"Agreement No"
+   - 忽略Markdown标记：**合同编号：** CTR-001 → 提取 CTR-001
+   - 示例：
+     * 合同编号：CTR-2024-00456 → CTR-2024-00456
+     * **合同编号：** ABC-XYZ-123 → ABC-XYZ-123
+     * Contract No: PROJ-2024-001 → PROJ-2024-001
+
+2️⃣ 文档开头的编号模式（次优先级）
+   - 如果没有明确标签，在文档前30%查找典型编号格式
+   - 典型模式：
+     * 字母+连字符+数字：CTR-2024-001、HT-001、PROJ-2024-ABC
+     * 纯数字+分隔符：2024-001、20240101-001
+     * 公司前缀+年份+序号：INSIGMA-2024-001
+   - 位置特征：通常在文档开头前3行
+
+3️⃣ 上下文推断（最后手段）
+   - 如果前两步都失败，根据上下文推断可能的编号
+   - 查找临近"甲方"、"乙方"、"签订日期"的编号模式
+   - 长度判断：合理的编号长度为5-50字符
+
+⚠️ 重要规则：
+- 只提取编号本身，不要包含标签（"合同编号："、"No."等）
+- 去除所有Markdown标记（**粗体、##标题、__下划线等）
+- 去除首尾空白字符
+- 如果找到多个候选，选择最靠前且格式最规范的
+
+【contractName - 合同名称智能识别】
+合同名称通常在文档开头，支持多种格式：
+
+1️⃣ Markdown标题格式（优先级最高）
+   - ## 人力资源外包框架协议 → 人力资源外包框架协议
+   - # 智能合同管理系统开发项目 → 智能合同管理系统开发项目
+   - 识别特征：以1-6个井号开头，包含"合同"、"协议"、"项目"等关键词
+
+2️⃣ 明确标签（次优先级）
+   - 合同名称：XX合同 → XX合同
+   - 项目名称：XX项目 → XX项目
+   - **合同名称：** XX协议 → XX协议（去除Markdown标记）
+
+3️⃣ 书名号格式
+   - 《人力资源外包框架协议》 → 人力资源外包框架协议
+
+4️⃣ 单独一行格式
+   - 文档开头单独一行，以"合同"、"协议"、"项目"结尾
+   - 通常是第1-3行
+
+⚠️ 重要规则：
+- 去除所有Markdown标记（**粗体、##标题、《》书名号等）
+- 去除编号前缀（如"1. "、"一、"等）
+- 保留完整名称，不要截断
+- 通常在文档开头的标题行
 
 - customerName（甲方 = 客户）：查找"甲方"、"委托方"、"发包方"、"买方"
   ⚠️⚠️⚠️ 重要：客户名称就是甲方，只提取甲方公司名！
@@ -756,13 +845,25 @@ export class TaskBasedParserService implements OnModuleInit {
 - 确认没有混入地址、电话、邮箱等信息
 
 【Few-Shot示例】
-示例1：
+
+示例1（传统格式）：
 输入："合同编号：HT-2024-001，甲方：北京XX科技有限公司（地址：北京市朝阳区XX路XX号，联系人：张三）"
 输出：{"contractNo": "HT-2024-001", "customerName": "北京XX科技有限公司"}
+说明：提取编号本身，公司名称不包含地址
 
-示例2：
+示例2（纯编号标签）：
 输入："编号：PROJ-2024-056，乙方：上海YY技术股份有限公司"
 输出：{"contractNo": "PROJ-2024-056", "ourEntity": "上海YY技术股份有限公司"}
+
+示例3（Markdown粗体格式）：
+输入："## 人力资源外包框架协议\\n\\n**合同编号：** CTR-2024-00456 **签订日期：** 2024-02-01\\n\\n### 甲方（用工方）\\n**公司名称：** 杭州某某互联网有限公司"
+输出：{"contractNo": "CTR-2024-00456", "contractName": "人力资源外包框架协议", "customerName": "杭州某某互联网有限公司"}
+说明：去除Markdown标记（##、**），提取Markdown标题作为合同名称
+
+示例4（无明确标签的编号）：
+输入："INSIGMA-2024-DEV-001\\n\\n智能合同管理系统开发项目\\n\\n甲方：某某科技股份有限公司\\n乙方：insigma软件有限公司"
+输出：{"contractNo": "INSIGMA-2024-DEV-001", "contractName": "智能合同管理系统开发项目", "customerName": "某某科技股份有限公司", "ourEntity": "insigma软件有限公司"}
+说明：虽然无"合同编号："标签，但第一行符合编号格式模式
 
 【常见错误及纠正】
 ❌ 错误：{"customerName": "北京XX科技有限公司（地址：北京市朝阳区）"}
@@ -1199,12 +1300,25 @@ export class TaskBasedParserService implements OnModuleInit {
   private buildBasicInfoPrompt(text: string): string {
     // 只取前30%的文本，基本信息通常在前面
     const relevantText = text.substring(0, Math.min(text.length, 5000));
-    return `请从以下合同文本中提取基本信息：
+    return `请从以下合同文本中提取基本信息。
+
+【需要提取的字段】
+1. contractNo - 合同编号
+2. contractName - 合同名称
+3. firstPartyName - 甲方名称（委托方/发包方/买方）
+4. secondPartyName - 乙方名称（受托方/承包方/卖方）
+5. taxNo - 税号
+6. contractType - 合同类型，必须从以下三种中选择一个：
+   - "STAFF_AUGMENTATION" - 人力框架/人力外包合同（特征：工时费率、人天、人月、角色、服务协议）
+   - "PROJECT_OUTSOURCING" - 项目外包合同（特征：里程碑、交付物、验收标准、阶段性付款、SOW）
+   - "PRODUCT_SALES" - 产品购销合同（特征：产品清单、单价、数量、交货、保修）
 
 【合同文本】
 ${relevantText}
 
-【输出格式】JSON`;
+【输出格式】
+返回JSON对象，包含上述所有字段。contractType字段必须是英文枚举值。
+示例：{"contractNo": "HT-2024-001", "contractName": "XX项目开发合同", "firstPartyName": "甲方公司", "secondPartyName": "乙方公司", "taxNo": "91110000...", "contractType": "PROJECT_OUTSOURCING"}`;
   }
 
   private buildFinancialPrompt(text: string): string {
@@ -1281,5 +1395,85 @@ ${text}
 ${text}
 
 【输出格式】JSON`;
+  }
+
+  /**
+   * 规范化合同类型：将各种格式映射到标准英文枚举值
+   * 处理：中文合同类型名、大小写变体、缩写等
+   */
+  private normalizeContractType(type: string): string {
+    if (!type) return 'PROJECT_OUTSOURCING'; // 默认值
+
+    const upperType = type.toUpperCase().trim();
+
+    // 已经是标准枚举值，直接返回
+    const validTypes = ['STAFF_AUGMENTATION', 'PROJECT_OUTSOURCING', 'PRODUCT_SALES', 'MIXED'];
+    if (validTypes.includes(upperType)) {
+      return upperType;
+    }
+
+    // 缩写和别名映射
+    const aliasMappings: Record<string, string> = {
+      'PROJECT': 'PROJECT_OUTSOURCING',
+      'STAFF': 'STAFF_AUGMENTATION',
+      'PRODUCT': 'PRODUCT_SALES',
+      'OUTSOURCING': 'PROJECT_OUTSOURCING',
+      'AUGMENTATION': 'STAFF_AUGMENTATION',
+      'SALES': 'PRODUCT_SALES',
+      '混合': 'MIXED',
+      '综合': 'MIXED',
+    };
+
+    if (aliasMappings[upperType]) {
+      return aliasMappings[upperType];
+    }
+
+    // 中文合同类型映射
+    const chineseMappings: Record<string, string> = {
+      // 人力框架相关
+      '人力框架': 'STAFF_AUGMENTATION',
+      '人员外包': 'STAFF_AUGMENTATION',
+      '劳务派遣': 'STAFF_AUGMENTATION',
+      '服务协议': 'STAFF_AUGMENTATION',
+      '技术服务': 'STAFF_AUGMENTATION',
+      '人力外包': 'STAFF_AUGMENTATION',
+      '外包服务': 'STAFF_AUGMENTATION',
+      '咨询服务': 'STAFF_AUGMENTATION',
+
+      // 项目外包相关
+      '项目外包': 'PROJECT_OUTSOURCING',
+      '项目开发': 'PROJECT_OUTSOURCING',
+      '系统集成': 'PROJECT_OUTSOURCING',
+      '软件开发': 'PROJECT_OUTSOURCING',
+      '工程实施': 'PROJECT_OUTSOURCING',
+      '工程建设': 'PROJECT_OUTSOURCING',
+      '技术开发': 'PROJECT_OUTSOURCING',
+      '项目': 'PROJECT_OUTSOURCING',
+
+      // 产品购销相关
+      '产品购销': 'PRODUCT_SALES',
+      '产品销售': 'PRODUCT_SALES',
+      '货物买卖': 'PRODUCT_SALES',
+      '设备采购': 'PRODUCT_SALES',
+      '采购合同': 'PRODUCT_SALES',
+      '销售合同': 'PRODUCT_SALES',
+      '供货协议': 'PRODUCT_SALES',
+    };
+
+    // 精确匹配
+    if (chineseMappings[type]) {
+      return chineseMappings[type];
+    }
+
+    // 模糊匹配
+    for (const [chinese, english] of Object.entries(chineseMappings)) {
+      if (type.includes(chinese)) {
+        return english;
+      }
+    }
+
+    // 无法识别时的默认值
+    this.logger.warn(`[normalizeContractType] Unknown contract type: "${type}", defaulting to PROJECT_OUTSOURCING`);
+    return 'PROJECT_OUTSOURCING';
   }
 }

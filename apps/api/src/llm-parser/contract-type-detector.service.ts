@@ -5,7 +5,7 @@ import OpenAI from 'openai';
 /**
  * 合同类型
  */
-export type ContractType = 'STAFF_AUGMENTATION' | 'PROJECT_OUTSOURCING' | 'PRODUCT_SALES';
+export type ContractType = 'STAFF_AUGMENTATION' | 'PROJECT_OUTSOURCING' | 'PRODUCT_SALES' | 'MIXED';
 
 /**
  * 合同类型检测结果
@@ -125,7 +125,7 @@ export class ContractTypeDetectorService {
       };
 
       // 验证detectedType是有效值
-      const validTypes: ContractType[] = ['PROJECT_OUTSOURCING', 'STAFF_AUGMENTATION', 'PRODUCT_SALES'];
+      const validTypes: ContractType[] = ['PROJECT_OUTSOURCING', 'STAFF_AUGMENTATION', 'PRODUCT_SALES', 'MIXED'];
       if (!validTypes.includes(result.detectedType)) {
         this.logger.warn(`[Contract Type Detection from Filename] Invalid type detected: ${result.detectedType}`);
         return {
@@ -172,6 +172,7 @@ export class ContractTypeDetectorService {
 
   /**
    * 从合同文本中检测合同类型（备用方法）
+   * 当文件名检测置信度 < 0.75 时调用此方法
    */
   async detectContractTypeFromText(
     text: string,
@@ -181,8 +182,8 @@ export class ContractTypeDetectorService {
     try {
       const config = this.llmConfigService.getActiveConfig();
 
-      // 截取前2000字符用于类型检测（足够判断类型）
-      const sampleText = text.slice(0, 2000);
+      // 截取前1000字符用于类型检测（足够判断类型，减少LLM处理时间）
+      const sampleText = text.slice(0, 1000);
 
       const systemPrompt = `你是一个专业的合同类型识别专家。你的任务是根据合同内容判断合同类型。
 
@@ -244,7 +245,7 @@ ${sampleText}
       };
 
       // 验证detectedType是有效值
-      const validTypes: ContractType[] = ['PROJECT_OUTSOURCING', 'STAFF_AUGMENTATION', 'PRODUCT_SALES'];
+      const validTypes: ContractType[] = ['PROJECT_OUTSOURCING', 'STAFF_AUGMENTATION', 'PRODUCT_SALES', 'MIXED'];
       if (!validTypes.includes(result.detectedType)) {
         this.logger.warn(`[Contract Type Detection] Invalid type detected: ${result.detectedType}, using fallback`);
         return this.fallbackDetection(text);
@@ -384,6 +385,7 @@ ${sampleText}
       PROJECT_OUTSOURCING: '项目外包',
       STAFF_AUGMENTATION: '人力框架',
       PRODUCT_SALES: '产品购销',
+      MIXED: '混合类型',
     };
     return displayNames[type];
   }
@@ -396,6 +398,7 @@ ${sampleText}
       PROJECT_OUTSOURCING: '项目外包合同 - 以里程碑和交付物为核心的合同类型',
       STAFF_AUGMENTATION: '人力框架合同 - 以工时和费率为核心的合同类型',
       PRODUCT_SALES: '产品购销合同 - 以产品买卖为核心的合同类型',
+      MIXED: '混合类型合同 - 包含多种合同特征的综合类型',
     };
     return descriptions[type];
   }

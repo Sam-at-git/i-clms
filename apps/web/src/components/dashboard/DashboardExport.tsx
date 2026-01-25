@@ -726,9 +726,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px',
     borderRadius: '4px',
     cursor: 'pointer',
-    ':hover': {
-      backgroundColor: '#f9fafb',
-    },
   },
   checkbox: {
     width: '16px',

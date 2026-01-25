@@ -225,7 +225,8 @@ describe('TaskBasedParserService', () => {
         return mockLLMResponse(timeInfoResponse); // TIME_INFO
       });
 
-      const result = await service.parseByTasks(sampleContractText, undefined, undefined, 'test-session');
+      // Pass a contract type to skip auto-detection (which would call BASIC_INFO twice)
+      const result = await service.parseByTasks(sampleContractText, 'PROJECT_OUTSOURCING', undefined, 'test-session');
 
       expect(result.summary.totalTasks).toBe(8);
       expect(result.summary.successfulTasks).toBe(8);
@@ -258,21 +259,21 @@ describe('TaskBasedParserService', () => {
         mockLLMResponse(JSON.stringify({ contractNo: 'CTR-001' })) as any
       );
 
-      await service.parseByTasks(sampleContractText, undefined, [InfoType.BASIC_INFO]);
+      await service.parseByTasks(sampleContractText, undefined, [InfoType.BASIC_INFO], 'test-session');
 
-      expect(progressService.setTasks).toHaveBeenCalledWith(expect.any(String), [InfoType.BASIC_INFO]);
-      expect(progressService.startTask).toHaveBeenCalledWith(expect.any(String), InfoType.BASIC_INFO);
+      expect(progressService.setTasks).toHaveBeenCalledWith('test-session', [InfoType.BASIC_INFO]);
+      expect(progressService.startTask).toHaveBeenCalledWith('test-session', InfoType.BASIC_INFO);
       expect(progressService.completeTask).toHaveBeenCalled();
     });
 
     it('should handle task failures gracefully', async () => {
       mockOpenai.chat.completions.create.mockRejectedValue(new Error('Connection error'));
 
-      const result = await service.parseByTasks(sampleContractText, undefined, [InfoType.BASIC_INFO]);
+      const result = await service.parseByTasks(sampleContractText, undefined, [InfoType.BASIC_INFO], 'test-session');
 
       expect(result.summary.successfulTasks).toBe(0);
       expect(result.summary.failedTasks).toBe(1);
-      expect(progressService.failTask).toHaveBeenCalledWith(expect.any(String), InfoType.BASIC_INFO, 'Connection error');
+      expect(progressService.failTask).toHaveBeenCalledWith('test-session', InfoType.BASIC_INFO, 'Connection error');
     });
 
     it('should filter tasks based on enabledTaskTypes', async () => {
@@ -283,11 +284,12 @@ describe('TaskBasedParserService', () => {
       const result = await service.parseByTasks(
         sampleContractText,
         undefined,
-        [InfoType.BASIC_INFO, InfoType.FINANCIAL]
+        [InfoType.BASIC_INFO, InfoType.FINANCIAL],
+        'test-session'
       );
 
       expect(result.summary.totalTasks).toBe(2);
-      expect(progressService.setTasks).toHaveBeenCalledWith(expect.any(String), [InfoType.BASIC_INFO, InfoType.FINANCIAL]);
+      expect(progressService.setTasks).toHaveBeenCalledWith('test-session', [InfoType.BASIC_INFO, InfoType.FINANCIAL]);
     });
 
     it('should continue with remaining tasks when one task fails', async () => {
@@ -349,48 +351,31 @@ End of response.
 
   describe('mergeTaskResults', () => {
     it('should merge task results correctly by InfoType', async () => {
-      const basicInfoTask = {
-        taskId: 'basic-info',
-        infoType: InfoType.BASIC_INFO,
-        success: true,
-        data: { contractNo: 'CTR-001', contractName: 'Test Contract', contractType: 'PROJECT_OUTSOURCING' },
-        tokensUsed: 100,
-        processingTimeMs: 1000,
-      };
+      const basicInfoData = { contractNo: 'CTR-001', contractName: 'Test Contract', contractType: 'PROJECT_OUTSOURCING' };
+      const financialData = { amountWithTax: '1000000', currency: 'CNY' };
+      const milestonesData = { milestones: [{ sequence: 1, name: 'M1' }] };
 
-      const financialTask = {
-        taskId: 'financial',
-        infoType: InfoType.FINANCIAL,
-        success: true,
-        data: { amountWithTax: '1000000', currency: 'CNY' },
-        tokensUsed: 150,
-        processingTimeMs: 1500,
-      };
-
-      const milestonesTask = {
-        taskId: 'milestones',
-        infoType: InfoType.MILESTONES,
-        success: true,
-        data: { milestones: [{ sequence: 1, name: 'M1' }] },
-        tokensUsed: 200,
-        processingTimeMs: 2000,
-      };
-
-      // Simulate by directly calling the service with mocked responses
+      // Map task types to their expected responses
       let callIndex = 0;
       const responses = [
-        JSON.stringify(basicInfoTask.data),
-        JSON.stringify(financialTask.data),
-        JSON.stringify(milestonesTask.data),
+        JSON.stringify(basicInfoData),
+        JSON.stringify(financialData),
+        JSON.stringify(milestonesData),
       ];
 
       mockOpenai.chat.completions.create.mockImplementation(async () => {
-        const response = responses[callIndex % responses.length];
+        const response = responses[callIndex];
         callIndex++;
         return mockLLMResponse(response) as any;
       });
 
-      const result = await service.parseByTasks('sample text', undefined, undefined, 'test-session');
+      // Pass specific task types to avoid the contract type auto-detection flow
+      const result = await service.parseByTasks(
+        'sample text',
+        undefined,
+        [InfoType.BASIC_INFO, InfoType.FINANCIAL, InfoType.MILESTONES],
+        'test-session'
+      );
 
       expect(result.data.basicInfo.contractNo).toBe('CTR-001');
       expect(result.data.financialInfo.amountWithTax).toBe('1000000');

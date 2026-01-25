@@ -711,12 +711,8 @@ ${relevantText.substring(0, 15000)}
   /**
    * 根据合同类型获取相关主题
    *
-   * 不同合同类型只提取特定信息，避免浪费时间解析无关字段
-   * 配置与 topics.const.ts 中的 CONTRACT_TYPE_TOPIC_BATCHES 保持一致
-   *
-   * - 项目外包(PROJECT_OUTSOURCING): BASIC_INFO, FINANCIAL, TIME_INFO, MILESTONES, DELIVERABLES, RISK_CLAUSES (6个)
-   * - 人力外包(STAFF_AUGMENTATION): BASIC_INFO, FINANCIAL, TIME_INFO, RATE_ITEMS, DELIVERABLES, RISK_CLAUSES (6个)
-   * - 产品销售(PRODUCT_SALES): BASIC_INFO, FINANCIAL, TIME_INFO, LINE_ITEMS, RISK_CLAUSES (5个)
+   * 使用 TopicRegistryService 获取合同类型对应的主题批次，
+   * 保持与 CONTRACT_TYPE_TOPIC_BATCHES 配置的一致性
    */
   private getTopicsForContractType(
     contractType: string | undefined,
@@ -727,38 +723,46 @@ ${relevantText.substring(0, 15000)}
       return userTopics;
     }
 
-    // 基础主题（所有合同类型都需要）
-    const baseTopics = [
-      ExtractTopic.BASIC_INFO,
-      ExtractTopic.FINANCIAL,
-      ExtractTopic.TIME_INFO,
-    ];
-
-    // 根据合同类型添加特定主题（与 topics.const.ts 保持一致）
-    const typeSpecificTopics: Record<string, ExtractTopic[]> = {
-      PROJECT_OUTSOURCING: [
-        ExtractTopic.MILESTONES,   // 里程碑（核心）
-        ExtractTopic.DELIVERABLES, // 交付物
-        ExtractTopic.RISK_CLAUSES,  // 风险条款
-      ],
-      STAFF_AUGMENTATION: [
-        ExtractTopic.RATE_ITEMS,    // 人力费率（核心）
-        ExtractTopic.DELIVERABLES,  // 交付物
-        ExtractTopic.RISK_CLAUSES,  // 风险条款
-      ],
-      PRODUCT_SALES: [
-        ExtractTopic.LINE_ITEMS,    // 产品清单（核心）
-        ExtractTopic.RISK_CLAUSES,  // 风险条款
-      ],
-    };
-
-    // 如果能识别出合同类型，只提取相关主题
-    if (contractType && typeSpecificTopics[contractType]) {
-      return [...baseTopics, ...typeSpecificTopics[contractType]];
+    // 如果能识别出合同类型，使用 TopicRegistryService 获取对应主题
+    if (contractType) {
+      // 规范化合同类型
+      const normalizedType = this.normalizeContractType(contractType);
+      const topics = this.topicRegistry.getTopicNamesForContractType(normalizedType);
+      if (topics.length > 0) {
+        this.logger.log(`[getTopicsForContractType] Using ${topics.length} topics for ${normalizedType}`);
+        return topics as ExtractTopic[];
+      }
     }
 
     // 默认：返回所有主题（向后兼容）
     return this.getDefaultTopics();
+  }
+
+  /**
+   * 规范化合同类型
+   */
+  private normalizeContractType(type: string): string {
+    if (!type) return 'PROJECT_OUTSOURCING';
+
+    const upperType = type.toUpperCase().trim();
+    const validTypes = ['STAFF_AUGMENTATION', 'PROJECT_OUTSOURCING', 'PRODUCT_SALES', 'MIXED'];
+    if (validTypes.includes(upperType)) {
+      return upperType;
+    }
+
+    // 中文映射
+    const chineseMappings: Record<string, string> = {
+      '人力框架': 'STAFF_AUGMENTATION', '人力外包': 'STAFF_AUGMENTATION',
+      '项目外包': 'PROJECT_OUTSOURCING', '项目开发': 'PROJECT_OUTSOURCING',
+      '产品购销': 'PRODUCT_SALES', '产品销售': 'PRODUCT_SALES',
+      '混合类型': 'MIXED', '混合': 'MIXED',
+    };
+
+    for (const [chinese, english] of Object.entries(chineseMappings)) {
+      if (type.includes(chinese)) return english;
+    }
+
+    return 'PROJECT_OUTSOURCING';
   }
 
   /**

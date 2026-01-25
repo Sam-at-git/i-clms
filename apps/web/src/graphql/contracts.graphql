@@ -145,8 +145,8 @@ mutation ConvertUploadedFileToMarkdown($objectName: String!, $options: DoclingCo
   }
 }
 
-mutation DetectContractType($markdown: String!) {
-  detectContractType(markdown: $markdown) {
+mutation DetectContractType($markdown: String!, $fileName: String) {
+  detectContractType(markdown: $markdown, fileName: $fileName) {
     detectedType
     confidence
     reasoning

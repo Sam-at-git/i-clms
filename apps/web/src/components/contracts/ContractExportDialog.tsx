@@ -1,35 +1,6 @@
-import { useState, useRef } from 'react';
-import { useMutation } from '@apollo/client';
-import { gql } from '@apollo/client';
+import { useState } from 'react';
 
-const EXPORT_CONTRACT = gql`
-  mutation ExportContract($contractId: ID!, $format: ExportFormat!, $options: ExportOptionsInput) {
-    exportContract(contractId: $contractId, format: $format, options: $options) {
-      id
-      format
-      fileUrl
-      fileName
-      fileSize
-      status
-      progress
-      error
-    }
-  }
-`;
-
-const GET_EXPORT_STATUS = gql`
-  query GetExportStatus($exportId: ID!) {
-    exportStatus(id: $exportId) {
-      id
-      status
-      progress
-      fileUrl
-      fileName
-      fileSize
-      error
-    }
-  }
-`;
+// TODO: 合同导出功能待后端实现
 
 interface ContractExportDialogProps {
   contractId: string;
@@ -38,14 +9,13 @@ interface ContractExportDialogProps {
   onComplete?: (fileUrl: string, fileName: string) => void;
 }
 
+// Note: Backend only supports PDF and EXCEL formats
 const EXPORT_FORMATS = [
   { value: 'PDF', label: 'PDF文档', icon: '📄' },
-  { value: 'WORD', label: 'Word文档', icon: '📝' },
   { value: 'EXCEL', label: 'Excel表格', icon: '📊' },
-  { value: 'HTML', label: 'HTML网页', icon: '🌐' },
 ];
 
-type ExportFormat = 'PDF' | 'WORD' | 'EXCEL' | 'HTML';
+type ExportFormat = 'PDF' | 'EXCEL';
 
 interface ExportOptions {
   includeAnnotations?: boolean;
@@ -57,7 +27,6 @@ interface ExportOptions {
 }
 
 export function ContractExportDialog({
-  contractId,
   contractNo,
   onClose,
   onComplete,
@@ -72,81 +41,13 @@ export function ContractExportDialog({
   });
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [exportId, setExportId] = useState<string | null>(null);
 
-  // Mutation
-  const [exportContract] = useMutation(EXPORT_CONTRACT, {
-    onCompleted: (data) => {
-      const result = data.exportContract;
-      setExportId(result.id);
-
-      if (result.status === 'COMPLETED') {
-        handleExportComplete(result.fileUrl, result.fileName);
-      } else if (result.status === 'PENDING') {
-        // Poll for status updates
-        pollExportStatus(result.id);
-      } else if (result.status === 'FAILED') {
-        setIsExporting(false);
-        alert(`导出失败: ${result.error}`);
-      }
-    },
-    onError: (error) => {
-      setIsExporting(false);
-      alert(`导出失败: ${error.message}`);
-    },
-  });
-
-  const [getExportStatus] = useMutation(GET_EXPORT_STATUS, {
-    onCompleted: (data) => {
-      const status = data.exportStatus;
-      setProgress(status.progress);
-
-      if (status.status === 'COMPLETED') {
-        handleExportComplete(status.fileUrl, status.fileName);
-      } else if (status.status === 'FAILED') {
-        setIsExporting(false);
-        alert(`导出失败: ${status.error}`);
-      } else if (status.status === 'PENDING') {
-        // Continue polling
-        setTimeout(() => pollExportStatus(exportId!),, 1000);
-      }
-    },
-  });
-
-  const pollExportStatus = (id: string) => {
-    getExportStatus({ variables: { exportId: id } });
-  };
-
-  const handleExportComplete = (fileUrl: string, fileName: string) => {
-    setIsExporting(false);
-    setProgress(100);
-
-    // Trigger download
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    if (onComplete) {
-      onComplete(fileUrl, fileName);
-    }
-
-    alert(`导出成功: ${fileName}`);
-  };
+  // Keep onComplete in scope for future implementation
+  void onComplete;
 
   const handleExport = () => {
-    setIsExporting(true);
-    setProgress(0);
-
-    exportContract({
-      variables: {
-        contractId,
-        format: selectedFormat,
-        options,
-      },
-    });
+    // TODO: 合同导出功能待后端实现
+    alert('合同导出功能暂未开放');
   };
 
   return (
@@ -311,9 +212,7 @@ export function ContractExportDialog({
         <div style={styles.formatDescription}>
           <strong>提示:</strong> {' '}
           {selectedFormat === 'PDF' && 'PDF格式适合打印和归档，支持密码保护。'}
-          {selectedFormat === 'WORD' && 'Word格式适合编辑和修改。'}
           {selectedFormat === 'EXCEL' && 'Excel格式适合数据分析和处理。'}
-          {selectedFormat === 'HTML' && 'HTML格式适合网页浏览和在线分享。'}
         </div>
       </div>
     </div>

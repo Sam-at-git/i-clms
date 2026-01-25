@@ -33,34 +33,19 @@ const CONTRACT_STATUS_COLORS: Record<string, string> = {
   EXPIRED: '#9ca3af',
 };
 
-// Get contract milestones/events
-const GET_CONTRACT_EVENTS = gql`
-  query GetContractEvents($contractId: ID!) {
-    contract(id: $contractId) {
-      id
-      createdAt
-      signedAt
-      effectiveAt
-      expiresAt
-      updatedAt
-      milestones {
-        id
-        name
-        plannedDate
-        actualDate
-        status
-      }
-      auditLogs(first: 10, orderBy: { timestamp: desc }) {
-        nodes {
-          id
-          action
-          timestamp
-          userId
-        }
-      }
-    }
-  }
-`;
+// TODO: 合同事件查询 - milestones和auditLogs字段待后端实现
+// const GET_CONTRACT_EVENTS = gql`
+//   query GetContractEvents($contractId: ID!) {
+//     contract(id: $contractId) {
+//       id
+//       createdAt
+//       signedAt
+//       effectiveAt
+//       expiresAt
+//       updatedAt
+//     }
+//   }
+// `;
 
 export function CustomerTimeline({
   customerId,

@@ -10,14 +10,16 @@ interface CustomerExportProps {
   onClose?: () => void;
 }
 
+// TODO: 客户导出功能 - 后端已实现但参数不同
+// 后端签名: exportCustomers(format: ExportFormat, title: String, columns: [String!])
 const EXPORT_CUSTOMERS = gql`
-  mutation ExportCustomers($customerIds: [ID!]!, $format: ExportFormat!, $fields: [String!]!) {
-  exportCustomers(customerIds: $customerIds, format: $format, fields: $fields) {
-    downloadUrl
-    fileName
-    recordCount
+  mutation ExportCustomers($format: ExportFormat, $title: String, $columns: [String!]) {
+    exportCustomers(format: $format, title: $title, columns: $columns) {
+      downloadUrl
+      fileName
+      recordCount
+    }
   }
-}
 `;
 
 const AVAILABLE_FIELDS = [
@@ -30,7 +32,7 @@ const AVAILABLE_FIELDS = [
   { field: 'address', label: '地址' },
   { field: 'contactPerson', label: '主联系人' },
   { field: 'contactPhone', label: '联系电话' },
-  { contactEmail: 'label', email: '联系邮箱' },
+  { field: 'contactEmail', label: '联系邮箱' },
   { field: 'createdAt', label: '创建时间' },
   { field: 'updatedAt', label: '更新时间' },
 ];
@@ -120,9 +122,9 @@ export function CustomerExport({
     setIsExporting(true);
     exportCustomers({
       variables: {
-        customerIds: idsToExport,
         format: format as any,
-        fields: Array.from(selectedFields),
+        title: '客户列表导出',
+        columns: Array.from(selectedFields),
       },
     });
   };

@@ -139,6 +139,7 @@ export function ContractUploadUnified({
   const [parseProgress, setParseProgress] = useState<ParseProgress | null>(null);
   const [progressPolling, setProgressPolling] = useState(false);
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
+  const [originalFileName, setOriginalFileName] = useState<string | null>(null); // 保存原始文件名用于类型检测
 
   // LLM parsing state
   const [extractedData, setExtractedData] = useState<LlmExtractedData | null>(null);
@@ -199,11 +200,15 @@ export function ContractUploadUnified({
     reasoning: string;
   } | null>(null);
 
-  // 进度轮询逻辑
+  // 进度轮询逻辑 - 使用指数退避策略
   useEffect(() => {
     if (!sessionId || !progressPolling) return;
 
-    const pollInterval = setInterval(async () => {
+    let pollIntervalMs = 1500; // 初始1.5秒
+    const maxIntervalMs = 10000; // 最大10秒
+    let timeoutId: NodeJS.Timeout;
+
+    const poll = async () => {
       try {
         const response = await fetch(
           `${import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:3000/graphql'}`,
@@ -318,9 +323,16 @@ export function ContractUploadUnified({
       } catch (err) {
         console.error('Failed to poll progress:', err);
       }
-    }, 1500); // 每1.5秒轮询一次
 
-    return () => clearInterval(pollInterval);
+      // 使用指数退避调度下一次轮询
+      pollIntervalMs = Math.min(pollIntervalMs * 1.5, maxIntervalMs);
+      timeoutId = setTimeout(poll, pollIntervalMs);
+    };
+
+    // 开始轮询
+    timeoutId = setTimeout(poll, pollIntervalMs);
+
+    return () => clearTimeout(timeoutId);
   }, [sessionId, progressPolling, token]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -348,6 +360,7 @@ export function ContractUploadUnified({
     setError('');
     setStep('upload');
     setMarkdownContent(null);
+    setOriginalFileName(file.name); // 保存原始文件名
 
     try {
       // 1. Upload file
@@ -427,8 +440,12 @@ export function ContractUploadUnified({
     setError('');
 
     try {
+      console.log('[Type Detection] Starting with fileName:', originalFileName);
       const result = await detectContractType({
-        variables: { markdown: markdownContent },
+        variables: {
+          markdown: markdownContent,
+          fileName: originalFileName || undefined, // 传递原始文件名用于优先判断
+        },
       });
 
       if (result.data?.detectContractType) {
@@ -462,7 +479,8 @@ export function ContractUploadUnified({
     }
   };
 
-  const handleLlmParsing = async (objName: string, strategy: string) => {
+  const handleLlmParsing = async (objName: string, strategy: string, contractType?: string) => {
+    console.log('[LLM Parsing] Starting with contractType:', contractType || 'auto-detect');
 
     // Step 1: 启动异步解析任务（立即返回，在后台执行）
     try {
@@ -476,8 +494,8 @@ export function ContractUploadUnified({
           },
           body: JSON.stringify({
             query: `
-              mutation StartParseContractAsync($objectName: String!, $strategy: ParseStrategyType, $markdown: String) {
-                startParseContractAsync(objectName: $objectName, strategy: $strategy, markdown: $markdown) {
+              mutation StartParseContractAsync($objectName: String!, $strategy: ParseStrategyType, $markdown: String, $contractType: String) {
+                startParseContractAsync(objectName: $objectName, strategy: $strategy, markdown: $markdown, contractType: $contractType) {
                   sessionId
                   message
                 }
@@ -487,6 +505,7 @@ export function ContractUploadUnified({
               objectName: objName,
               strategy,
               markdown: markdownContent || null,
+              contractType: contractType || null,
             },
           }),
         },
@@ -844,7 +863,8 @@ export function ContractUploadUnified({
               <button
                 onClick={() => {
                   setStep('parsing');
-                  handleLlmParsing(objectName, selectedStrategy);
+                  // 传递用户选择/检测的合同类型
+                  handleLlmParsing(objectName, selectedStrategy, detectedContractType?.type);
                 }}
                 style={styles.submitButton}
               >

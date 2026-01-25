@@ -278,7 +278,7 @@ export function DashboardPresets({
                 disabled={saving || !presetName.trim()}
                 style={{
                   ...styles.confirmButton,
-                  ((saving || !presetName.trim()) && styles.buttonDisabled),
+                  ...((saving || !presetName.trim()) && styles.buttonDisabled),
                 }}
               >
                 {saving ? '保存中...' : '保存预设'}

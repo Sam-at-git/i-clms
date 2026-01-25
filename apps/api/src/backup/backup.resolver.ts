@@ -8,7 +8,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class BackupResolver {
   constructor(private readonly backupService: BackupService) {}
 
-  @Query(() => String, { description: 'Create database backup' })
+  @Mutation(() => String, { description: 'Create database backup' })
   @UseGuards(GqlAuthGuard)
   async createBackup(@CurrentUser() user: any) {
     const result = await this.backupService.createBackup(user.id);
@@ -42,7 +42,7 @@ export class BackupResolver {
     return JSON.stringify(result);
   }
 
-  @Query(() => String, { description: 'Export system configuration' })
+  @Mutation(() => String, { description: 'Export system configuration' })
   @UseGuards(GqlAuthGuard)
   async exportConfig() {
     const result = await this.backupService.exportConfig();

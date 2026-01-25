@@ -303,7 +303,7 @@ export function NotificationPreferences({ userId }: NotificationPreferencesProps
               disabled={saveStatus === 'saving' || !hasChanges}
               style={{
                 ...styles.saveButton,
-                ((saveStatus === 'saving' || !hasChanges) && styles.saveButtonDisabled),
+                ...((saveStatus === 'saving' || !hasChanges) && styles.saveButtonDisabled),
               }}
             >
               {saveStatus === 'saving' ? '保存中...' : '保存设置'}
@@ -378,9 +378,6 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#fff',
     borderRadius: '4px',
     cursor: 'pointer',
-    ':hover': {
-      backgroundColor: '#f3f4f6',
-    },
   },
   checkbox: {
     width: '18px',
@@ -410,9 +407,6 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#fff',
     borderRadius: '4px',
     cursor: 'pointer',
-    ':hover': {
-      backgroundColor: '#f3f4f6',
-    },
   },
   typeInfo: {
     display: 'flex',

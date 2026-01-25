@@ -154,9 +154,10 @@ export class LlmParserResolver {
     @Args('objectName') objectName: string,
     @Args('strategy', { type: () => ParseStrategyType, nullable: true }) strategy?: ParseStrategyType,
     @Args('markdown', { type: () => String, nullable: true, description: '预转换的Markdown内容（前端已通过Docling转换）' }) markdown?: string,
+    @Args('contractType', { type: () => String, nullable: true, description: '合同类型（可选，用于确定解析的主题批次）' }) contractType?: string,
   ): Promise<AsyncParseStartResponse> {
     const effectiveStrategy = strategy || ParseStrategyType.LLM;
-    this.logger.log(`[Async Parse] Starting async parse for: ${objectName}, strategy: ${effectiveStrategy}, hasMarkdown: ${!!markdown}`);
+    this.logger.log(`[Async Parse] Starting async parse for: ${objectName}, strategy: ${effectiveStrategy}, hasMarkdown: ${!!markdown}, contractType: ${contractType || 'auto-detect'}`);
 
     // 创建进度会话，如果提供了markdown，立即存储
     const sessionId = this.progressService.createSession(objectName);
@@ -169,9 +170,9 @@ export class LlmParserResolver {
     // 在后台异步执行解析（使用Promise但不await）
     Promise.resolve().then(async () => {
       try {
-        this.logger.log(`[Async Parse] Starting background execution for session: ${sessionId}, strategy: ${effectiveStrategy}`);
+        this.logger.log(`[Async Parse] Starting background execution for session: ${sessionId}, strategy: ${effectiveStrategy}, contractType: ${contractType || 'auto-detect'}`);
         // Route to appropriate strategy based on strategy parameter
-        await this.llmParserService.parseContractWithLlm(objectName, sessionId, markdown);
+        await this.llmParserService.parseContractWithLlm(objectName, sessionId, markdown, contractType);
         this.logger.log(`[Async Parse] Completed background execution for session: ${sessionId}`);
       } catch (error) {
         this.logger.error(`[Async Parse] Failed for session ${sessionId}:`, error);

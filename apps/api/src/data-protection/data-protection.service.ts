@@ -319,7 +319,7 @@ export class DataProtectionService implements OnModuleInit {
       this.prisma.contractDataProtection.count({
         where: { involvesPersonalData: true },
       }),
-      this.prisma.$queryRaw<Array<{ risklevel: DataProtectionRisk; count: bigint }>>`
+      this.prisma.$queryRaw<Array<{ riskLevel: DataProtectionRisk; count: bigint }>>`
         SELECT "riskLevel", COUNT(*) as count
         FROM "contract_data_protection"
         GROUP BY "riskLevel"
@@ -328,7 +328,7 @@ export class DataProtectionService implements OnModuleInit {
     ]);
 
     const byRiskLevel = byRiskLevelResult.map((row) => ({
-      level: row.risklevel,
+      level: row.riskLevel,
       count: Number(row.count),
     }));
 

@@ -433,9 +433,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     cursor: 'pointer',
     fontWeight: 500,
-    ':hover': {
-      backgroundColor: '#2563eb',
-    },
   },
   actionMenu: {
     position: 'absolute',
@@ -459,12 +456,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     color: '#374151',
     cursor: 'pointer',
-    ':last-child': {
-      borderBottom: 'none',
-    },
-    ':hover': {
-      backgroundColor: '#f9fafb',
-    },
   },
   infoCards: {
     display: 'grid',

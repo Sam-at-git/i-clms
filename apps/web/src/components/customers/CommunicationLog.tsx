@@ -1,32 +1,33 @@
 import { useState } from 'react';
-import { useMutation } from '@apollo/client';
-import { gql } from '@apollo/client';
+// import { useMutation } from '@apollo/client';
+// import { gql } from '@apollo/client';
 
 interface CommunicationLogProps {
   customerId: string;
   customerName?: string;
 }
 
-const ADD_COMMUNICATION = gql`
-  mutation AddCommunication($input: CreateCommunicationInput!) {
-    addCommunication(input: $input) {
-      id
-      type
-      summary
-      notes
-      communicatedAt
-      communicatedBy {
-        id
-        name
-      }
-      attachments {
-        id
-        fileName
-        fileUrl
-      }
-    }
-  }
-`;
+// TODO: 沟通记录功能待后端实现
+// const ADD_COMMUNICATION = gql`
+//   mutation AddCommunication($input: CreateCommunicationInput!) {
+//     addCommunication(input: $input) {
+//       id
+//       type
+//       summary
+//       notes
+//       communicatedAt
+//       communicatedBy {
+//         id
+//         name
+//       }
+//       attachments {
+//         id
+//         fileName
+//         fileUrl
+//       }
+//     }
+//   }
+// `;
 
 interface Communication {
   id: string;
@@ -69,18 +70,19 @@ export function CommunicationLog({
     attachments: [] as File[],
   });
 
-  // Mutation
-  const [addCommunication, { loading }] = useMutation(ADD_COMMUNICATION, {
-    onCompleted: (data) => {
-      setLogs([data.addCommunication, ...logs]);
-      setShowAddModal(false);
-      resetForm();
-      alert('记录添加成功');
-    },
-    onError: (error) => {
-      alert(`添加失败: ${error.message}`);
-    },
-  });
+  // TODO: 沟通记录功能待后端实现
+  const loading = false;
+  // const [addCommunication, { loading }] = useMutation(ADD_COMMUNICATION, {
+  //   onCompleted: (data) => {
+  //     setLogs([data.addCommunication, ...logs]);
+  //     setShowAddModal(false);
+  //     resetForm();
+  //     alert('记录添加成功');
+  //   },
+  //   onError: (error) => {
+  //     alert(`添加失败: ${error.message}`);
+  //   },
+  // });
 
   const resetForm = () => {
     setFormData({
@@ -98,17 +100,20 @@ export function CommunicationLog({
       return;
     }
 
-    addCommunication({
-      variables: {
-        input: {
-          customerId,
-          type: formData.type,
-          summary: formData.summary,
-          notes: formData.notes,
-          communicatedAt: new Date(formData.communicatedAt).toISOString(),
-        },
-      },
-    });
+    // TODO: 沟通记录功能待后端实现
+    alert('沟通记录功能暂未开放');
+    setShowAddModal(false);
+    // addCommunication({
+    //   variables: {
+    //     input: {
+    //       customerId,
+    //       type: formData.type,
+    //       summary: formData.summary,
+    //       notes: formData.notes,
+    //       communicatedAt: new Date(formData.communicatedAt).toISOString(),
+    //     },
+    //   },
+    // });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

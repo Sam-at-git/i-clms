@@ -1,4 +1,6 @@
-query GetNotifications($unreadOnly: Boolean, $type: String, $limit: Int, $offset: Int) {
+# Note: type parameter should be NotificationType enum, not String
+# Note: id parameters should be String!, not ID!
+query GetNotifications($unreadOnly: Boolean, $type: NotificationType, $limit: Int, $offset: Int) {
   notifications(unreadOnly: $unreadOnly, type: $type, limit: $limit, offset: $offset) {
     items {
       id
@@ -41,7 +43,7 @@ query GetNotificationPreferences {
   }
 }
 
-mutation MarkNotificationRead($id: ID!) {
+mutation MarkNotificationRead($id: String!) {
   markNotificationRead(id: $id) {
     id
     readAt
@@ -54,13 +56,13 @@ mutation MarkAllNotificationsRead {
   }
 }
 
-mutation ArchiveNotification($id: ID!) {
+mutation ArchiveNotification($id: String!) {
   archiveNotification(id: $id) {
     id
   }
 }
 
-mutation DeleteNotification($id: ID!) {
+mutation DeleteNotification($id: String!) {
   deleteNotification(id: $id) {
     success
   }

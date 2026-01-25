@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { gql, useQuery, useLazyQuery } from '@apollo/client';
+import { useState, useCallback } from 'react';
+// import { gql, useQuery, useLazyQuery } from '@apollo/client';
 
 interface InteractiveChartsProps {
   department: string;
@@ -34,34 +34,34 @@ export function InteractiveCharts({ department, onFilterChange, currentFilters =
   const [drillPath, setDrillPath] = useState<Array<{ level: string; value: string }>>([]);
   const [selectedDataPoint, setSelectedDataPoint] = useState<ChartDataPoint | null>(null);
 
-  // Query for chart data
-  const GET_REVENUE_CHART = gql`
-    query GetRevenueChart($department: String!, $filters: RevenueChartFilters) {
-      revenueChart(department: $department, filters: $filters) {
-        timeSeries {
-          date
-          revenue
-          cost
-          profit
-          contracts {
-            count
-            amount
-          }
-        }
-        breakdown {
-          category
-          revenue
-          profit
-          trend
-        }
-      }
-    }
-  `;
+  // TODO: 交互式图表功能待后端实现 - revenueChart查询不存在
+  // const GET_REVENUE_CHART = gql`
+  //   query GetRevenueChart($department: String!, $filters: RevenueChartFilters) {
+  //     revenueChart(department: $department, filters: $filters) {
+  //       timeSeries {
+  //         date
+  //         revenue
+  //         cost
+  //         profit
+  //         contracts {
+  //           count
+  //           amount
+  //         }
+  //       }
+  //       breakdown {
+  //         category
+  //         revenue
+  //         profit
+  //         trend
+  //       }
+  //     }
+  //   }
+  // `;
 
-  const [getRevenueChart] = useLazyQuery(GET_REVENUE_CHART, {
-    variables: { department, filters: currentFilters },
-    fetchPolicy: 'cache-and-network',
-  });
+  // const [getRevenueChart] = useLazyQuery(GET_REVENUE_CHART, {
+  //   variables: { department, filters: currentFilters },
+  //   fetchPolicy: 'cache-and-network',
+  // });
 
   const handleDataPointClick = useCallback((point: ChartDataPoint) => {
     if (point.drillDownData && point.drillDownData.length > 0) {
@@ -226,7 +226,7 @@ export function InteractiveCharts({ department, onFilterChange, currentFilters =
                 <button
                   onClick={() => {
                     if (onFilterChange) {
-                      const { [key, ...rest } } = currentFilters;
+                      const { [key]: _, ...rest } = currentFilters;
                       onFilterChange(rest);
                     }
                   }}
@@ -368,9 +368,6 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     cursor: 'pointer',
     transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#e5e7eb',
-    },
   },
   barLabel: {
     position: 'absolute',
@@ -385,9 +382,6 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#3b82f6',
     borderRadius: '4px',
     transition: 'width 0.3s',
-    ':hover': {
-      backgroundColor: '#2563eb',
-    },
   },
   barValue: {
     position: 'absolute',
@@ -440,9 +434,6 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: 'none',
     cursor: 'pointer',
-    ':hover': {
-      backgroundColor: '#fecaca',
-    },
   },
   usageGuide: {
     padding: '16px',

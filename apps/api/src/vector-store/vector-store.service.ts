@@ -203,6 +203,8 @@ export class VectorStoreService {
       this.logger.debug(`Saved contract chunk ${data.chunkIndex} for contract ${data.contractId}`);
     } catch (error) {
       this.logger.error(`Failed to save contract chunk: ${this.errorMessage(error)}`);
+      // 重新抛出错误，让调用者知道插入失败
+      throw error;
     }
   }
 

@@ -551,9 +551,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '12px',
     borderBottom: '1px solid #f3f4f6',
     fontSize: '13px',
-    ':hover': {
-      backgroundColor: '#f9fafb',
-    },
   },
   rowCell: {
     display: 'flex',

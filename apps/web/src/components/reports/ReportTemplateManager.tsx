@@ -443,7 +443,7 @@ export function ReportTemplateManager({
                 disabled={saving || !formData.name.trim()}
                 style={{
                   ...styles.confirmButton,
-                  ((saving || !formData.name.trim()) && styles.buttonDisabled),
+                  ...((saving || !formData.name.trim()) && styles.buttonDisabled),
                 }}
               >
                 {saving ? '保存中...' : '保存'}
@@ -506,7 +506,7 @@ export function ReportTemplateManager({
                 disabled={updating || !formData.name.trim()}
                 style={{
                   ...styles.confirmButton,
-                  ((updating || !formData.name.trim()) && styles.buttonDisabled),
+                  ...((updating || !formData.name.trim()) && styles.buttonDisabled),
                 }}
               >
                 {updating ? '更新中...' : '更新'}

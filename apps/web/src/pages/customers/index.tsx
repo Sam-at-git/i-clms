@@ -88,7 +88,13 @@ export function CustomersPage() {
       </div>
 
       {/* List */}
-      <CustomerList search={search} industry={industry} status={status} refreshKey={refreshKey} />
+      <CustomerList
+        search={search}
+        industry={industry}
+        status={status}
+        refreshKey={refreshKey}
+        onEdit={handleEditClick}
+      />
 
       {/* Modal */}
       <CustomerFormModal

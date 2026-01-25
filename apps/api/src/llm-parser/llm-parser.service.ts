@@ -91,7 +91,8 @@ export class LlmParserService implements OnModuleInit {
   async parseContractWithLlm(
     objectName: string,
     externalSessionId?: string,
-    preConvertedMarkdown?: string
+    preConvertedMarkdown?: string,
+    contractType?: string,
   ): Promise<LlmParseResult> {
     const startTime = Date.now();
 
@@ -329,7 +330,7 @@ export class LlmParserService implements OnModuleInit {
 
         const taskResult = await this.taskBasedParser.parseByTasks(
           documentText,
-          undefined, // contractType (未提供，将自动检测)
+          contractType, // contractType (如果提供则使用，否则自动检测)
           undefined, // enabledTaskTypes (未提供，将根据 contractType 自动确定)
           sessionId ?? undefined,
           objectName // fileName (用于优先判断合同类型)
@@ -996,7 +997,7 @@ export class LlmParserService implements OnModuleInit {
     const upperType = type.toUpperCase().trim();
 
     // 已经是英文枚举值，直接返回
-    const validTypes = ['STAFF_AUGMENTATION', 'PROJECT_OUTSOURCING', 'PRODUCT_SALES'];
+    const validTypes = ['STAFF_AUGMENTATION', 'PROJECT_OUTSOURCING', 'PRODUCT_SALES', 'MIXED'];
     if (validTypes.includes(upperType)) {
       return upperType;
     }
@@ -1009,6 +1010,8 @@ export class LlmParserService implements OnModuleInit {
       'OUTSOURCING': 'PROJECT_OUTSOURCING',
       'AUGMENTATION': 'STAFF_AUGMENTATION',
       'SALES': 'PRODUCT_SALES',
+      '混合': 'MIXED',
+      '综合': 'MIXED',
     };
 
     if (aliasMappings[upperType]) {

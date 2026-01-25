@@ -194,10 +194,10 @@ describe('DataProtectionService', () => {
     it('should return statistics', async () => {
       mockPrismaService.contractDataProtection.count.mockResolvedValueOnce(10).mockResolvedValueOnce(6);
       mockPrismaService.$queryRaw.mockResolvedValue([
-        { risklevel: DataProtectionRisk.NONE, count: BigInt(2) },
-        { risklevel: DataProtectionRisk.LOW, count: BigInt(2) },
-        { risklevel: DataProtectionRisk.MEDIUM, count: BigInt(4) },
-        { risklevel: DataProtectionRisk.HIGH, count: BigInt(2) },
+        { riskLevel: DataProtectionRisk.NONE, count: BigInt(2) },
+        { riskLevel: DataProtectionRisk.LOW, count: BigInt(2) },
+        { riskLevel: DataProtectionRisk.MEDIUM, count: BigInt(4) },
+        { riskLevel: DataProtectionRisk.HIGH, count: BigInt(2) },
       ]);
       mockPrismaService.contractDataProtection.aggregate.mockResolvedValue({
         _avg: { confidence: 0.82 },

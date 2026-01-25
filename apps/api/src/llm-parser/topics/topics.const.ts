@@ -7,6 +7,7 @@ export enum ContractTypeEnum {
   STAFF_AUGMENTATION = 'STAFF_AUGMENTATION',  // 人力外包
   PROJECT_OUTSOURCING = 'PROJECT_OUTSOURCING', // 项目外包
   PRODUCT_SALES = 'PRODUCT_SALES',            // 产品销售
+  MIXED = 'MIXED',                            // 混合类型（包含多种合同特征）
 }
 
 /**
@@ -16,6 +17,7 @@ export const ContractTypeNames: Record<ContractTypeEnum, string> = {
   [ContractTypeEnum.STAFF_AUGMENTATION]: '人力外包',
   [ContractTypeEnum.PROJECT_OUTSOURCING]: '项目外包',
   [ContractTypeEnum.PRODUCT_SALES]: '产品销售',
+  [ContractTypeEnum.MIXED]: '混合类型',
 };
 
 /**
@@ -286,6 +288,23 @@ export const CONTRACT_TYPE_TOPIC_BATCHES: Record<ContractTypeEnum, TopicBatch> =
       ExtractTopic.RISK_CLAUSES, // 风险条款
     ],
     description: '产品销售合同专用主题批次',
+  },
+
+  // 混合类型合同主题批次（包含所有主题）
+  [ContractTypeEnum.MIXED]: {
+    contractType: ContractTypeEnum.MIXED,
+    contractTypeName: ContractTypeNames[ContractTypeEnum.MIXED],
+    topics: [
+      ExtractTopic.BASIC_INFO,   // 基本信息
+      ExtractTopic.FINANCIAL,    // 财务信息
+      ExtractTopic.TIME_INFO,    // 时间信息
+      ExtractTopic.MILESTONES,   // 里程碑
+      ExtractTopic.RATE_ITEMS,   // 人力费率
+      ExtractTopic.LINE_ITEMS,   // 产品清单
+      ExtractTopic.DELIVERABLES, // 交付物
+      ExtractTopic.RISK_CLAUSES, // 风险条款
+    ],
+    description: '混合类型合同，执行所有主题提取',
   },
 };
 

@@ -46,6 +46,7 @@ model User {
   createdTemplates   ContractTemplate[] @relation("TemplateCreator")
   notifications     Notification[]
   notificationPreference NotificationPreference?
+  createdCaseStudies CaseStudy[] @relation("CaseStudyCreator")
 
   @@index([departmentId])
   @@index([email])
@@ -234,6 +235,9 @@ model Contract {
 
   // 导出历史
   exportRecords ContractExport[]
+
+  // 成功案例
+  caseStudies CaseStudy[]
 
   @@index([customerId])
   @@index([type])
@@ -1154,4 +1158,72 @@ model NotificationPreference {
 
   @@index([userId])
   @@map("notification_preferences")
+}
+
+// ================================
+// Case Study（成功案例）
+// ================================
+
+model CaseStudy {
+  id              String            @id @default(cuid())
+  contractId      String
+  contract        Contract          @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  // 基本信息
+  title           String
+  subtitle        String?
+  status          CaseStudyStatus   @default(DRAFT)
+
+  // 内容字段（Markdown）
+  summary         String            @db.Text
+  challenges      String?           @db.Text
+  solution        String?           @db.Text
+  results         String?           @db.Text
+  testimonial     String?           @db.Text
+  techStack       String?
+  timeline        String?
+  teamSize        String?
+  fullMarkdown    String            @db.Text
+
+  // 脱敏配置
+  isDesensitized       Boolean       @default(true)
+  desensitizeConfig    Json?
+  displayCustomerName  String?
+  displayAmount        String?
+  displayIndustry      String?
+
+  // LLM元数据
+  llmModel        String?
+  llmProvider     String?
+  generatedAt     DateTime?
+  confidence      Float?
+
+  // 编辑信息
+  isManuallyEdited Boolean          @default(false)
+  lastEditedAt     DateTime?
+  lastEditedBy     String?
+
+  // 版本和标签
+  version         Int               @default(1)
+  tags            String[]
+
+  // 创建者
+  createdById     String
+  createdBy       User              @relation("CaseStudyCreator", fields: [createdById], references: [id])
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([contractId])
+  @@index([status])
+  @@index([createdById])
+  @@map("case_study")
+}
+
+enum CaseStudyStatus {
+  DRAFT
+  GENERATED
+  APPROVED
+  PUBLISHED
+  ARCHIVED
 }

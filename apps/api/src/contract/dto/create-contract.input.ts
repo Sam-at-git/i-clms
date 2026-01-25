@@ -77,6 +77,12 @@ export class CreateContractInput {
   @Field(() => String, { nullable: true })
   industry?: string;
 
+  @Field(() => String, { nullable: true, description: '签订地点' })
+  signLocation?: string;
+
+  @Field(() => Number, { nullable: true, description: '合同份数' })
+  copies?: number;
+
   @Field()
   uploadedById!: string;
 

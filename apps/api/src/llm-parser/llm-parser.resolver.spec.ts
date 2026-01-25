@@ -391,7 +391,7 @@ describe('LlmParserResolver', () => {
 
       // Service should be called in background (not awaited)
       await new Promise(resolve => setTimeout(resolve, 10));
-      expect(llmParserService.parseContractWithLlm).toHaveBeenCalledWith('contract.pdf', 'async-session-123', undefined);
+      expect(llmParserService.parseContractWithLlm).toHaveBeenCalledWith('contract.pdf', 'async-session-123', undefined, undefined);
     });
 
     it('should handle background errors by failing the session', async () => {

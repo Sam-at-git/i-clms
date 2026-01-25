@@ -536,9 +536,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     cursor: 'pointer',
     borderRadius: '3px',
-    ':hover': {
-      backgroundColor: '#f3f4f6',
-    },
   },
   resizeMenu: {
     position: 'relative' as const,

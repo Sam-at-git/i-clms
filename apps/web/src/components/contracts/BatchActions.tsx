@@ -482,9 +482,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     cursor: 'pointer',
     fontWeight: 500,
-    ':hover': {
-      backgroundColor: '#2563eb',
-    },
   },
   tagButton: {
     padding: '6px 16px',
@@ -495,9 +492,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     cursor: 'pointer',
     fontWeight: 500,
-    ':hover': {
-      backgroundColor: '#7c3aed',
-    },
   },
   exportButton: {
     padding: '6px 16px',
@@ -508,9 +502,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     cursor: 'pointer',
     fontWeight: 500,
-    ':hover': {
-      backgroundColor: '#059669',
-    },
   },
   deleteButton: {
     padding: '6px 16px',
@@ -521,9 +512,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     cursor: 'pointer',
     fontWeight: 500,
-    ':hover': {
-      backgroundColor: '#dc2626',
-    },
   },
   cancelButton: {
     padding: '6px 16px',
@@ -534,9 +522,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     cursor: 'pointer',
     fontWeight: 500,
-    ':hover': {
-      backgroundColor: '#f9fafb',
-    },
   },
   dropdownMenu: {
     position: 'absolute',
@@ -573,12 +558,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     color: '#374151',
     cursor: 'pointer',
-    ':last-child': {
-      borderBottom: 'none',
-    },
-    ':hover': {
-      backgroundColor: '#f9fafb',
-    },
   },
   tagList: {
     maxHeight: '280px',

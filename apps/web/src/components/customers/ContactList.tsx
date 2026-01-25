@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useRemoveCustomerContactMutation } from '@i-clms/shared/generated/graphql';
+import { useRemoveCustomerContactMutation, useSetPrimaryContactMutation } from '@i-clms/shared/generated/graphql';
 import { ContactFormModal } from './ContactFormModal';
 
 interface Contact {
@@ -32,6 +32,18 @@ export function ContactList({ customerId, contacts, onUpdate }: ContactListProps
     },
   });
 
+  const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null);
+  const [setPrimaryContact] = useSetPrimaryContactMutation({
+    onCompleted: () => {
+      setSettingPrimaryId(null);
+      onUpdate?.();
+    },
+    onError: (error) => {
+      alert(`设置主要联系人失败: ${error.message}`);
+      setSettingPrimaryId(null);
+    },
+  });
+
   const handleAddClick = () => {
     setEditingContact(null);
     setIsModalOpen(true);
@@ -48,6 +60,11 @@ export function ContactList({ customerId, contacts, onUpdate }: ContactListProps
     }
     setDeletingContactId(contactId);
     await removeContact({ variables: { contactId } });
+  };
+
+  const handleSetPrimaryClick = async (contactId: string) => {
+    setSettingPrimaryId(contactId);
+    await setPrimaryContact({ variables: { contactId } });
   };
 
   const handleModalClose = () => {
@@ -95,6 +112,19 @@ export function ContactList({ customerId, contacts, onUpdate }: ContactListProps
                   )}
                 </div>
                 <div style={styles.contactActions}>
+                  {!contact.isPrimary && (
+                    <button
+                      onClick={() => handleSetPrimaryClick(contact.id)}
+                      style={{
+                        ...styles.actionButton,
+                        ...styles.setPrimaryButton,
+                        ...(settingPrimaryId === contact.id ? styles.settingPrimaryButton : {}),
+                      }}
+                      disabled={settingPrimaryId === contact.id}
+                    >
+                      {settingPrimaryId === contact.id ? '设置中...' : '设为主要'}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleEditClick(contact)}
                     style={styles.actionButton}
@@ -202,6 +232,15 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   deletingButton: {
+    color: '#9ca3af',
+    border: '1px solid #e5e7eb',
+    cursor: 'not-allowed',
+  },
+  setPrimaryButton: {
+    color: '#059669',
+    border: '1px solid #a7f3d0',
+  },
+  settingPrimaryButton: {
     color: '#9ca3af',
     border: '1px solid #e5e7eb',
     cursor: 'not-allowed',

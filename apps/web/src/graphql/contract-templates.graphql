@@ -1,152 +1,155 @@
-query GetContractTemplates(
-  $type: String
-  $category: String
-  $isActive: Boolean
-  $departmentId: String
-  $isSystem: Boolean
-) {
-  contractTemplates(
-    type: $type
-    category: $category
-    isActive: $isActive
-    departmentId: $departmentId
-    isSystem: $isSystem
-  ) {
-    templates {
-      id
-      name
-      displayName
-      description
-      category
-      type
-      fileUrl
-      fileType
-      isActive
-      isSystem
-      version
-      usageCount
-      lastUsedAt
-      createdAt
-      updatedAt
-      createdBy {
-        id
-        name
-        email
-      }
-      department {
-        id
-        name
-        code
-      }
-      _count {
-        contracts
-      }
-    }
-    total
-  }
-}
+# TODO: 合同模板功能待后端实现
+# 以下所有查询和变更均未在后端实现，暂时注释
 
-query GetContractTemplate($id: ID!) {
-  contractTemplate(id: $id) {
-    id
-    name
-    displayName
-    description
-    category
-    type
-    content
-    fileUrl
-    fileType
-    parameters
-    defaultValues
-    isActive
-    isSystem
-    version
-    usageCount
-    lastUsedAt
-    createdAt
-    updatedAt
-    createdBy {
-      id
-      name
-      email
-    }
-    department {
-      id
-      name
-      code
-    }
-    _count {
-      contracts
-    }
-  }
-}
+# query GetContractTemplates(
+#   $type: String
+#   $category: String
+#   $isActive: Boolean
+#   $departmentId: String
+#   $isSystem: Boolean
+# ) {
+#   contractTemplates(
+#     type: $type
+#     category: $category
+#     isActive: $isActive
+#     departmentId: $departmentId
+#     isSystem: $isSystem
+#   ) {
+#     templates {
+#       id
+#       name
+#       displayName
+#       description
+#       category
+#       type
+#       fileUrl
+#       fileType
+#       isActive
+#       isSystem
+#       version
+#       usageCount
+#       lastUsedAt
+#       createdAt
+#       updatedAt
+#       createdBy {
+#         id
+#         name
+#         email
+#       }
+#       department {
+#         id
+#         name
+#         code
+#       }
+#       _count {
+#         contracts
+#       }
+#     }
+#     total
+#   }
+# }
 
-query GetTemplateCategories {
-  templateCategories
-}
+# query GetContractTemplate($id: ID!) {
+#   contractTemplate(id: $id) {
+#     id
+#     name
+#     displayName
+#     description
+#     category
+#     type
+#     content
+#     fileUrl
+#     fileType
+#     parameters
+#     defaultValues
+#     isActive
+#     isSystem
+#     version
+#     usageCount
+#     lastUsedAt
+#     createdAt
+#     updatedAt
+#     createdBy {
+#       id
+#       name
+#       email
+#     }
+#     department {
+#       id
+#       name
+#       code
+#     }
+#     _count {
+#       contracts
+#     }
+#   }
+# }
 
-mutation CreateContractTemplate($input: CreateContractTemplateInput!) {
-  createContractTemplate(input: $input) {
-    id
-    name
-    displayName
-    description
-    category
-    type
-    isActive
-    version
-  }
-}
+# query GetTemplateCategories {
+#   templateCategories
+# }
 
-mutation UpdateContractTemplate($id: ID!, $input: UpdateContractTemplateInput!) {
-  updateContractTemplate(id: $id, input: $input) {
-    id
-    name
-    displayName
-    description
-    category
-    type
-    isActive
-    version
-    updatedAt
-  }
-}
+# mutation CreateContractTemplate($input: CreateContractTemplateInput!) {
+#   createContractTemplate(input: $input) {
+#     id
+#     name
+#     displayName
+#     description
+#     category
+#     type
+#     isActive
+#     version
+#   }
+# }
 
-mutation DeleteContractTemplate($id: ID!) {
-  deleteContractTemplate(id: $id) {
-    success
-    message
-  }
-}
+# mutation UpdateContractTemplate($id: ID!, $input: UpdateContractTemplateInput!) {
+#   updateContractTemplate(id: $id, input: $input) {
+#     id
+#     name
+#     displayName
+#     description
+#     category
+#     type
+#     isActive
+#     version
+#     updatedAt
+#   }
+# }
 
-mutation CloneFromTemplate($input: CloneFromTemplateInput!) {
-  cloneFromTemplate(input: $input) {
-    id
-    contractNo
-    name
-    type
-    status
-    template {
-      id
-      name
-      displayName
-    }
-    customer {
-      id
-      name
-    }
-    department {
-      id
-      name
-    }
-  }
-}
+# mutation DeleteContractTemplate($id: ID!) {
+#   deleteContractTemplate(id: $id) {
+#     success
+#     message
+#   }
+# }
 
-mutation UseTemplate($id: ID!) {
-  useTemplate(id: $id) {
-    id
-    usageCount
-    lastUsedAt
-  }
-}
+# mutation CloneFromTemplate($input: CloneFromTemplateInput!) {
+#   cloneFromTemplate(input: $input) {
+#     id
+#     contractNo
+#     name
+#     type
+#     status
+#     template {
+#       id
+#       name
+#       displayName
+#     }
+#     customer {
+#       id
+#       name
+#     }
+#     department {
+#       id
+#       name
+#     }
+#   }
+# }
+
+# mutation UseTemplate($id: ID!) {
+#   useTemplate(id: $id) {
+#     id
+#     usageCount
+#     lastUsedAt
+#   }
+# }

@@ -692,9 +692,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     cursor: 'pointer',
     opacity: 0.5,
-    ':hover': {
-      opacity: 1,
-    },
   },
   footer: {
     display: 'flex',

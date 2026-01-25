@@ -40,14 +40,28 @@ const STATUS_COLORS: Record<string, string> = {
   ARCHIVED: '#9ca3af',
 };
 
+interface Customer {
+  id: string;
+  name: string;
+  shortName?: string | null;
+  creditCode?: string | null;
+  industry?: string | null;
+  address?: string | null;
+  status: string;
+  contactPerson?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+}
+
 interface CustomerListProps {
   search?: string;
   industry?: string;
   status?: string;
   refreshKey?: number;
+  onEdit?: (customer: Customer) => void;
 }
 
-export function CustomerList({ search, industry, status, refreshKey }: CustomerListProps) {
+export function CustomerList({ search, industry, status, refreshKey, onEdit }: CustomerListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -217,6 +231,14 @@ export function CustomerList({ search, industry, status, refreshKey }: CustomerL
                     <Link to={`/customers/${customer.id}`} style={styles.actionLink}>
                       查看
                     </Link>
+                    {onEdit && (
+                      <button
+                        onClick={() => onEdit(customer)}
+                        style={styles.editButton}
+                      >
+                        编辑
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDeleteClick(customer.id)}
                       style={styles.deleteButton}
@@ -351,6 +373,16 @@ const styles: Record<string, React.CSSProperties> = {
     textDecoration: 'none',
     fontSize: '14px',
     marginRight: '12px',
+  },
+  editButton: {
+    padding: '4px 10px',
+    fontSize: '13px',
+    color: '#3b82f6',
+    backgroundColor: '#eff6ff',
+    border: '1px solid #bfdbfe',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    marginRight: '8px',
   },
   deleteButton: {
     padding: '4px 10px',
