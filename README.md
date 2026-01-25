@@ -59,12 +59,16 @@ Monorepo     Nx + pnpm
 **安装 Docling（推荐）：**
 
 ```bash
-# 使用 requirements.txt 安装（推荐）
-pip install -r requirements.txt
+# 创建并激活虚拟环境（推荐，避免系统级安装限制）
+python3 -m venv .venv
+source .venv/bin/activate  # Linux/macOS
+# .venv\Scripts\activate   # Windows
 
-# 或手动安装
-pip install docling rapidocr_onnxruntime
+# 安装依赖
+pip install -r requirements.txt
 ```
+
+> **注意**：启动后端服务前需确保虚拟环境已激活，或将 `.venv/bin` 添加到 PATH。
 
 **验证安装：**
 
