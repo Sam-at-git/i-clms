@@ -1,0 +1,13 @@
+# i-CLMS Python Dependencies
+# These are optional dependencies for enhanced document parsing and OCR
+
+# IBM Docling - Document parsing library
+docling>=2.0.0
+
+# OCR Engines (choose one based on your needs)
+# RapidOCR - Recommended for Chinese OCR (based on PaddleOCR)
+rapidocr_onnxruntime>=1.3.0
+
+# Alternative OCR options (uncomment if needed):
+# easyocr>=1.7.0
+# pytesseract>=0.3.10

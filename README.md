@@ -43,6 +43,39 @@ Monorepo     Nx + pnpm
 - Node.js >= 20
 - pnpm >= 9
 - Docker & Docker Compose（用于运行 PostgreSQL 和 MinIO）
+- Python 3.9+（可选，用于增强 PDF 解析和 OCR）
+
+### Python 依赖（可选）
+
+系统使用 IBM Docling 库进行高级文档解析。**不安装也能运行**，PDF 解析会降级到基础模式。
+
+| 功能 | 无 Python/Docling | 有 Docling |
+|------|-------------------|------------|
+| PDF 解析 | pdf-parse（基础文本提取） | Docling（表格/结构识别更优） |
+| DOCX 解析 | mammoth/docx4js | mammoth/docx4js |
+| OCR 扫描件 | 不支持 | 支持（rapidocr/easyocr/tesseract） |
+| 中文识别 | 有限 | 优秀（推荐 rapidocr） |
+
+**安装 Docling（推荐）：**
+
+```bash
+# 使用 requirements.txt 安装（推荐）
+pip install -r requirements.txt
+
+# 或手动安装
+pip install docling rapidocr_onnxruntime
+```
+
+**验证安装：**
+
+```bash
+python3 -c "import docling; print(docling.__version__)"
+```
+
+如果未安装，系统启动时会显示警告但不影响运行：
+```
+[DoclingService] Python/Docling not available. Docling features will be disabled.
+```
 
 ### 1. 克隆与安装
 
