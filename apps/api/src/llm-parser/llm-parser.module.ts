@@ -24,6 +24,9 @@ import { MultiStrategyService } from './multi-strategy.service';
 import { ContractTypeDetectorService } from './contract-type-detector.service';
 import { RuleEnhancedParserService } from './rule-enhanced-parser.service';
 import { ResultValidatorService } from './result-validator.service';
+import { ChunkTaskTaggerService } from './chunk-task-tagger.service';
+import { OllamaChatClient } from './clients/ollama-chat.client';
+import { InstructorClient } from './clients/instructor.client';
 import { ParserModule } from '../parser/parser.module';
 import { DoclingModule } from '../docling/docling.module';
 import { VectorStoreModule } from '../vector-store/vector-store.module';
@@ -74,6 +77,12 @@ import { RAGModule } from '../rag/rag.module';
     RuleEnhancedParserService,
     // 结果验证与重试服务
     ResultValidatorService,
+    // 分块任务标记服务
+    ChunkTaskTaggerService,
+    // Ollama 原生 API 客户端 (SPEC-42)
+    OllamaChatClient,
+    // Instructor 客户端 (SPEC-42 Phase 2)
+    InstructorClient,
   ],
   exports: [
     LlmConfigService,
@@ -98,6 +107,9 @@ import { RAGModule } from '../rag/rag.module';
     ContractTypeDetectorService,
     RuleEnhancedParserService,
     ResultValidatorService,
+    ChunkTaskTaggerService,
+    OllamaChatClient,
+    InstructorClient,
   ],
 })
 export class LlmParserModule {}
