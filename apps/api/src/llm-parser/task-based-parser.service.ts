@@ -345,11 +345,36 @@ export class TaskBasedParserService implements OnModuleInit {
   }
 
   /**
-   * 获取 InfoType 对应的目标字段
+   * 获取 InfoType 对应的目标字段（扩展版）
    */
   private getTargetFieldsForInfoType(infoType: InfoType): string[] {
     const fieldMap: Record<InfoType, string[]> = {
-      [InfoType.BASIC_INFO]: ['contractNo', 'contractName', 'customerName', 'ourEntity', 'contractType'],
+      [InfoType.BASIC_INFO]: [
+        // 现有字段
+        'contractNo', 'contractName', 'customerName', 'ourEntity', 'contractType',
+        // 合同元数据
+        'version', 'governingLanguage',
+        // 甲方详细信息
+        'clientLegalRep', 'clientRegistrationNumber', 'clientBusinessLicense',
+        'clientAddress', 'clientContactPerson', 'clientPhone', 'clientEmail', 'clientFax',
+        'clientBankName', 'clientBankAccount', 'clientAccountName',
+        // 乙方详细信息
+        'vendorLegalRep', 'vendorRegistrationNumber', 'vendorBusinessLicense',
+        'vendorAddress', 'vendorContactPerson', 'vendorPhone', 'vendorEmail', 'vendorFax',
+        'vendorBankName', 'vendorBankAccount', 'vendorAccountName',
+        // 项目基本信息
+        'projectName', 'projectOverview',
+        // 时间信息
+        'projectStartDate', 'projectEndDate', 'warrantyStartDate', 'warrantyPeriodMonths',
+        // 财务信息
+        'isTaxInclusive', 'pricingModel',
+        // 验收信息
+        'acceptanceMethod', 'acceptancePeriodDays', 'deemedAcceptanceRule',
+        // 保密条款
+        'confidentialityTermYears', 'confidentialityDefinition', 'confidentialityObligation',
+        // 通用条款
+        'governingLaw', 'disputeResolutionMethod', 'noticeRequirements',
+      ],
       [InfoType.FINANCIAL]: ['amountWithTax', 'amountWithoutTax', 'currency', 'taxRate', 'paymentMethod', 'paymentTerms'],
       [InfoType.TIME_INFO]: ['signedAt', 'effectiveAt', 'expiresAt', 'duration'],
       [InfoType.MILESTONES]: ['milestones'],
@@ -673,8 +698,33 @@ export class TaskBasedParserService implements OnModuleInit {
       {
         id: 'basic-info',
         infoType: InfoType.BASIC_INFO,
-        description: '提取合同基本信息',
-        targetFields: ['contractNo', 'contractName', 'customerName', 'ourEntity', 'contractType'],
+        description: '提取合同基本信息和项目详情',
+        targetFields: [
+          // 基础信息
+          'contractNo', 'contractName', 'customerName', 'ourEntity', 'contractType',
+          // 合同元数据
+          'version', 'governingLanguage',
+          // 甲方详细信息
+          'clientLegalRep', 'clientRegistrationNumber', 'clientBusinessLicense',
+          'clientAddress', 'clientContactPerson', 'clientPhone', 'clientEmail',
+          'clientFax', 'clientBankName', 'clientBankAccount', 'clientAccountName',
+          // 乙方详细信息
+          'vendorLegalRep', 'vendorRegistrationNumber', 'vendorBusinessLicense',
+          'vendorAddress', 'vendorContactPerson', 'vendorPhone', 'vendorEmail',
+          'vendorFax', 'vendorBankName', 'vendorBankAccount', 'vendorAccountName',
+          // 项目基本信息
+          'projectName', 'projectOverview',
+          // 项目时间信息
+          'projectStartDate', 'projectEndDate', 'warrantyStartDate', 'warrantyPeriodMonths',
+          // 财务信息
+          'isTaxInclusive', 'pricingModel',
+          // 验收信息
+          'acceptanceMethod', 'acceptancePeriodDays', 'deemedAcceptanceRule',
+          // 保密条款
+          'confidentialityTermYears', 'confidentialityDefinition', 'confidentialityObligation',
+          // 通用条款
+          'governingLaw', 'disputeResolutionMethod', 'noticeRequirements',
+        ],
         promptBuilder: (text: string) => this.buildBasicInfoPrompt(text),
       },
 
@@ -1585,6 +1635,7 @@ export class TaskBasedParserService implements OnModuleInit {
       'gpt-4o-mini': 128000,
       'gpt-4-turbo': 128000,
       'gpt-3.5-turbo': 16385,
+      'deepseek': 8192,  // DeepSeek models
     };
 
     const config = this.configService.getActiveConfig();
@@ -1601,7 +1652,11 @@ export class TaskBasedParserService implements OnModuleInit {
 
     // 为系统消息和其他开销预留空间
     const overheadTokens = 500; // 系统消息、格式化等
-    const availableForOutput = contextWindow - estimatedInputTokens - overheadTokens;
+
+    // 添加安全边距（估算可能不准确）
+    const safetyMargin = Math.floor(estimatedInputTokens * 0.2); // 20% 安全边距
+
+    const availableForOutput = contextWindow - estimatedInputTokens - overheadTokens - safetyMargin;
 
     // 确保至少有 1000 tokens 用于输出
     const minOutputTokens = 1000;
@@ -1611,7 +1666,8 @@ export class TaskBasedParserService implements OnModuleInit {
     );
 
     this.logger.debug(`[calculateDynamicMaxTokens] model=${modelName}, contextWindow=${contextWindow}, ` +
-      `inputTokens=${estimatedInputTokens}, calculatedMax=${calculatedMaxTokens}, ` +
+      `inputTokens=${estimatedInputTokens}, safetyMargin=${safetyMargin}, ` +
+      `availableForOutput=${availableForOutput}, calculatedMax=${calculatedMaxTokens}, ` +
       `configMax=${modelMaxTokens}`);
 
     return calculatedMaxTokens;
@@ -1663,8 +1719,24 @@ export class TaskBasedParserService implements OnModuleInit {
         this.logger.log(`[SingleChunk] ${task.infoType}: estimatedInputTokens=${estimatedInputTokens}, ` +
           `dynamicMaxTokens=${dynamicMaxTokens} (configMax=${llmConfig.maxTokens})`);
 
-        // 调用 LLM
-        const completion = await this.openai!.chat.completions.create({
+        // Debug: 记录即将发送给 API 的参数
+        this.debugLog(`[SingleChunk] ${task.infoType} API Request`, {
+          model: llmConfig.model,
+          temperature: 0.1,
+          max_tokens: dynamicMaxTokens,
+          systemPromptLength: systemPrompt.length,
+          userPromptLength: prompt.length,
+          estimatedInputTokens,
+        });
+
+        // 调用 LLM（添加防护性检查）
+        if (!this.openai) {
+          throw new Error(
+            'OpenAI client not initialized. Please ensure the service has been properly initialized. ' +
+            'This may indicate that onModuleInit() was not called or refreshClient() failed.'
+          );
+        }
+        const completion = await this.openai.chat.completions.create({
           model: llmConfig.model,
           temperature: 0.1,
           max_tokens: dynamicMaxTokens,
@@ -1945,13 +2017,26 @@ export class TaskBasedParserService implements OnModuleInit {
 
         this.logger.log(`[SingleChunkWithContext] ${task.infoType}: prompt length=${prompt.length}, context=${JSON.stringify(chunkMetadata)}`);
 
-        // 调用 LLM
-        const completion = await this.openai!.chat.completions.create({
+        // 动态计算 max_tokens
+        const systemPrompt = this.getSystemPrompt(task.infoType);
+        const estimatedInputTokens = this.estimateTokens(systemPrompt) + this.estimateTokens(prompt);
+        const dynamicMaxTokens = this.calculateDynamicMaxTokens(estimatedInputTokens, llmConfig.maxTokens);
+
+        this.logger.log(`[SingleChunkWithContext] ${task.infoType}: estimatedInputTokens=${estimatedInputTokens}, dynamicMaxTokens=${dynamicMaxTokens}`);
+
+        // 调用 LLM（添加防护性检查）
+        if (!this.openai) {
+          throw new Error(
+            'OpenAI client not initialized. Please ensure the service has been properly initialized. ' +
+            'This may indicate that onModuleInit() was not called or refreshClient() failed.'
+          );
+        }
+        const completion = await this.openai.chat.completions.create({
           model: llmConfig.model,
           temperature: 0.1,
-          max_tokens: llmConfig.maxTokens,
+          max_tokens: dynamicMaxTokens,
           messages: [
-            { role: 'system', content: this.getSystemPrompt(task.infoType) },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt },
           ],
         });
@@ -2244,14 +2329,28 @@ export class TaskBasedParserService implements OnModuleInit {
         // 使用 OpenAI SDK 兼容模式（OpenAI API 或 Ollama /v1 端点）
         this.logger.log(`[Task ${task.infoType}] Using OpenAI SDK compatibility mode`);
 
+        // 动态计算 max_tokens
+        const systemPrompt = this.getSystemPrompt(task.infoType);
+        const estimatedInputTokens = this.estimateTokens(systemPrompt) + this.estimateTokens(prompt);
+        const dynamicMaxTokens = this.calculateDynamicMaxTokens(estimatedInputTokens, this.configService.getActiveConfig().maxTokens);
+
+        this.logger.log(`[RetryWithOllamaFormat] ${task.infoType}: estimatedInputTokens=${estimatedInputTokens}, dynamicMaxTokens=${dynamicMaxTokens}`);
+
         let completion;
         try {
-          completion = await this.openai!.chat.completions.create({
+          // 添加防护性检查
+          if (!this.openai) {
+            throw new Error(
+              'OpenAI client not initialized. Please ensure the service has been properly initialized. ' +
+              'This may indicate that onModuleInit() was not called or refreshClient() failed.'
+            );
+          }
+          completion = await this.openai.chat.completions.create({
             model: this.configService.getActiveConfig().model,
             temperature: 0.1,
-            max_tokens: this.configService.getActiveConfig().maxTokens,
+            max_tokens: dynamicMaxTokens,
             messages: [
-              { role: 'system', content: this.getSystemPrompt(task.infoType) },
+              { role: 'system', content: systemPrompt },
               { role: 'user', content: prompt },
             ],
             // Note: response_format not supported by Ollama /v1 endpoint
@@ -2498,21 +2597,29 @@ export class TaskBasedParserService implements OnModuleInit {
 `;
 
     switch (infoType) {
-      case InfoType.BASIC_INFO:
-        // 精简版 system prompt，减少 token 使用
-        return `你是一个合同信息提取专家。从合同中提取5个字段：
-1. contractNo: 合同编号（查找"编号"、"No."、文档开头的编号模式如CTR-2024-001）
-2. contractName: 合同名称（文档开头的标题，通常包含"合同"、"协议"、"项目"）
-3. customerName: 甲方公司名（只提取公司名，不包含地址电话，去除括号内容）
-4. ourEntity: 乙方公司名（只提取公司名，不包含地址电话，去除括号内容）
-5. contractType: 合同类型（必须是：STAFF_AUGMENTATION、PROJECT_OUTSOURCING、PRODUCT_SALES之一）
+      case InfoType.BASIC_INFO: {
+        // 动态生成 BASIC_INFO prompt，基于 topics.const.ts 中定义的字段
+        const basicInfoTopic = this.topicRegistry.getTopic(ExtractTopic.BASIC_INFO);
+        if (basicInfoTopic && basicInfoTopic.fields) {
+          const fieldDescriptions = basicInfoTopic.fields
+            .map((f, i) => `${i + 1}. ${f.name}: ${f.description}`)
+            .join('\n');
+
+          return `你是一个合同信息提取专家。从合同中提取以下字段：
+
+${fieldDescriptions}
 
 格式要求：
 - 去除Markdown标记（**、##、书名号等）
-- 公司名不含地址/电话/联系人
+- 日期格式为YYYY-MM-DD
 - 未找到的字段设为null
+- contractType必须是：STAFF_AUGMENTATION、PROJECT_OUTSOURCING、PRODUCT_SALES之一
 
 严格按照JSON输出。`;
+        }
+        // 降级方案：如果获取不到主题定义，使用简化版
+        return `你是一个合同信息提取专家。从合同中提取字段。严格按照JSON输出。`;
+      }
 
       case InfoType.FINANCIAL:
         return `你是一个专业的合同财务信息提取专家。
@@ -2964,30 +3071,94 @@ export class TaskBasedParserService implements OnModuleInit {
     }
 
     // 回退到原始Prompt（向后兼容）
-    const relevantText = cleanedText.substring(0, Math.min(cleanedText.length, 5000));
-    return `请从以下合同文本中提取基本信息。
+    const relevantText = cleanedText.substring(0, Math.min(cleanedText.length, 8000));
+
+    return `请从以下合同文本中提取完整的基本信息，包括甲乙双方详细信息。
 
 【需要提取的字段】
+
+===== 基础信息 =====
 1. contractNo - 合同编号
 2. contractName - 合同名称
-3. customerName - 甲方/客户名称（委托方/发包方/买方）
-4. ourEntity - 乙方/供应商名称（受托方/承包方/卖方）
-5. taxNo - 税号
-6. contractType - 合同类型，必须从以下三种中选择一个：
+3. customerName - 甲方/客户名称（委托方/发包方/买方，只要公司名，不要包含其他信息）
+4. ourEntity - 乙方/供应商名称（受托方/承包方/卖方，只要公司名，不要包含其他信息）
+5. contractType - 合同类型，必须从以下三种中选择一个：
    - "STAFF_AUGMENTATION" - 人力框架/人力外包合同（特征：工时费率、人天、人月、角色、服务协议）
    - "PROJECT_OUTSOURCING" - 项目外包合同（特征：里程碑、交付物、验收标准、阶段性付款、SOW）
    - "PRODUCT_SALES" - 产品购销合同（特征：产品清单、单价、数量、交货、保修）
 
+===== 合同元数据 =====
+6. version - 版本号（如有）
+7. governingLanguage - 管辖语言（如：中文、英文）
+
+===== 甲方（客户/委托方）详细信息 =====
+8. clientLegalRep - 甲方法定代表人
+9. clientRegistrationNumber - 甲方统一社会信用代码/注册号
+10. clientBusinessLicense - 甲方营业执照号
+11. clientAddress - 甲方地址
+12. clientContactPerson - 甲方联系人
+13. clientPhone - 甲方电话
+14. clientEmail - 甲方邮箱
+15. clientFax - 甲方传真
+16. clientBankName - 甲方开户行
+17. clientBankAccount - 甲方银行账号
+18. clientAccountName - 甲方账户名称
+
+===== 乙方（供应商/受托方）详细信息 =====
+19. vendorLegalRep - 乙方法定代表人
+20. vendorRegistrationNumber - 乙方统一社会信用代码/注册号
+21. vendorBusinessLicense - 乙方营业执照号
+22. vendorAddress - 乙方地址
+23. vendorContactPerson - 乙方联系人
+24. vendorPhone - 乙方电话
+25. vendorEmail - 乙方邮箱
+26. vendorFax - 乙方传真
+27. vendorBankName - 乙方开户行
+28. vendorBankAccount - 乙方银行账号
+29. vendorAccountName - 乙方账户名称
+
+===== 项目基本信息 =====
+30. projectName - 项目名称（涉及项目的具体名称）
+31. projectOverview - 项目概述或合作背景（项目的目标、背景等描述）
+
+===== 项目时间信息 =====
+32. projectStartDate - 项目开始日期（格式：YYYY-MM-DD）
+33. projectEndDate - 项目结束日期（格式：YYYY-MM-DD）
+34. warrantyStartDate - 质保期开始日期（格式：YYYY-MM-DD）
+35. warrantyPeriodMonths - 质保期（月数，如：12、24、36）
+
+===== 财务信息 =====
+36. isTaxInclusive - 是否含税（true/false）
+37. pricingModel - 定价模式（FIXED_PRICE=固定价格/TIME_MATERIAL=工时材料/MIXED=混合）
+
+===== 验收信息 =====
+38. acceptanceMethod - 验收方法（如：书面验收、现场验收、验收测试）
+39. acceptancePeriodDays - 验收期（天数，如：15、30）
+40. deemedAcceptanceRule - 视为验收规则（如：甲方收到验收报告后X日内未提出书面异议视为验收合格）
+
+===== 保密条款 =====
+41. confidentialityTermYears - 保密期限（年数，如：3、5）
+42. confidentialityDefinition - 保密信息定义（哪些信息属于保密信息）
+43. confidentialityObligation - 保密义务描述（双方的保密责任）
+
+===== 通用条款 =====
+44. governingLaw - 管辖法律（如：中华人民共和国法律）
+45. disputeResolutionMethod - 争议解决方式（如：协商、仲裁、诉讼）
+46. noticeRequirements - 通知要求（通知的送达方式、地址等）
+
 【⚠️ 重要提示】
 - 只提取你明确看到的字段，不确定的字段必须返回 null
-- 公司名称不要包含地址、电话、联系人等额外信息
+- 公司名称（customerName/ourEntity）只填公司名，不要包含地址、电话、联系人等额外信息
+- 日期必须使用 YYYY-MM-DD 格式
+- 数字字段只填写数字（如 warrantyPeriodMonths=12 表示12个月）
+- 布尔值字段（isTaxInclusive）必须使用 true 或 false
+- 合同类型（contractType）必须是三个英文枚举值之一
 
 【合同文本】
 ${relevantText}
 
 【输出格式】
-返回JSON对象，包含上述所有字段。contractType字段必须是英文枚举值。
-示例：{"contractNo": "HT-2024-001", "contractName": "XX项目开发合同", "customerName": "甲方公司", "ourEntity": "乙方公司", "taxNo": "91110000...", "contractType": "PROJECT_OUTSOURCING"}`;
+返回JSON对象，包含上述所有字段。不确定的字段返回 null，不要编造。`;
   }
 
   private buildFinancialPrompt(text: string): string {

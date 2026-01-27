@@ -21,8 +21,11 @@ export default {
     '!src/common/scalars/**',
   ],
   transformIgnorePatterns: [
-    'node_modules/(?!(uuid)/)',
+    'node_modules/(?!(uuid|@nestjs/axios|axios)/)',
   ],
+  moduleNameMapper: {
+    '^uuid$': '<rootDir>/src/__mocks__/uuid.ts',
+  },
   // Commented out to allow tests to pass while building up coverage
   // coverageThreshold: {
   //   global: {
