@@ -23,30 +23,30 @@ model User {
   department   Department @relation(fields: [departmentId], references: [id])
 
   // 状态与密码管理
-  isActive              Boolean   @default(true)  // 软删除标记
-  mustChangePassword    Boolean   @default(true)  // 首次登录强制改密
-  lastPasswordChangedAt DateTime?                 // 最后改密时间
+  isActive              Boolean   @default(true) // 软删除标记
+  mustChangePassword    Boolean   @default(true) // 首次登录强制改密
+  lastPasswordChangedAt DateTime? // 最后改密时间
 
   // 创建者（由管理员创建）
-  createdById String?
-  createdBy   User?   @relation("UserCreator", fields: [createdById], references: [id])
-  createdUsers User[] @relation("UserCreator")
+  createdById  String?
+  createdBy    User?   @relation("UserCreator", fields: [createdById], references: [id])
+  createdUsers User[]  @relation("UserCreator")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // 关联
-  uploadedContracts Contract[] @relation("ContractUploader")
-  auditLogs         AuditLog[] @relation("AuditOperator")
+  uploadedContracts      Contract[]               @relation("ContractUploader")
+  auditLogs              AuditLog[]               @relation("AuditOperator")
   milestoneStatusHistory MilestoneStatusHistory[]
-  passwordResetTokens PasswordResetToken[]
-  loginRecords       LoginRecord[]
-  updatedSystemConfigs SystemConfig[] @relation("SystemConfigUpdater")
-  legalReviews       LegalReview[] @relation("LegalReviewer")
-  createdTemplates   ContractTemplate[] @relation("TemplateCreator")
-  notifications     Notification[]
+  passwordResetTokens    PasswordResetToken[]
+  loginRecords           LoginRecord[]
+  updatedSystemConfigs   SystemConfig[]           @relation("SystemConfigUpdater")
+  legalReviews           LegalReview[]            @relation("LegalReviewer")
+  createdTemplates       ContractTemplate[]       @relation("TemplateCreator")
+  notifications          Notification[]
   notificationPreference NotificationPreference?
-  createdCaseStudies CaseStudy[] @relation("CaseStudyCreator")
+  createdCaseStudies     CaseStudy[]              @relation("CaseStudyCreator")
 
   @@index([departmentId])
   @@index([email])
@@ -54,9 +54,9 @@ model User {
 }
 
 enum UserRole {
-  USER       // 普通用户
+  USER // 普通用户
   DEPT_ADMIN // 部门管理员
-  ADMIN      // 系统管理员
+  ADMIN // 系统管理员
 }
 
 model Department {
@@ -70,7 +70,7 @@ model Department {
 
   // 关联
   users     User[]
-  contracts Contract[] @relation("ContractDepartment")
+  contracts Contract[]         @relation("ContractDepartment")
   templates ContractTemplate[]
 
   @@index([isActive])
@@ -82,14 +82,14 @@ model Department {
 
 model Customer {
   id            String         @id @default(cuid())
-  name          String         // 客户公司全称
-  shortName     String?        // 简称
+  name          String // 客户公司全称
+  shortName     String? // 简称
   creditCode    String?        @unique // 统一社会信用代码
-  industry      String?        // 所属行业
-  address       String?        // 地址
-  contactPerson String?        // 主联系人 (legacy)
-  contactPhone  String?        // 联系电话 (legacy)
-  contactEmail  String?        // 联系邮箱 (legacy)
+  industry      String? // 所属行业
+  address       String? // 地址
+  contactPerson String? // 主联系人 (legacy)
+  contactPhone  String? // 联系电话 (legacy)
+  contactEmail  String? // 联系邮箱 (legacy)
   status        CustomerStatus @default(ACTIVE)
 
   createdAt DateTime @default(now())
@@ -109,7 +109,7 @@ model CustomerContact {
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  name      String  // 联系人姓名
+  name      String // 联系人姓名
   title     String? // 职务
   phone     String? // 电话
   email     String? // 邮箱
@@ -122,7 +122,7 @@ model CustomerContact {
 }
 
 enum CustomerStatus {
-  ACTIVE   // 活跃
+  ACTIVE // 活跃
   INACTIVE // 不活跃
   ARCHIVED // 已归档
 }
@@ -134,20 +134,51 @@ enum CustomerStatus {
 model Contract {
   id String @id @default(cuid())
 
-  // 身份标识
+  // ==================== 身份标识 ====================
   contractNo String @unique // 合同编号
   name       String // 合同名称
 
-  // 合同类型与状态
+  // ==================== 合同类型与状态 ====================
   type   ContractType
   status ContractStatus @default(DRAFT)
 
-  // 签约方信息
+  // ==================== 合同元数据（扩展） ====================
+  version           String? // 版本号 (如: 1.0, 2.0)
+  governingLanguage String? @default("中文") // 管辖语言
+
+  // ==================== 签约方信息 ====================
   ourEntity  String // 我方主体（签约子公司/法律实体）
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
 
-  // 财务条款
+  // ==================== 甲方扩展信息（合同级别，覆盖Customer表默认值） ====================
+  // 这些字段允许在特定合同中覆盖客户的默认信息
+  clientLegalRep           String? // 甲方法定代表人
+  clientRegistrationNumber String? // 甲方统一社会信用代码/注册号
+  clientBusinessLicense     String? // 甲方营业执照号
+  clientAddress            String? @db.Text // 甲方地址
+  clientContactPerson      String? // 甲方联系人
+  clientPhone              String? // 甲方电话
+  clientEmail              String? // 甲方邮箱
+  clientFax                String? // 甲方传真
+  clientBankName           String? // 甲方开户行
+  clientBankAccount        String? // 甲方银行账号
+  clientAccountName        String? // 甲方账户名称
+
+  // ==================== 乙方信息（新增） ====================
+  vendorLegalRep           String? // 乙方法定代表人
+  vendorRegistrationNumber String? // 乙方注册号/统一社会信用代码
+  vendorBusinessLicense    String? // 乙方营业执照号
+  vendorAddress            String? @db.Text // 乙方地址
+  vendorContactPerson      String? // 乙方联系人
+  vendorPhone              String? // 乙方电话
+  vendorEmail              String? // 乙方邮箱
+  vendorFax                String? // 乙方传真
+  vendorBankName           String? // 乙方开户行
+  vendorBankAccount        String? // 乙方银行账号
+  vendorAccountName        String? // 乙方账户名称
+
+  // ==================== 财务条款 ====================
   amountWithTax    Decimal  @db.Decimal(18, 2) // 含税金额
   amountWithoutTax Decimal? @db.Decimal(18, 2) // 不含税金额
   currency         String   @default("CNY") // 币种
@@ -156,19 +187,23 @@ model Contract {
   paymentMethod    String? // 付款方式
   paymentTerms     String? // 付款条件
 
-  // 时间周期
+  // ==================== 财务条款（扩展） ====================
+  isTaxInclusive Boolean       @default(true) // 是否含税
+  pricingModel   PricingModel? // 定价模式: FIXED_PRICE/TIME_MATERIAL/MIXED
+
+  // ==================== 时间周期 ====================
   signedAt    DateTime? // 签署日期
   effectiveAt DateTime? // 生效日期
   expiresAt   DateTime? // 终止日期
   duration    String? // 合同期限描述
 
-  // 物理属性
+  // ==================== 物理属性 ====================
   fileUrl      String? // 合同文件存储路径
   fileType     String? // 文件类型 (pdf/docx)
   copies       Int? // 合同份数
   signLocation String? // 签订地点
 
-  // 分类信息
+  // ==================== 分类信息 ====================
   industry     String? // 所属行业
   departmentId String
   department   Department @relation("ContractDepartment", fields: [departmentId], references: [id])
@@ -203,12 +238,15 @@ model Contract {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 类型特定关联
+  // ==================== 类型特定关联 ====================
   staffAugmentation  StaffAugmentationDetail?
   projectOutsourcing ProjectOutsourcingDetail?
   productSales       ProductSalesDetail?
 
-  // 通用标签
+  // ==================== 基本信息详情关联（新增） ====================
+  basicInfo ContractBasicInfo?
+
+  // ==================== 通用标签 ====================
   tags ContractTag[]
 
   // 法务条款
@@ -227,7 +265,7 @@ model Contract {
   legalReviews LegalReview[]
 
   // 风险告警与评估
-  riskAlerts RiskAlert[]
+  riskAlerts      RiskAlert[]
   riskAssessments RiskAssessment[]
 
   // 签署追踪
@@ -249,26 +287,32 @@ model Contract {
 }
 
 enum ContractType {
-  STAFF_AUGMENTATION  // 人力框架合同
+  STAFF_AUGMENTATION // 人力框架合同
   PROJECT_OUTSOURCING // 项目外包合同
-  PRODUCT_SALES       // 产品购销合同
+  PRODUCT_SALES // 产品购销合同
+}
+
+enum PricingModel {
+  FIXED_PRICE // 固定价格
+  TIME_MATERIAL // 工时材料
+  MIXED // 混合模式
 }
 
 enum ContractStatus {
-  DRAFT            // 草拟
+  DRAFT // 草拟
   PENDING_APPROVAL // 审批中
-  ACTIVE           // 已生效
-  EXECUTING        // 执行中
-  COMPLETED        // 已完结
-  TERMINATED       // 已终止
-  EXPIRED          // 已过期
+  ACTIVE // 已生效
+  EXECUTING // 执行中
+  COMPLETED // 已完结
+  TERMINATED // 已终止
+  EXPIRED // 已过期
 }
 
 enum ParseStatus {
-  PENDING       // 待解析
-  PROCESSING    // 解析中
-  COMPLETED     // 解析完成
-  FAILED        // 解析失败
+  PENDING // 待解析
+  PROCESSING // 解析中
+  COMPLETED // 解析完成
+  FAILED // 解析失败
   MANUAL_REVIEW // 人工审核中
 }
 
@@ -314,8 +358,8 @@ model StaffRateItem {
 }
 
 enum RateType {
-  HOURLY  // 时薪
-  DAILY   // 日薪
+  HOURLY // 时薪
+  DAILY // 日薪
   MONTHLY // 月薪
 }
 
@@ -357,15 +401,15 @@ model ProjectMilestone {
   status             MilestoneStatus @default(PENDING)
 
   // 交付物文件信息
-  deliverableFileUrl  String? // 交付物文件URL
-  deliverableFileName String? // 交付物文件名
+  deliverableFileUrl    String? // 交付物文件URL
+  deliverableFileName   String? // 交付物文件名
   deliverableUploadedAt DateTime? // 交付物上传时间
 
   // 验收相关信息
-  acceptedAt    DateTime? // 验收通过时间
-  acceptedBy    String?   // 验收人ID
-  rejectedAt    DateTime? // 拒绝时间
-  rejectedBy    String?   // 拒绝人ID
+  acceptedAt      DateTime? // 验收通过时间
+  acceptedBy      String? // 验收人ID
+  rejectedAt      DateTime? // 拒绝时间
+  rejectedBy      String? // 拒绝人ID
   rejectionReason String? // 拒绝原因
 
   createdAt DateTime @default(now())
@@ -387,7 +431,7 @@ model MilestoneStatusHistory {
   fromStatus MilestoneStatus // 变更前状态
   toStatus   MilestoneStatus // 变更后状态
   changedBy  String // 变更人ID
-  changedAt  DateTime @default(now()) // 变更时间
+  changedAt  DateTime        @default(now()) // 变更时间
   notes      String? // 备注
 
   user User @relation(fields: [changedBy], references: [id], onDelete: Cascade)
@@ -398,11 +442,11 @@ model MilestoneStatusHistory {
 }
 
 enum MilestoneStatus {
-  PENDING     // 待开始
+  PENDING // 待开始
   IN_PROGRESS // 进行中
-  DELIVERED   // 已交付
-  ACCEPTED    // 已验收
-  REJECTED    // 被拒绝
+  DELIVERED // 已交付
+  ACCEPTED // 已验收
+  REJECTED // 被拒绝
 }
 
 // ================================
@@ -437,15 +481,56 @@ model ProductLineItem {
   productName         String // 产品名称
   specification       String? // 规格与配置
   quantity            Int // 数量
-  unit                String  @default("套") // 单位
-  unitPriceWithTax    Decimal @db.Decimal(18, 2) // 含税单价
+  unit                String   @default("套") // 单位
+  unitPriceWithTax    Decimal  @db.Decimal(18, 2) // 含税单价
   unitPriceWithoutTax Decimal? @db.Decimal(18, 2) // 不含税单价
-  subtotal            Decimal @db.Decimal(18, 2) // 小计
+  subtotal            Decimal  @db.Decimal(18, 2) // 小计
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([detailId])
+}
+
+// ================================
+// 合同基本信息详情（BASIC_INFO扩展）
+// ================================
+
+model ContractBasicInfo {
+  id         String   @id @default(cuid())
+  contractId String   @unique
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  // ==================== 项目基本信息 ====================
+  projectName     String? // 涉及项目名称
+  projectOverview String? @db.Text // 项目概述或者合作背景
+
+  // ==================== 时间信息（项目时间） ====================
+  projectStartDate     DateTime? // 项目开始日期
+  projectEndDate       DateTime? // 项目结束日期
+  warrantyStartDate    DateTime? // 质保期开始日期
+  warrantyPeriodMonths Int?      @default(12) // 质保期(月)
+
+  // ==================== 验收信息 ====================
+  acceptanceMethod     String? // 验收方法
+  acceptancePeriodDays Int?    @default(15) // 验收期(天)
+  deemedAcceptanceRule String? @db.Text // 视为验收规则
+
+  // ==================== 保密条款 ====================
+  confidentialityTermYears  Int?    @default(3) // 保密期限(年)
+  confidentialityDefinition String? @db.Text // 保密信息定义
+  confidentialityObligation String? @db.Text // 保密义务描述
+
+  // ==================== 通用条款 ====================
+  governingLaw            String? // 管辖法律
+  disputeResolutionMethod String? // 争议解决方式
+  noticeRequirements      String? @db.Text // 通知要求
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([contractId])
+  @@map("contract_basic_info")
 }
 
 // ================================
@@ -488,33 +573,33 @@ model ContractTag {
 // ================================
 
 enum TransactionType {
-  PAYMENT     // 付款
-  RECEIPT     // 收款
-  REFUND      // 退款
-  ADJUSTMENT  // 调整
+  PAYMENT // 付款
+  RECEIPT // 收款
+  REFUND // 退款
+  ADJUSTMENT // 调整
 }
 
 enum TransactionStatus {
-  PENDING   // 待处理
+  PENDING // 待处理
   COMPLETED // 已完成
   CANCELLED // 已取消
 }
 
 model FinancialTransaction {
-  id          String             @id @default(cuid())
+  id          String            @id @default(cuid())
   contractId  String
-  contract    Contract           @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract    Contract          @relation(fields: [contractId], references: [id], onDelete: Cascade)
   type        TransactionType
-  amount      Decimal            @db.Decimal(18, 2)
-  currency    String             @default("CNY")
-  category    String             // services, deliverables, penalties, etc.
-  status      TransactionStatus  @default(PENDING)
+  amount      Decimal           @db.Decimal(18, 2)
+  currency    String            @default("CNY")
+  category    String // services, deliverables, penalties, etc.
+  status      TransactionStatus @default(PENDING)
   occurredAt  DateTime
   dueDate     DateTime?
   description String?
   metadata    Json?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   createdBy   String
 
   @@index([contractId])
@@ -528,11 +613,11 @@ model FinancialTransaction {
 // ================================
 
 enum ReviewStatus {
-  DRAFT       // 草稿
+  DRAFT // 草稿
   IN_PROGRESS // 审查中
-  SUBMITTED   // 已提交
-  APPROVED    // 已批准
-  REJECTED    // 已驳回
+  SUBMITTED // 已提交
+  APPROVED // 已批准
+  REJECTED // 已驳回
 }
 
 model LegalReview {
@@ -542,8 +627,8 @@ model LegalReview {
   reviewerId      String
   reviewer        User         @relation("LegalReviewer", fields: [reviewerId], references: [id])
   status          ReviewStatus @default(DRAFT)
-  findings        Json         // 结构化发现
-  riskLevel       String       // LOW, MEDIUM, HIGH, CRITICAL
+  findings        Json // 结构化发现
+  riskLevel       String // LOW, MEDIUM, HIGH, CRITICAL
   recommendations String?      @db.Text
   reviewedAt      DateTime?
   createdAt       DateTime     @default(now())
@@ -560,12 +645,12 @@ model LegalReview {
 // ================================
 
 enum RiskAlertType {
-  CONTRACT_EXPIRY    // 合同到期
-  PAYMENT_OVERDUE    // 付款逾期
-  COMPLIANCE         // 合规问题
-  FINANCIAL          // 财务风险
-  LEGAL              // 法律风险
-  OPERATIONAL        // 运营风险
+  CONTRACT_EXPIRY // 合同到期
+  PAYMENT_OVERDUE // 付款逾期
+  COMPLIANCE // 合规问题
+  FINANCIAL // 财务风险
+  LEGAL // 法律风险
+  OPERATIONAL // 运营风险
 }
 
 enum RiskSeverity {
@@ -576,25 +661,25 @@ enum RiskSeverity {
 }
 
 enum AlertStatus {
-  ACTIVE    // 活跃
-  RESOLVED  // 已解决
+  ACTIVE // 活跃
+  RESOLVED // 已解决
   DISMISSED // 已忽略
   ESCALATED // 已升级
 }
 
 model RiskAlert {
-  id          String       @id @default(cuid())
+  id          String        @id @default(cuid())
   contractId  String
-  contract    Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract    Contract      @relation(fields: [contractId], references: [id], onDelete: Cascade)
   type        RiskAlertType
   severity    RiskSeverity
   title       String
-  description String       @db.Text
-  status      AlertStatus  @default(ACTIVE)
+  description String        @db.Text
+  status      AlertStatus   @default(ACTIVE)
   dismissedAt DateTime?
   dismissedBy String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([contractId])
   @@index([status])
@@ -609,8 +694,8 @@ model RiskAssessment {
   contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   totalScore      Float
   riskLevel       String
-  factors         Json     // Risk factors detail
-  recommendations Json?    // Array of recommendation strings
+  factors         Json // Risk factors detail
+  recommendations Json? // Array of recommendation strings
   assessedAt      DateTime @default(now())
   assessedBy      String?
 
@@ -624,17 +709,17 @@ model RiskAssessment {
 // ================================
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  action     String   // 操作类型：CREATE_USER, UPDATE_USER, DELETE_TAG, etc.
-  entityType String   // 实体类型：USER, DEPARTMENT, TAG
-  entityId   String   // 实体ID
-  entityName String?  // 实体名称（方便展示）
-  oldValue   Json?    // 变更前数据
-  newValue   Json?    // 变更后数据
-  operatorId String   // 操作者ID
-  operator   User     @relation("AuditOperator", fields: [operatorId], references: [id])
-  ipAddress  String?  // 操作者IP
-  userAgent  String?  // 操作者浏览器
+  id         String  @id @default(cuid())
+  action     String // 操作类型：CREATE_USER, UPDATE_USER, DELETE_TAG, etc.
+  entityType String // 实体类型：USER, DEPARTMENT, TAG
+  entityId   String // 实体ID
+  entityName String? // 实体名称（方便展示）
+  oldValue   Json? // 变更前数据
+  newValue   Json? // 变更后数据
+  operatorId String // 操作者ID
+  operator   User    @relation("AuditOperator", fields: [operatorId], references: [id])
+  ipAddress  String? // 操作者IP
+  userAgent  String? // 操作者浏览器
 
   createdAt DateTime @default(now())
 
@@ -649,13 +734,13 @@ model AuditLog {
 // ================================
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique  // 重置令牌
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique // 重置令牌
   expiresAt DateTime // 过期时间
   usedAt    DateTime? // 使用时间
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([userId])
   @@index([token])
@@ -667,14 +752,14 @@ model PasswordResetToken {
 // ================================
 
 model LoginRecord {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ipAddress String?  // IP地址
-  userAgent String?  // 用户代理
-  success   Boolean  // 是否成功
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress     String? // IP地址
+  userAgent     String? // 用户代理
+  success       Boolean // 是否成功
   failureReason String? // 失败原因
-  createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
 
   @@index([userId])
   @@index([createdAt])
@@ -686,14 +771,14 @@ model LoginRecord {
 // ================================
 
 model SystemConfig {
-  id              String   @id @default(cuid())
-  key             String   @unique // 配置键 (如: llm.provider, llm.model, smtp.enabled)
-  value           String   // 配置值 (JSON字符串)
-  category        String   // 配置分类 (llm, smtp, storage)
-  description     String?  // 配置描述
-  updatedAt       DateTime @updatedAt
-  updatedBy       String?  // 更新者ID
-  updatedByUser   User?    @relation("SystemConfigUpdater", fields: [updatedBy], references: [id])
+  id            String   @id @default(cuid())
+  key           String   @unique // 配置键 (如: llm.provider, llm.model, smtp.enabled)
+  value         String // 配置值 (JSON字符串)
+  category      String // 配置分类 (llm, smtp, storage)
+  description   String? // 配置描述
+  updatedAt     DateTime @updatedAt
+  updatedBy     String? // 更新者ID
+  updatedByUser User?    @relation("SystemConfigUpdater", fields: [updatedBy], references: [id])
 
   @@index([category])
   @@index([key])
@@ -705,45 +790,43 @@ model SystemConfig {
 
 /// 向量嵌入缓存表 - 缓存文本的向量嵌入（仅支持nomic-embed-text: 768维）
 model EmbeddingCache {
-  id        Int      @id @default(autoincrement())
-  textHash  String   // SHA256哈希
-  modelName String   @default("nomic-embed-text") // 固定模型
+  id        Int                         @id @default(autoincrement())
+  textHash  String // SHA256哈希
+  modelName String                      @default("nomic-embed-text") // 固定模型
   embedding Unsupported("vector(768)")?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
 
   @@unique([textHash, modelName], map: "embedding_cache_text_model_unique")
-  @@index([textHash, modelName])
   @@map("embedding_cache")
 }
 
 /// LLM结果缓存表
 model LlmCache {
-  id         Int      @id @default(autoincrement())
-  promptHash String   // SHA256(prompt + input)
-  modelName  String   // 模型名称
-  request    String   @db.Text // 原始请求
-  response   String   @db.Text // LLM响应
-  createdAt  DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  promptHash String // SHA256(prompt + input)
+  modelName  String // 模型名称
+  request    String    @db.Text // 原始请求
+  response   String    @db.Text // LLM响应
+  createdAt  DateTime  @default(now())
   expiresAt  DateTime? // 过期时间
 
   @@unique([promptHash, modelName], map: "llm_cache_prompt_model_unique")
-  @@index([promptHash, modelName])
   @@index([expiresAt])
   @@map("llm_cache")
 }
 
 /// 合同段落向量表 - 用于RAG检索（仅支持nomic-embed-text: 768维）
 model ContractChunk {
-  id         Int       @id @default(autoincrement())
-  contractId String    // 关联Contract.id (String类型)
-  chunkIndex Int       // 段落索引
-  content    String    @db.Text // 段落内容
+  id         Int                         @id @default(autoincrement())
+  contractId String                      @map("contract_id") // 关联Contract.id (String类型)
+  chunkIndex Int                         @map("chunk_index") // 段落索引
+  content    String                      @db.Text // 段落内容
   embedding  Unsupported("vector(768)")?
-  chunkType  String?   // 段落类型: header/financial/schedule/party/other
-  metadata   Json?     // 额外元数据
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  chunkType  String?                     @map("chunk_type") // 段落类型: header/financial/schedule/party/other
+  metadata   Json? // 额外元数据
+  createdAt  DateTime                    @default(now()) @map("created_at")
+  updatedAt  DateTime                    @updatedAt @map("updated_at")
 
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
@@ -754,17 +837,16 @@ model ContractChunk {
 
 /// 文档指纹缓存表 - 同一文档的解析结果缓存
 model DocumentFingerprint {
-  id          Int      @id @default(autoincrement())
-  fileHash    String   @unique // SHA256(文件内容)
+  id          Int       @id @default(autoincrement())
+  fileHash    String    @unique // SHA256(文件内容)
   fileName    String
   fileSize    Int
   mimeType    String
-  parseResult Json     // 解析结果
-  strategy    String   // 使用的解析策略
-  createdAt   DateTime @default(now())
+  parseResult Json // 解析结果
+  strategy    String // 使用的解析策略
+  createdAt   DateTime  @default(now())
   expiresAt   DateTime? // 过期时间(默认7天)
 
-  @@index([fileHash])
   @@index([expiresAt])
   @@map("document_fingerprint")
 }
@@ -774,7 +856,7 @@ model DocumentFingerprint {
 // ================================
 
 model ContractLegalClause {
-  id         Int     @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   contractId String
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
@@ -841,9 +923,9 @@ model ContractLegalClause {
 
 enum LegalClauseType {
   INTELLECTUAL_PROPERTY // 知识产权条款
-  GUARANTEE            // 担保条款
+  GUARANTEE // 担保条款
   LIABILITY_LIMITATION // 责任限制条款
-  TERMINATION_DISPUTE  // 终止与争议条款
+  TERMINATION_DISPUTE // 终止与争议条款
 }
 
 // ================================
@@ -906,35 +988,35 @@ model ContractTemplate {
   id String @id @default(cuid())
 
   // 基本信息
-  name        String   @unique // 模板名称
-  displayName String?         // 显示名称
-  description String?  @db.Text // 模板描述
-  category    String?  // 模板分类（人力外包/项目外包/产品购销）
+  name        String       @unique // 模板名称
+  displayName String? // 显示名称
+  description String?      @db.Text // 模板描述
+  category    String? // 模板分类（人力外包/项目外包/产品购销）
   type        ContractType // 合同类型
 
   // 模板内容
-  content     String   @db.Text // 模板内容（markdown或docx内容）
-  fileUrl     String?  // 模板文件路径
-  fileType    String?  // 文件类型
+  content  String  @db.Text // 模板内容（markdown或docx内容）
+  fileUrl  String? // 模板文件路径
+  fileType String? // 文件类型
 
   // 模板参数（JSON格式的可替换字段）
-  parameters  Json?    // 参数定义: [{"name":"contractNo","label":"合同编号","type":"text","required":true,"defaultValue":""}]
+  parameters Json? // 参数定义: [{"name":"contractNo","label":"合同编号","type":"text","required":true,"defaultValue":""}]
 
   // 默认值（用于快速填充）
   defaultValues Json? // 默认值: {"ourEntity":"XX公司","paymentTerms":"30天"}
 
   // 状态与管理
-  isActive    Boolean @default(true) // 是否启用
-  isSystem    Boolean @default(false) // 是否系统模板
-  version     String  @default("1.0") // 模板版本
+  isActive Boolean @default(true) // 是否启用
+  isSystem Boolean @default(false) // 是否系统模板
+  version  String  @default("1.0") // 模板版本
 
   // 使用统计
-  usageCount  Int     @default(0) // 使用次数
-  lastUsedAt  DateTime? // 最后使用时间
+  usageCount Int       @default(0) // 使用次数
+  lastUsedAt DateTime? // 最后使用时间
 
   // 创建者信息
   createdById String
-  createdBy   User     @relation("TemplateCreator", fields: [createdById], references: [id])
+  createdBy   User   @relation("TemplateCreator", fields: [createdById], references: [id])
 
   // 部门（部门级模板）
   departmentId String?
@@ -964,24 +1046,24 @@ model ContractSigning {
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   // 签署方信息
-  signerName     String   // 签署人姓名
-  signerTitle    String?  // 签署人职务
-  signerEmail    String?  // 签署人邮箱
-  signerCompany  String   // 签署公司
-  signerType     SignerType // 签署方类型（甲方/乙方/见证人等）
+  signerName    String // 签署人姓名
+  signerTitle   String? // 签署人职务
+  signerEmail   String? // 签署人邮箱
+  signerCompany String // 签署公司
+  signerType    SignerType // 签署方类型（甲方/乙方/见证人等）
 
   // 签署状态
-  status         SigningStatus @default(PENDING) // 待签署/已签署/已拒绝
-  signedAt       DateTime? // 签署时间
-  signatureUrl   String?  // 签名文件URL
+  status       SigningStatus @default(PENDING) // 待签署/已签署/已拒绝
+  signedAt     DateTime? // 签署时间
+  signatureUrl String? // 签名文件URL
 
   // 签署顺序
-  sequence       Int      @default(0) // 签署顺序（0表示无顺序）
+  sequence        Int     @default(0) // 签署顺序（0表示无顺序）
   isCurrentSigner Boolean @default(false) // 是否当前签署人
 
   // 拒绝信息
   rejectedAt     DateTime?
-  rejectedReason String?  @db.Text
+  rejectedReason String?   @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -993,16 +1075,16 @@ model ContractSigning {
 }
 
 enum SignerType {
-  FIRST_PARTY       // 甲方（委托方）
-  SECOND_PARTY      // 乙方（受托方）
-  WITNESS           // 见证人
-  GUARANTOR         // 担保方
+  FIRST_PARTY // 甲方（委托方）
+  SECOND_PARTY // 乙方（受托方）
+  WITNESS // 见证人
+  GUARANTOR // 担保方
 }
 
 enum SigningStatus {
-  PENDING    // 待签署
-  SIGNED     // 已签署
-  REJECTED   // 已拒绝
+  PENDING // 待签署
+  SIGNED // 已签署
+  REJECTED // 已拒绝
 }
 
 // ================================
@@ -1015,22 +1097,22 @@ model ContractExport {
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   // 导出信息
-  format     ExportFormat // 导出格式
-  fileUrl    String   // 导出文件URL
-  fileName   String   // 导出文件名
-  fileSize   Int?     // 文件大小（字节）
+  format   ExportFormat // 导出格式
+  fileUrl  String // 导出文件URL
+  fileName String // 导出文件名
+  fileSize Int? // 文件大小（字节）
 
   // 导出状态
-  status     ExportStatus @default(PENDING)
-  progress   Int      @default(0) // 导出进度 0-100
-  error      String?  // 错误信息
+  status   ExportStatus @default(PENDING)
+  progress Int          @default(0) // 导出进度 0-100
+  error    String? // 错误信息
 
   // 导出选项
-  options    Json? // 导出选项: {"includeAnnotations":true,"includeVersions":false}
+  options Json? // 导出选项: {"includeAnnotations":true,"includeVersions":false}
 
   // 请求信息
-  requestedBy String   // 请求人ID
-  requestedAt DateTime @default(now()) // 请求时间
+  requestedBy String // 请求人ID
+  requestedAt DateTime  @default(now()) // 请求时间
   completedAt DateTime? // 完成时间
 
   @@index([contractId])
@@ -1047,9 +1129,9 @@ enum ExportFormat {
 }
 
 enum ExportStatus {
-  PENDING    // 生成中
-  COMPLETED  // 已完成
-  FAILED     // 失败
+  PENDING // 生成中
+  COMPLETED // 已完成
+  FAILED // 失败
 }
 
 // ================================
@@ -1057,15 +1139,15 @@ enum ExportStatus {
 // ================================
 
 enum NotificationType {
-  CONTRACT_EXPIRY      // 合同到期提醒
-  PAYMENT_OVERDUE      // 付款逾期提醒
-  CONTRACT_APPROVAL    // 合同审批待办
-  MILESTONE_DUE        // 里程碑到期
-  RISK_ALERT           // 风险告警
-  SYSTEM_ANNOUNCEMENT  // 系统公告
-  MENTION              // @提醒
-  TASK_ASSIGNED        // 任务分配
-  DOCUMENT_SHARED      // 文档共享
+  CONTRACT_EXPIRY // 合同到期提醒
+  PAYMENT_OVERDUE // 付款逾期提醒
+  CONTRACT_APPROVAL // 合同审批待办
+  MILESTONE_DUE // 里程碑到期
+  RISK_ALERT // 风险告警
+  SYSTEM_ANNOUNCEMENT // 系统公告
+  MENTION // @提醒
+  TASK_ASSIGNED // 任务分配
+  DOCUMENT_SHARED // 文档共享
 }
 
 enum NotificationPriority {
@@ -1076,48 +1158,48 @@ enum NotificationPriority {
 }
 
 enum NotificationStatus {
-  SENT      // 已发送
-  READ      // 已读
-  ARCHIVED  // 已归档
+  SENT // 已发送
+  READ // 已读
+  ARCHIVED // 已归档
 }
 
 model Notification {
-  id          String               @id @default(cuid())
-  type        NotificationType
-  priority    NotificationPriority @default(NORMAL)
-  status      NotificationStatus   @default(SENT)
+  id       String               @id @default(cuid())
+  type     NotificationType
+  priority NotificationPriority @default(NORMAL)
+  status   NotificationStatus   @default(SENT)
 
   // 通知内容
-  title       String   // 通知标题
-  message     String   @db.Text // 通知内容
-  link        String?  // 相关链接（如合同详情页）
+  title   String // 通知标题
+  message String  @db.Text // 通知内容
+  link    String? // 相关链接（如合同详情页）
 
   // 接收者
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // 发送方式
-  inApp       Boolean @default(true)  // 应用内通知
-  email       Boolean @default(false) // 邮件通知
-  sms         Boolean @default(false) // 短信通知
+  inApp Boolean @default(true) // 应用内通知
+  email Boolean @default(false) // 邮件通知
+  sms   Boolean @default(false) // 短信通知
 
   // 发送状态
-  emailSent   Boolean @default(false)
+  emailSent   Boolean   @default(false)
   emailSentAt DateTime?
-  smsSent     Boolean @default(false)
+  smsSent     Boolean   @default(false)
   smsSentAt   DateTime?
 
   // 读取时间
-  readAt      DateTime?
+  readAt DateTime?
 
   // 过期时间（可选）
-  expiresAt   DateTime?
+  expiresAt DateTime?
 
   // 元数据（扩展字段）
-  metadata    Json? // {"contractId":"xxx","contractNo":"C001"}
+  metadata Json? // {"contractId":"xxx","contractNo":"C001"}
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([type])
@@ -1129,29 +1211,29 @@ model Notification {
 
 // 用户通知偏好设置
 model NotificationPreference {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // 全局开关
-  enableInApp     Boolean  @default(true)
-  enableEmail     Boolean  @default(false)
-  enableSms       Boolean  @default(false)
+  enableInApp Boolean @default(true)
+  enableEmail Boolean @default(false)
+  enableSms   Boolean @default(false)
 
   // 各类型通知设置
-  contractExpiry        Boolean @default(true)
-  paymentOverdue        Boolean @default(true)
-  contractApproval      Boolean @default(true)
-  milestoneDue          Boolean @default(true)
-  riskAlert             Boolean @default(true)
-  systemAnnouncement    Boolean @default(true)
-  mention               Boolean @default(true)
-  taskAssigned          Boolean @default(true)
-  documentShared        Boolean @default(true)
+  contractExpiry     Boolean @default(true)
+  paymentOverdue     Boolean @default(true)
+  contractApproval   Boolean @default(true)
+  milestoneDue       Boolean @default(true)
+  riskAlert          Boolean @default(true)
+  systemAnnouncement Boolean @default(true)
+  mention            Boolean @default(true)
+  taskAssigned       Boolean @default(true)
+  documentShared     Boolean @default(true)
 
   // 免打扰时段
-  quietHoursStart       String?  // HH:mm格式
-  quietHoursEnd         String?  // HH:mm格式
+  quietHoursStart String? // HH:mm格式
+  quietHoursEnd   String? // HH:mm格式
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1165,54 +1247,54 @@ model NotificationPreference {
 // ================================
 
 model CaseStudy {
-  id              String            @id @default(cuid())
-  contractId      String
-  contract        Contract          @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   // 基本信息
-  title           String
-  subtitle        String?
-  status          CaseStudyStatus   @default(DRAFT)
+  title    String
+  subtitle String?
+  status   CaseStudyStatus @default(DRAFT)
 
   // 内容字段（Markdown）
-  summary         String            @db.Text
-  challenges      String?           @db.Text
-  solution        String?           @db.Text
-  results         String?           @db.Text
-  testimonial     String?           @db.Text
-  techStack       String?
-  timeline        String?
-  teamSize        String?
-  fullMarkdown    String            @db.Text
+  summary      String  @db.Text
+  challenges   String? @db.Text
+  solution     String? @db.Text
+  results      String? @db.Text
+  testimonial  String? @db.Text
+  techStack    String?
+  timeline     String?
+  teamSize     String?
+  fullMarkdown String  @db.Text
 
   // 脱敏配置
-  isDesensitized       Boolean       @default(true)
-  desensitizeConfig    Json?
-  displayCustomerName  String?
-  displayAmount        String?
-  displayIndustry      String?
+  isDesensitized      Boolean @default(true)
+  desensitizeConfig   Json?
+  displayCustomerName String?
+  displayAmount       String?
+  displayIndustry     String?
 
   // LLM元数据
-  llmModel        String?
-  llmProvider     String?
-  generatedAt     DateTime?
-  confidence      Float?
+  llmModel    String?
+  llmProvider String?
+  generatedAt DateTime?
+  confidence  Float?
 
   // 编辑信息
-  isManuallyEdited Boolean          @default(false)
+  isManuallyEdited Boolean   @default(false)
   lastEditedAt     DateTime?
   lastEditedBy     String?
 
   // 版本和标签
-  version         Int               @default(1)
-  tags            String[]
+  version Int      @default(1)
+  tags    String[]
 
   // 创建者
-  createdById     String
-  createdBy       User              @relation("CaseStudyCreator", fields: [createdById], references: [id])
+  createdById String
+  createdBy   User   @relation("CaseStudyCreator", fields: [createdById], references: [id])
 
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([contractId])
   @@index([status])

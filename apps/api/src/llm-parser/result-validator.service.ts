@@ -91,6 +91,8 @@ const FEW_SHOT_EXAMPLES: Partial<Record<ExtractTopic, string>> = {
 ❌ 错误输出：{"customerName": "深圳YY技术有限公司", "ourEntity": "北京XX科技有限公司"}
 ✅ 正确输出：{"customerName": "北京XX科技有限公司", "ourEntity": "深圳YY技术有限公司"}
 ⚠️ 重要提示：customerName = 甲方 = 客户，ourEntity = 乙方 = 供应商
+
+⚠️ 以上仅为格式示例，你必须从用户上传的文档中提取真实数据，绝对不要使用示例中的值！
 `,
 
   FINANCIAL: `
@@ -141,6 +143,8 @@ const FEW_SHOT_EXAMPLES: Partial<Record<ExtractTopic, string>> = {
 输入："服务费50万元"
 ❌ 错误输出：{"amountWithTax": "50"}
 ✅ 正确输出：{"amountWithTax": "500000"}
+
+⚠️ 以上仅为格式示例，你必须从用户上传的文档中提取真实数据，绝对不要使用示例中的值！
 `,
 
   MILESTONES: `
@@ -196,6 +200,8 @@ const FEW_SHOT_EXAMPLES: Partial<Record<ExtractTopic, string>> = {
 输入："支付30%"
 ❌ 错误输出：{"paymentPercentage": "30%"}
 ✅ 正确输出：{"paymentPercentage": "30"}
+
+⚠️ 以上仅为格式示例，你必须从用户上传的文档中提取真实数据，绝对不要使用示例中的值！
 `,
 
   RATE_ITEMS: `
@@ -249,6 +255,8 @@ const FEW_SHOT_EXAMPLES: Partial<Record<ExtractTopic, string>> = {
 输入："高级工程师800元/小时"
 ❌ 错误输出：{"rate": "800元/小时"}
 ✅ 正确输出：{"rate": "800"}
+
+⚠️ 以上仅为格式示例，你必须从用户上传的文档中提取真实数据，绝对不要使用示例中的值！
 `,
 
   LINE_ITEMS: `
@@ -298,6 +306,8 @@ const FEW_SHOT_EXAMPLES: Partial<Record<ExtractTopic, string>> = {
 输入："500元/用户"
 ❌ 错误输出：{"unitPriceWithTax": "500元"}
 ✅ 正确输出：{"unitPriceWithTax": "500"}
+
+⚠️ 以上仅为格式示例，你必须从用户上传的文档中提取真实数据，绝对不要使用示例中的值！
 `,
 
   TIME_INFO: `
@@ -345,6 +355,8 @@ const FEW_SHOT_EXAMPLES: Partial<Record<ExtractTopic, string>> = {
 输入："2024-3-5"
 ❌ 错误输出：{"signDate": "2024-3-5"}
 ✅ 正确输出：{"signDate": "2024-03-05"}
+
+⚠️ 以上仅为格式示例，你必须从用户上传的文档中提取真实数据，绝对不要使用示例中的值！
 `,
 
   DELIVERABLES: `
@@ -380,6 +392,8 @@ const FEW_SHOT_EXAMPLES: Partial<Record<ExtractTopic, string>> = {
 输入："交付物：需求文档、设计文档、源代码"
 ❌ 错误输出：{"deliverables": ["需求文档", "设计文档", "源代码"]}
 ✅ 正确输出：{"deliverables": "需求文档, 设计文档, 源代码"}
+
+⚠️ 以上仅为格式示例，你必须从用户上传的文档中提取真实数据，绝对不要使用示例中的值！
 `,
 
   RISK_CLAUSES: `
@@ -417,6 +431,8 @@ const FEW_SHOT_EXAMPLES: Partial<Record<ExtractTopic, string>> = {
 {
   "riskClauses": ["因不可抗力导致合同无法履行的，双方不承担违约责任"]
 }
+
+⚠️ 以上仅为格式示例，你必须从用户上传的文档中提取真实数据，绝对不要使用示例中的值！
 `,
 };
 
@@ -1013,10 +1029,10 @@ export class ResultValidatorService {
 
     prompt += `\n## 你的第一次提取结果\n\`\`\`json\n${JSON.stringify(originalResult, null, 2)}\n\`\`\``;
 
-    // 添加 Few-Shot 示例
-    if (FEW_SHOT_EXAMPLES[topic]) {
-      prompt += `\n## 参考示例\n${FEW_SHOT_EXAMPLES[topic]}`;
-    }
+    // Few-Shot 示例已禁用，防止LLM复制示例值
+    // if (FEW_SHOT_EXAMPLES[topic]) {
+    //   prompt += `\n## 参考示例\n${FEW_SHOT_EXAMPLES[topic]}`;
+    // }
 
     // 添加合同文本（截取前 3000 字符）
     const textSnippet = contractText.substring(0, 3000);
@@ -1097,8 +1113,14 @@ export class ResultValidatorService {
 
   /**
    * 为初始请求添加 Few-Shot 示例
+   * 注意：由于当前LLM模型会直接复制示例值而非从文档提取，暂时禁用Few-Shot示例
    */
   enhancePromptWithFewShots(basePrompt: string, topic: ExtractTopic): string {
+    // 暂时禁用Few-Shot示例，直接返回基础提示词
+    // TODO: 考虑使用更强的LLM模型后重新启用
+    return basePrompt;
+
+    /* 原始代码（已禁用）
     const examples = this.getFewShotExamples(topic);
     if (!examples) {
       return basePrompt;
@@ -1106,8 +1128,11 @@ export class ResultValidatorService {
 
     return `${basePrompt}
 
-## 参考示例
+## ⚠️ 格式参考示例（仅展示输出结构）
+以下示例仅用于展示JSON结构和字段格式，**绝对不要使用示例中的具体数据值**！
+你必须从用户上传的文档中提取真实的合同数据，而不是复制示例中的占位符或示例值。
 ${examples}
 `;
+    */
   }
 }

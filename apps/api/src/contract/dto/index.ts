@@ -4,3 +4,4 @@ export * from './contract-filter.input';
 export * from './duplicate-check-result.dto';
 export * from './type-specific-inputs.dto';
 export * from './vectorization-result.dto';
+export * from './contract-basic-info.input';

@@ -6,7 +6,7 @@ import { ContractEdit } from './ContractEdit';
 import { ContractDelete } from './ContractDelete';
 
 const GET_CONTRACT = gql`
-  query GetContract($id: ID!) {
+  query GetContractDetail($id: ID!) {
     contract(id: $id) {
       id
       contractNo

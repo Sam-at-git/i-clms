@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { RAGService } from './rag.service';
 import { RAGResolver } from './rag.resolver';
@@ -7,6 +7,7 @@ import { SemanticChunkerService } from '../llm-parser/semantic-chunker.service';
 import { VectorStoreService } from '../vector-store/vector-store.service';
 import { TopicRegistryService } from '../llm-parser/topics/topic-registry.service';
 import { PrismaService } from '../prisma';
+import { SystemConfigModule } from '../system-config/system-config.module';
 
 /**
  * RAG Module
@@ -17,7 +18,7 @@ import { PrismaService } from '../prisma';
  * @see Spec 26 - RAG Vector Search Strategy
  */
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, forwardRef(() => SystemConfigModule)],
   providers: [
     RAGService,
     RAGResolver,

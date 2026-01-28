@@ -19,6 +19,56 @@ interface ExtractedData {
     ourEntity?: string | null;
     customerName?: string | null;
     status?: string | null;
+    // 合同元数据
+    version?: string | null;
+    governingLanguage?: string | null;
+    // 甲方详细信息
+    clientLegalRep?: string | null;
+    clientRegistrationNumber?: string | null;
+    clientBusinessLicense?: string | null;
+    clientAddress?: string | null;
+    clientContactPerson?: string | null;
+    clientPhone?: string | null;
+    clientEmail?: string | null;
+    clientFax?: string | null;
+    clientBankName?: string | null;
+    clientBankAccount?: string | null;
+    clientAccountName?: string | null;
+    // 乙方详细信息
+    vendorLegalRep?: string | null;
+    vendorRegistrationNumber?: string | null;
+    vendorBusinessLicense?: string | null;
+    vendorAddress?: string | null;
+    vendorContactPerson?: string | null;
+    vendorPhone?: string | null;
+    vendorEmail?: string | null;
+    vendorFax?: string | null;
+    vendorBankName?: string | null;
+    vendorBankAccount?: string | null;
+    vendorAccountName?: string | null;
+    // 项目基本信息
+    projectName?: string | null;
+    projectOverview?: string | null;
+    // 项目时间信息
+    projectStartDate?: string | null;
+    projectEndDate?: string | null;
+    warrantyStartDate?: string | null;
+    warrantyPeriodMonths?: number | null;
+    // 财务信息
+    isTaxInclusive?: boolean | null;
+    pricingModel?: string | null;
+    // 验收信息
+    acceptanceMethod?: string | null;
+    acceptancePeriodDays?: number | null;
+    deemedAcceptanceRule?: string | null;
+    // 保密条款
+    confidentialityTermYears?: number | null;
+    confidentialityDefinition?: string | null;
+    confidentialityObligation?: string | null;
+    // 通用条款
+    governingLaw?: string | null;
+    disputeResolutionMethod?: string | null;
+    noticeRequirements?: string | null;
   } | null;
   financialInfo?: {
     amountWithTax?: string | null;
@@ -84,6 +134,53 @@ export function ContractUploadLLM({ onClose, onSuccess }: ContractUploadProps) {
     paymentTerms: '',
     salesPerson: '',
     industry: '',
+    signLocation: '',
+    copies: '',
+    // 合同元数据
+    version: '',
+    governingLanguage: '',
+    // 甲方详细信息
+    clientLegalRep: '',
+    clientRegistrationNumber: '',
+    clientBusinessLicense: '',
+    clientAddress: '',
+    clientContactPerson: '',
+    clientPhone: '',
+    clientEmail: '',
+    clientFax: '',
+    clientBankName: '',
+    clientBankAccount: '',
+    clientAccountName: '',
+    // 乙方详细信息
+    vendorLegalRep: '',
+    vendorRegistrationNumber: '',
+    vendorBusinessLicense: '',
+    vendorAddress: '',
+    vendorContactPerson: '',
+    vendorPhone: '',
+    vendorEmail: '',
+    vendorFax: '',
+    vendorBankName: '',
+    vendorBankAccount: '',
+    vendorAccountName: '',
+    // 项目基本信息
+    projectName: '',
+    projectOverview: '',
+    projectStartDate: '',
+    projectEndDate: '',
+    warrantyStartDate: '',
+    warrantyPeriodMonths: '',
+    isTaxInclusive: '',
+    pricingModel: '',
+    acceptanceMethod: '',
+    acceptancePeriodDays: '',
+    deemedAcceptanceRule: '',
+    confidentialityTermYears: '',
+    confidentialityDefinition: '',
+    confidentialityObligation: '',
+    governingLaw: '',
+    disputeResolutionMethod: '',
+    noticeRequirements: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -166,6 +263,53 @@ export function ContractUploadLLM({ onClose, onSuccess }: ContractUploadProps) {
           paymentTerms: extracted.financialInfo?.paymentTerms || '',
           salesPerson: extracted.otherInfo?.salesPerson || '',
           industry: extracted.otherInfo?.industry || '',
+          signLocation: extracted.otherInfo?.signLocation || '',
+          copies: extracted.otherInfo?.copies?.toString() || '',
+          // 合同元数据
+          version: extracted.basicInfo?.version || '',
+          governingLanguage: extracted.basicInfo?.governingLanguage || '',
+          // 甲方详细信息
+          clientLegalRep: extracted.basicInfo?.clientLegalRep || '',
+          clientRegistrationNumber: extracted.basicInfo?.clientRegistrationNumber || '',
+          clientBusinessLicense: extracted.basicInfo?.clientBusinessLicense || '',
+          clientAddress: extracted.basicInfo?.clientAddress || '',
+          clientContactPerson: extracted.basicInfo?.clientContactPerson || '',
+          clientPhone: extracted.basicInfo?.clientPhone || '',
+          clientEmail: extracted.basicInfo?.clientEmail || '',
+          clientFax: extracted.basicInfo?.clientFax || '',
+          clientBankName: extracted.basicInfo?.clientBankName || '',
+          clientBankAccount: extracted.basicInfo?.clientBankAccount || '',
+          clientAccountName: extracted.basicInfo?.clientAccountName || '',
+          // 乙方详细信息
+          vendorLegalRep: extracted.basicInfo?.vendorLegalRep || '',
+          vendorRegistrationNumber: extracted.basicInfo?.vendorRegistrationNumber || '',
+          vendorBusinessLicense: extracted.basicInfo?.vendorBusinessLicense || '',
+          vendorAddress: extracted.basicInfo?.vendorAddress || '',
+          vendorContactPerson: extracted.basicInfo?.vendorContactPerson || '',
+          vendorPhone: extracted.basicInfo?.vendorPhone || '',
+          vendorEmail: extracted.basicInfo?.vendorEmail || '',
+          vendorFax: extracted.basicInfo?.vendorFax || '',
+          vendorBankName: extracted.basicInfo?.vendorBankName || '',
+          vendorBankAccount: extracted.basicInfo?.vendorBankAccount || '',
+          vendorAccountName: extracted.basicInfo?.vendorAccountName || '',
+          // 项目基本信息
+          projectName: extracted.basicInfo?.projectName || '',
+          projectOverview: extracted.basicInfo?.projectOverview || '',
+          projectStartDate: extracted.basicInfo?.projectStartDate || '',
+          projectEndDate: extracted.basicInfo?.projectEndDate || '',
+          warrantyStartDate: extracted.basicInfo?.warrantyStartDate || '',
+          warrantyPeriodMonths: extracted.basicInfo?.warrantyPeriodMonths?.toString() || '',
+          isTaxInclusive: extracted.basicInfo?.isTaxInclusive?.toString() || '',
+          pricingModel: extracted.basicInfo?.pricingModel || '',
+          acceptanceMethod: extracted.basicInfo?.acceptanceMethod || '',
+          acceptancePeriodDays: extracted.basicInfo?.acceptancePeriodDays?.toString() || '',
+          deemedAcceptanceRule: extracted.basicInfo?.deemedAcceptanceRule || '',
+          confidentialityTermYears: extracted.basicInfo?.confidentialityTermYears?.toString() || '',
+          confidentialityDefinition: extracted.basicInfo?.confidentialityDefinition || '',
+          confidentialityObligation: extracted.basicInfo?.confidentialityObligation || '',
+          governingLaw: extracted.basicInfo?.governingLaw || '',
+          disputeResolutionMethod: extracted.basicInfo?.disputeResolutionMethod || '',
+          noticeRequirements: extracted.basicInfo?.noticeRequirements || '',
         });
 
         setStep('review');
@@ -253,10 +397,56 @@ export function ContractUploadLLM({ onClose, onSuccess }: ContractUploadProps) {
             paymentTerms: formData.paymentTerms || null,
             salesPerson: formData.salesPerson || null,
             industry: formData.industry || null,
+            signLocation: formData.signLocation || null,
+            copies: formData.copies ? parseInt(formData.copies) : null,
             status: 'DRAFT' as any,
             fileUrl: objectName,
             departmentId: user.department.id,
             uploadedById: user.id,
+            // 合同元数据
+            version: formData.version || null,
+            governingLanguage: formData.governingLanguage || null,
+            // 甲方详细信息
+            clientLegalRep: formData.clientLegalRep || null,
+            clientRegistrationNumber: formData.clientRegistrationNumber || null,
+            clientBusinessLicense: formData.clientBusinessLicense || null,
+            clientAddress: formData.clientAddress || null,
+            clientContactPerson: formData.clientContactPerson || null,
+            clientPhone: formData.clientPhone || null,
+            clientEmail: formData.clientEmail || null,
+            clientFax: formData.clientFax || null,
+            clientBankName: formData.clientBankName || null,
+            clientBankAccount: formData.clientBankAccount || null,
+            clientAccountName: formData.clientAccountName || null,
+            // 乙方详细信息
+            vendorLegalRep: formData.vendorLegalRep || null,
+            vendorRegistrationNumber: formData.vendorRegistrationNumber || null,
+            vendorBusinessLicense: formData.vendorBusinessLicense || null,
+            vendorAddress: formData.vendorAddress || null,
+            vendorContactPerson: formData.vendorContactPerson || null,
+            vendorPhone: formData.vendorPhone || null,
+            vendorEmail: formData.vendorEmail || null,
+            vendorFax: formData.vendorFax || null,
+            vendorBankName: formData.vendorBankName || null,
+            vendorBankAccount: formData.vendorBankAccount || null,
+            vendorAccountName: formData.vendorAccountName || null,
+            basicInfo: {
+              projectName: formData.projectName || null,
+              projectOverview: formData.projectOverview || null,
+              projectStartDate: formData.projectStartDate || null,
+              projectEndDate: formData.projectEndDate || null,
+              warrantyStartDate: formData.warrantyStartDate || null,
+              warrantyPeriodMonths: formData.warrantyPeriodMonths ? parseInt(formData.warrantyPeriodMonths) : null,
+              acceptanceMethod: formData.acceptanceMethod || null,
+              acceptancePeriodDays: formData.acceptancePeriodDays ? parseInt(formData.acceptancePeriodDays) : null,
+              deemedAcceptanceRule: formData.deemedAcceptanceRule || null,
+              confidentialityTermYears: formData.confidentialityTermYears ? parseInt(formData.confidentialityTermYears) : null,
+              confidentialityDefinition: formData.confidentialityDefinition || null,
+              confidentialityObligation: formData.confidentialityObligation || null,
+              governingLaw: formData.governingLaw || null,
+              disputeResolutionMethod: formData.disputeResolutionMethod || null,
+              noticeRequirements: formData.noticeRequirements || null,
+            },
           },
           forceUpdate,
           operatorId: user.id,

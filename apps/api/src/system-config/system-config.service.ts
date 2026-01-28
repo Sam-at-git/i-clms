@@ -17,53 +17,25 @@ import {
 import { LlmConfigService } from '../llm-parser/config/llm-config.service';
 import { RAGService } from '../rag/rag.service';
 import { EMBEDDING_MODELS, EmbeddingProvider } from '../rag/dto/embedding-config.dto';
-
-// 配置键常量
-const CONFIG_KEYS = {
-  LLM_PROVIDER: 'llm.provider',
-  LLM_MODEL: 'llm.model',
-  LLM_BASE_URL: 'llm.baseUrl',
-  LLM_API_KEY: 'llm.apiKey',
-  LLM_TEMPERATURE: 'llm.temperature',
-  LLM_MAX_TOKENS: 'llm.maxTokens',
-  LLM_TIMEOUT: 'llm.timeout',
-  EMBEDDING_PROVIDER: 'embedding.provider',
-  EMBEDDING_MODEL: 'embedding.model',
-  EMBEDDING_BASE_URL: 'embedding.baseUrl',
-  EMBEDDING_API_KEY: 'embedding.apiKey',
-  EMBEDDING_DIMENSIONS: 'embedding.dimensions',
-  OCR_ENGINE: 'ocr.engine',
-  SMTP_ENABLED: 'smtp.enabled',
-  SMTP_HOST: 'smtp.host',
-  SMTP_PORT: 'smtp.port',
-  SMTP_USER: 'smtp.user',
-  SMTP_SECURE: 'smtp.secure',
-  MINIO_ENDPOINT: 'minio.endpoint',
-  MINIO_PORT: 'minio.port',
-  MINIO_BUCKET: 'minio.bucket',
-};
-
-// 默认配置值
-const DEFAULT_CONFIG = {
-  llmProvider: 'ollama',
-  llmModel: 'gemma3:27b',
-  llmBaseUrl: '',
-  llmApiKey: '',
-  llmTemperature: 0.1,
-  llmMaxTokens: 4000,
-  llmTimeout: 120000,
-  embeddingProvider: 'ollama',
-  embeddingModel: 'nomic-embed-text',
-  embeddingBaseUrl: '',
-  embeddingApiKey: '',
-  embeddingDimensions: 768,
-  ocrEngine: 'rapidocr' as 'rapidocr' | 'easyocr' | 'tesseract',
-  smtpEnabled: false,
-  smtpSecure: false,
-  minioEndpoint: 'localhost',
-  minioPort: 9000,
-  minioBucket: 'contracts',
-};
+import {
+  CONFIG_KEYS,
+  LLM_CONFIG_KEYS,
+  EMBEDDING_CONFIG_KEYS,
+  OCR_CONFIG_KEYS,
+  SMTP_CONFIG_KEYS,
+  MINIO_CONFIG_KEYS,
+  PROVIDER_DEFAULTS,
+  DEFAULT_EMBEDDING_CONFIG,
+  DEFAULT_OCR_CONFIG,
+  DEFAULT_SMTP_MINIO_CONFIG,
+  DEFAULT_LLM_PARAMS,
+  ENV_VARS,
+  normalizeOllamaBaseUrl,
+  cleanBaseUrl,
+  getConfigDescription,
+  isEmpty,
+  LlmConfig as RuntimeLlmConfig,
+} from '../llm-config.constants';
 
 @Injectable()
 export class SystemConfigService {
@@ -96,42 +68,84 @@ export class SystemConfigService {
 
   /**
    * 从环境变量获取配置值
+   * 使用统一的环境变量映射逻辑
    */
   private getEnvValue(key: string): string | null {
     switch (key) {
-      case CONFIG_KEYS.LLM_PROVIDER:
-        return this.configService.get<string>('ACTIVE_LLM_PROVIDER') || DEFAULT_CONFIG.llmProvider;
-      case CONFIG_KEYS.LLM_MODEL:
-        return this.configService.get<string>('OLLAMA_MODEL') || DEFAULT_CONFIG.llmModel;
-      case CONFIG_KEYS.LLM_BASE_URL:
-        return this.configService.get<string>('LLM_BASE_URL') || '';
-      case CONFIG_KEYS.LLM_API_KEY:
-        return this.configService.get<string>('OPENAI_API_KEY') || '';
-      case CONFIG_KEYS.LLM_TEMPERATURE:
-        return String(this.configService.get<number>('LLM_TEMPERATURE', DEFAULT_CONFIG.llmTemperature));
-      case CONFIG_KEYS.LLM_MAX_TOKENS:
-        return String(this.configService.get<number>('LLM_MAX_TOKENS', DEFAULT_CONFIG.llmMaxTokens));
-      case CONFIG_KEYS.LLM_TIMEOUT:
-        return String(this.configService.get<number>('LLM_TIMEOUT', DEFAULT_CONFIG.llmTimeout));
-      case CONFIG_KEYS.SMTP_ENABLED:
-        return String(this.configService.get<boolean>('SMTP_ENABLED', DEFAULT_CONFIG.smtpEnabled));
-      case CONFIG_KEYS.SMTP_HOST:
-        return this.configService.get<string>('SMTP_HOST') || '';
-      case CONFIG_KEYS.SMTP_PORT:
-        return String(this.configService.get<number>('SMTP_PORT') || 587);
-      case CONFIG_KEYS.SMTP_USER:
-        return this.configService.get<string>('SMTP_USER') || '';
-      case CONFIG_KEYS.SMTP_SECURE:
-        return String(this.configService.get<boolean>('SMTP_SECURE', DEFAULT_CONFIG.smtpSecure));
-      case CONFIG_KEYS.MINIO_ENDPOINT:
-        return this.configService.get<string>('MINIO_ENDPOINT') || DEFAULT_CONFIG.minioEndpoint;
-      case CONFIG_KEYS.MINIO_PORT:
-        return String(this.configService.get<number>('MINIO_PORT') || DEFAULT_CONFIG.minioPort);
-      case CONFIG_KEYS.MINIO_BUCKET:
-        return this.configService.get<string>('MINIO_BUCKET') || DEFAULT_CONFIG.minioBucket;
+      // LLM 配置
+      case LLM_CONFIG_KEYS.PROVIDER:
+        return this.configService.get<string>(ENV_VARS.ACTIVE_LLM_PROVIDER) || 'ollama';
+
+      case LLM_CONFIG_KEYS.MODEL:
+        return (
+          this.getNonEmptyEnvVar(ENV_VARS.OLLAMA_MODEL) ||
+          this.getNonEmptyEnvVar(ENV_VARS.OPENAI_MODEL) ||
+          PROVIDER_DEFAULTS.ollama.model
+        );
+
+      case LLM_CONFIG_KEYS.BASE_URL:
+        return (
+          this.getNonEmptyEnvVar(ENV_VARS.OLLAMA_BASE_URL) ||
+          this.getNonEmptyEnvVar(ENV_VARS.OPENAI_BASE_URL) ||
+          this.getNonEmptyEnvVar(ENV_VARS.LLM_BASE_URL) ||
+          ''
+        );
+
+      case LLM_CONFIG_KEYS.API_KEY:
+        return this.getNonEmptyEnvVar(ENV_VARS.OPENAI_API_KEY) || '';
+
+      case LLM_CONFIG_KEYS.TEMPERATURE:
+        return String(this.configService.get<number>(ENV_VARS.LLM_TEMPERATURE, DEFAULT_LLM_PARAMS.temperature));
+
+      case LLM_CONFIG_KEYS.MAX_TOKENS:
+        return String(this.configService.get<number>(ENV_VARS.LLM_MAX_TOKENS, DEFAULT_LLM_PARAMS.maxTokens));
+
+      case LLM_CONFIG_KEYS.TIMEOUT:
+        return String(this.configService.get<number>(ENV_VARS.LLM_TIMEOUT, DEFAULT_LLM_PARAMS.timeout));
+
+      // SMTP 配置
+      case SMTP_CONFIG_KEYS.ENABLED:
+        return String(this.configService.get<boolean>(ENV_VARS.SMTP_ENABLED, DEFAULT_SMTP_MINIO_CONFIG.smtpEnabled));
+      case SMTP_CONFIG_KEYS.HOST:
+        return this.configService.get<string>(ENV_VARS.SMTP_HOST) || '';
+      case SMTP_CONFIG_KEYS.PORT:
+        return String(this.configService.get<number>(ENV_VARS.SMTP_PORT) || 587);
+      case SMTP_CONFIG_KEYS.USER:
+        return this.configService.get<string>(ENV_VARS.SMTP_USER) || '';
+      case SMTP_CONFIG_KEYS.SECURE:
+        return String(this.configService.get<boolean>(ENV_VARS.SMTP_SECURE, DEFAULT_SMTP_MINIO_CONFIG.smtpSecure));
+
+      // MinIO 配置
+      case MINIO_CONFIG_KEYS.ENDPOINT:
+        return this.configService.get<string>(ENV_VARS.MINIO_ENDPOINT) || DEFAULT_SMTP_MINIO_CONFIG.minioEndpoint;
+      case MINIO_CONFIG_KEYS.PORT:
+        return String(this.configService.get<number>(ENV_VARS.MINIO_PORT) || DEFAULT_SMTP_MINIO_CONFIG.minioPort);
+      case MINIO_CONFIG_KEYS.BUCKET:
+        return this.configService.get<string>(ENV_VARS.MINIO_BUCKET) || DEFAULT_SMTP_MINIO_CONFIG.minioBucket;
+
+      // Embedding 配置
+      case EMBEDDING_CONFIG_KEYS.PROVIDER:
+        return this.configService.get<string>(ENV_VARS.EMBEDDING_PROVIDER) || DEFAULT_EMBEDDING_CONFIG.provider;
+      case EMBEDDING_CONFIG_KEYS.MODEL:
+        return this.configService.get<string>(ENV_VARS.EMBEDDING_MODEL) || DEFAULT_EMBEDDING_CONFIG.model;
+      case EMBEDDING_CONFIG_KEYS.BASE_URL:
+        return this.configService.get<string>(ENV_VARS.EMBEDDING_BASE_URL) || DEFAULT_EMBEDDING_CONFIG.baseUrl;
+      case EMBEDDING_CONFIG_KEYS.API_KEY:
+        return this.configService.get<string>(ENV_VARS.EMBEDDING_API_KEY) || DEFAULT_EMBEDDING_CONFIG.apiKey;
+      case EMBEDDING_CONFIG_KEYS.DIMENSIONS:
+        return String(this.configService.get<number>(ENV_VARS.EMBEDDING_DIMENSIONS) || DEFAULT_EMBEDDING_CONFIG.dimensions);
+
       default:
         return null;
     }
+  }
+
+  /**
+   * 获取环境变量值，过滤空字符串
+   */
+  private getNonEmptyEnvVar(varName: string): string | null {
+    const value = this.configService.get<string>(varName);
+    return isEmpty(value) ? null : (value ?? null);
   }
 
   /**
@@ -158,9 +172,9 @@ export class SystemConfigService {
       },
     });
     // 敏感信息不记录日志
-    if (key === CONFIG_KEYS.LLM_API_KEY) {
+    if (key === LLM_CONFIG_KEYS.API_KEY) {
       this.logger.log(`Config saved: ${key}="***" (hidden)`);
-    } else if (key === CONFIG_KEYS.LLM_BASE_URL || key === CONFIG_KEYS.LLM_MODEL) {
+    } else if (key === LLM_CONFIG_KEYS.BASE_URL || key === LLM_CONFIG_KEYS.MODEL) {
       // 只记录部分信息
       const maskedValue = value.length > 50 ? value.substring(0, 50) + '...' : value;
       this.logger.log(`Config saved: ${key}="${maskedValue}"`);
@@ -181,26 +195,10 @@ export class SystemConfigService {
 
   /**
    * 获取配置描述
+   * 使用统一常量中的描述
    */
   private getConfigDescription(key: string): string {
-    const descriptions: Record<string, string> = {
-      [CONFIG_KEYS.LLM_PROVIDER]: 'LLM服务提供商 (openai/ollama)',
-      [CONFIG_KEYS.LLM_MODEL]: 'LLM模型名称',
-      [CONFIG_KEYS.LLM_BASE_URL]: 'LLM API Base URL',
-      [CONFIG_KEYS.LLM_API_KEY]: 'LLM API Key (密钥)',
-      [CONFIG_KEYS.LLM_TEMPERATURE]: 'LLM Temperature参数',
-      [CONFIG_KEYS.LLM_MAX_TOKENS]: 'LLM Max Tokens参数',
-      [CONFIG_KEYS.LLM_TIMEOUT]: 'LLM 请求超时时间(毫秒)',
-      [CONFIG_KEYS.SMTP_ENABLED]: '是否启用SMTP邮件服务',
-      [CONFIG_KEYS.SMTP_HOST]: 'SMTP服务器地址',
-      [CONFIG_KEYS.SMTP_PORT]: 'SMTP服务器端口',
-      [CONFIG_KEYS.SMTP_USER]: 'SMTP用户名',
-      [CONFIG_KEYS.SMTP_SECURE]: '是否使用SSL/TLS',
-      [CONFIG_KEYS.MINIO_ENDPOINT]: 'MinIO服务地址',
-      [CONFIG_KEYS.MINIO_PORT]: 'MinIO服务端口',
-      [CONFIG_KEYS.MINIO_BUCKET]: 'MinIO存储桶名称',
-    };
-    return descriptions[key] || '';
+    return getConfigDescription(key);
   }
 
   /**
@@ -224,26 +222,26 @@ export class SystemConfigService {
       minioPort,
       minioBucket,
     ] = await Promise.all([
-      this.getConfigValue(CONFIG_KEYS.LLM_PROVIDER),
-      this.getConfigValue(CONFIG_KEYS.LLM_MODEL),
-      this.getConfigValue(CONFIG_KEYS.LLM_BASE_URL),
-      this.getConfigValue(CONFIG_KEYS.LLM_API_KEY),
-      this.getConfigValue(CONFIG_KEYS.LLM_TEMPERATURE),
-      this.getConfigValue(CONFIG_KEYS.LLM_MAX_TOKENS),
-      this.getConfigValue(CONFIG_KEYS.LLM_TIMEOUT),
-      this.getConfigValue(CONFIG_KEYS.SMTP_ENABLED),
-      this.getConfigValue(CONFIG_KEYS.SMTP_HOST),
-      this.getConfigValue(CONFIG_KEYS.SMTP_PORT),
-      this.getConfigValue(CONFIG_KEYS.SMTP_USER),
-      this.getConfigValue(CONFIG_KEYS.SMTP_SECURE),
-      this.getConfigValue(CONFIG_KEYS.MINIO_ENDPOINT),
-      this.getConfigValue(CONFIG_KEYS.MINIO_PORT),
-      this.getConfigValue(CONFIG_KEYS.MINIO_BUCKET),
+      this.getConfigValue(LLM_CONFIG_KEYS.PROVIDER),
+      this.getConfigValue(LLM_CONFIG_KEYS.MODEL),
+      this.getConfigValue(LLM_CONFIG_KEYS.BASE_URL),
+      this.getConfigValue(LLM_CONFIG_KEYS.API_KEY),
+      this.getConfigValue(LLM_CONFIG_KEYS.TEMPERATURE),
+      this.getConfigValue(LLM_CONFIG_KEYS.MAX_TOKENS),
+      this.getConfigValue(LLM_CONFIG_KEYS.TIMEOUT),
+      this.getConfigValue(SMTP_CONFIG_KEYS.ENABLED),
+      this.getConfigValue(SMTP_CONFIG_KEYS.HOST),
+      this.getConfigValue(SMTP_CONFIG_KEYS.PORT),
+      this.getConfigValue(SMTP_CONFIG_KEYS.USER),
+      this.getConfigValue(SMTP_CONFIG_KEYS.SECURE),
+      this.getConfigValue(MINIO_CONFIG_KEYS.ENDPOINT),
+      this.getConfigValue(MINIO_CONFIG_KEYS.PORT),
+      this.getConfigValue(MINIO_CONFIG_KEYS.BUCKET),
     ]);
 
     return {
-      llmProvider: llmProvider || DEFAULT_CONFIG.llmProvider,
-      llmModel: llmModel || DEFAULT_CONFIG.llmModel,
+      llmProvider: llmProvider || DEFAULT_LLM_PARAMS.provider,
+      llmModel: llmModel || PROVIDER_DEFAULTS.ollama.model,
       llmBaseUrl: llmBaseUrl || undefined,
       llmApiKey: llmApiKey || undefined,
       llmTemperature: llmTemperature ? parseFloat(llmTemperature) : undefined,
@@ -254,9 +252,9 @@ export class SystemConfigService {
       smtpPort: smtpPort ? parseInt(smtpPort, 10) : undefined,
       smtpUser: smtpUser || undefined,
       smtpSecure: smtpSecure === 'true',
-      minioEndpoint: minioEndpoint || DEFAULT_CONFIG.minioEndpoint,
-      minioPort: minioPort ? parseInt(minioPort, 10) : DEFAULT_CONFIG.minioPort,
-      minioBucket: minioBucket || DEFAULT_CONFIG.minioBucket,
+      minioEndpoint: minioEndpoint || DEFAULT_SMTP_MINIO_CONFIG.minioEndpoint,
+      minioPort: minioPort ? parseInt(minioPort, 10) : DEFAULT_SMTP_MINIO_CONFIG.minioPort,
+      minioBucket: minioBucket || DEFAULT_SMTP_MINIO_CONFIG.minioBucket,
     };
   }
 
@@ -271,138 +269,61 @@ export class SystemConfigService {
 
     // 更新LLM配置
     if (input.llmProvider !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.LLM_PROVIDER,
-        input.llmProvider,
-        'llm',
-        userId,
-      );
+      await this.setConfigValue(LLM_CONFIG_KEYS.PROVIDER, input.llmProvider, 'llm', userId);
     }
     if (input.llmModel !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.LLM_MODEL,
-        input.llmModel,
-        'llm',
-        userId,
-      );
+      await this.setConfigValue(LLM_CONFIG_KEYS.MODEL, input.llmModel, 'llm', userId);
     }
     if (input.llmBaseUrl !== undefined) {
-      // 如果是空字符串，删除现有配置；否则保存新值
       if (input.llmBaseUrl === '') {
-        await this.deleteConfigValue(CONFIG_KEYS.LLM_BASE_URL);
+        await this.deleteConfigValue(LLM_CONFIG_KEYS.BASE_URL);
       } else {
-        await this.setConfigValue(
-          CONFIG_KEYS.LLM_BASE_URL,
-          input.llmBaseUrl,
-          'llm',
-          userId,
-        );
+        await this.setConfigValue(LLM_CONFIG_KEYS.BASE_URL, input.llmBaseUrl, 'llm', userId);
       }
     }
     if (input.llmApiKey !== undefined) {
-      // 如果是空字符串，删除现有配置；否则保存新值
       if (input.llmApiKey === '') {
-        await this.deleteConfigValue(CONFIG_KEYS.LLM_API_KEY);
+        await this.deleteConfigValue(LLM_CONFIG_KEYS.API_KEY);
       } else {
-        await this.setConfigValue(
-          CONFIG_KEYS.LLM_API_KEY,
-          input.llmApiKey,
-          'llm',
-          userId,
-        );
+        await this.setConfigValue(LLM_CONFIG_KEYS.API_KEY, input.llmApiKey, 'llm', userId);
       }
     }
     if (input.llmTemperature !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.LLM_TEMPERATURE,
-        String(input.llmTemperature),
-        'llm',
-        userId,
-      );
+      await this.setConfigValue(LLM_CONFIG_KEYS.TEMPERATURE, String(input.llmTemperature), 'llm', userId);
     }
     if (input.llmMaxTokens !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.LLM_MAX_TOKENS,
-        String(input.llmMaxTokens),
-        'llm',
-        userId,
-      );
+      await this.setConfigValue(LLM_CONFIG_KEYS.MAX_TOKENS, String(input.llmMaxTokens), 'llm', userId);
     }
     if (input.llmTimeout !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.LLM_TIMEOUT,
-        String(input.llmTimeout),
-        'llm',
-        userId,
-      );
+      await this.setConfigValue(LLM_CONFIG_KEYS.TIMEOUT, String(input.llmTimeout), 'llm', userId);
     }
 
     // 更新SMTP配置
     if (input.smtpEnabled !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.SMTP_ENABLED,
-        String(input.smtpEnabled),
-        'smtp',
-        userId,
-      );
+      await this.setConfigValue(SMTP_CONFIG_KEYS.ENABLED, String(input.smtpEnabled), 'smtp', userId);
     }
     if (input.smtpHost !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.SMTP_HOST,
-        input.smtpHost,
-        'smtp',
-        userId,
-      );
+      await this.setConfigValue(SMTP_CONFIG_KEYS.HOST, input.smtpHost, 'smtp', userId);
     }
     if (input.smtpPort !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.SMTP_PORT,
-        String(input.smtpPort),
-        'smtp',
-        userId,
-      );
+      await this.setConfigValue(SMTP_CONFIG_KEYS.PORT, String(input.smtpPort), 'smtp', userId);
     }
     if (input.smtpUser !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.SMTP_USER,
-        input.smtpUser,
-        'smtp',
-        userId,
-      );
+      await this.setConfigValue(SMTP_CONFIG_KEYS.USER, input.smtpUser, 'smtp', userId);
     }
     if (input.smtpSecure !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.SMTP_SECURE,
-        String(input.smtpSecure),
-        'smtp',
-        userId,
-      );
+      await this.setConfigValue(SMTP_CONFIG_KEYS.SECURE, String(input.smtpSecure), 'smtp', userId);
     }
 
     // 更新存储配置
     if (input.minioEndpoint !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.MINIO_ENDPOINT,
-        input.minioEndpoint,
-        'storage',
-        userId,
-      );
+      await this.setConfigValue(MINIO_CONFIG_KEYS.ENDPOINT, input.minioEndpoint, 'storage', userId);
     }
     if (input.minioPort !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.MINIO_PORT,
-        String(input.minioPort),
-        'storage',
-        userId,
-      );
+      await this.setConfigValue(MINIO_CONFIG_KEYS.PORT, String(input.minioPort), 'storage', userId);
     }
     if (input.minioBucket !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.MINIO_BUCKET,
-        input.minioBucket,
-        'storage',
-        userId,
-      );
+      await this.setConfigValue(MINIO_CONFIG_KEYS.BUCKET, input.minioBucket, 'storage', userId);
     }
 
     // 返回更新后的完整配置
@@ -436,7 +357,7 @@ export class SystemConfigService {
    * 测试SMTP连接
    */
   async testSmtpConnection(): Promise<boolean> {
-    const smtpEnabled = (await this.getConfigValue(CONFIG_KEYS.SMTP_ENABLED)) === 'true';
+    const smtpEnabled = (await this.getConfigValue(SMTP_CONFIG_KEYS.ENABLED)) === 'true';
     if (!smtpEnabled) {
       return false;
     }
@@ -482,8 +403,8 @@ export class SystemConfigService {
    */
   private async checkStorage(): Promise<{ healthy: boolean; message: string }> {
     try {
-      const endPoint = await this.getConfigValue(CONFIG_KEYS.MINIO_ENDPOINT) || 'localhost';
-      const port = parseInt((await this.getConfigValue(CONFIG_KEYS.MINIO_PORT)) || '9000', 10);
+      const endPoint = await this.getConfigValue(MINIO_CONFIG_KEYS.ENDPOINT) || 'localhost';
+      const port = parseInt((await this.getConfigValue(MINIO_CONFIG_KEYS.PORT)) || '9000', 10);
       const accessKey = this.configService.get<string>('MINIO_ACCESS_KEY') || 'minioadmin';
       const secretKey = this.configService.get<string>('MINIO_SECRET_KEY') || 'minioadmin123';
 
@@ -510,23 +431,23 @@ export class SystemConfigService {
   async getLLMConfig(): Promise<LLMConfig> {
     const [provider, model, baseUrl, apiKey, temperature, maxTokens, timeout] =
       await Promise.all([
-        this.getConfigValue(CONFIG_KEYS.LLM_PROVIDER),
-        this.getConfigValue(CONFIG_KEYS.LLM_MODEL),
-        this.getConfigValue(CONFIG_KEYS.LLM_BASE_URL),
-        this.getConfigValue(CONFIG_KEYS.LLM_API_KEY),
-        this.getConfigValue(CONFIG_KEYS.LLM_TEMPERATURE),
-        this.getConfigValue(CONFIG_KEYS.LLM_MAX_TOKENS),
-        this.getConfigValue(CONFIG_KEYS.LLM_TIMEOUT),
+        this.getConfigValue(LLM_CONFIG_KEYS.PROVIDER),
+        this.getConfigValue(LLM_CONFIG_KEYS.MODEL),
+        this.getConfigValue(LLM_CONFIG_KEYS.BASE_URL),
+        this.getConfigValue(LLM_CONFIG_KEYS.API_KEY),
+        this.getConfigValue(LLM_CONFIG_KEYS.TEMPERATURE),
+        this.getConfigValue(LLM_CONFIG_KEYS.MAX_TOKENS),
+        this.getConfigValue(LLM_CONFIG_KEYS.TIMEOUT),
       ]);
 
     return {
-      provider: provider || DEFAULT_CONFIG.llmProvider,
-      model: model || DEFAULT_CONFIG.llmModel,
+      provider: provider || DEFAULT_LLM_PARAMS.provider,
+      model: model || PROVIDER_DEFAULTS.ollama.model,
       baseUrl: baseUrl || undefined,
       apiKey: apiKey || undefined,
-      temperature: temperature ? parseFloat(temperature) : DEFAULT_CONFIG.llmTemperature,
-      maxTokens: maxTokens ? parseInt(maxTokens, 10) : DEFAULT_CONFIG.llmMaxTokens,
-      timeout: timeout ? parseInt(timeout, 10) : DEFAULT_CONFIG.llmTimeout,
+      temperature: temperature ? parseFloat(temperature) : DEFAULT_LLM_PARAMS.temperature,
+      maxTokens: maxTokens ? parseInt(maxTokens, 10) : DEFAULT_LLM_PARAMS.maxTokens,
+      timeout: timeout ? parseInt(timeout, 10) : DEFAULT_LLM_PARAMS.timeout,
     };
   }
 
@@ -535,19 +456,19 @@ export class SystemConfigService {
    */
   async getEmbeddingConfig(): Promise<EmbeddingConfig> {
     const [provider, model, baseUrl, apiKey, dimensions] = await Promise.all([
-      this.getConfigValue(CONFIG_KEYS.EMBEDDING_PROVIDER),
-      this.getConfigValue(CONFIG_KEYS.EMBEDDING_MODEL),
-      this.getConfigValue(CONFIG_KEYS.EMBEDDING_BASE_URL),
-      this.getConfigValue(CONFIG_KEYS.EMBEDDING_API_KEY),
-      this.getConfigValue(CONFIG_KEYS.EMBEDDING_DIMENSIONS),
+      this.getConfigValue(EMBEDDING_CONFIG_KEYS.PROVIDER),
+      this.getConfigValue(EMBEDDING_CONFIG_KEYS.MODEL),
+      this.getConfigValue(EMBEDDING_CONFIG_KEYS.BASE_URL),
+      this.getConfigValue(EMBEDDING_CONFIG_KEYS.API_KEY),
+      this.getConfigValue(EMBEDDING_CONFIG_KEYS.DIMENSIONS),
     ]);
 
     return {
-      provider: provider || DEFAULT_CONFIG.embeddingProvider,
-      model: model || DEFAULT_CONFIG.embeddingModel,
-      baseUrl: baseUrl || undefined,
+      provider: provider || DEFAULT_EMBEDDING_CONFIG.provider,
+      model: model || DEFAULT_EMBEDDING_CONFIG.model,
+      baseUrl: baseUrl || DEFAULT_EMBEDDING_CONFIG.baseUrl,
       apiKey: apiKey || undefined,
-      dimensions: dimensions ? parseInt(dimensions, 10) : DEFAULT_CONFIG.embeddingDimensions,
+      dimensions: dimensions ? parseInt(dimensions, 10) : DEFAULT_EMBEDDING_CONFIG.dimensions,
     };
   }
 
@@ -559,43 +480,33 @@ export class SystemConfigService {
     userId?: string,
   ): Promise<LLMConfig> {
     if (config.provider !== undefined) {
-      await this.setConfigValue(CONFIG_KEYS.LLM_PROVIDER, config.provider, 'llm', userId);
+      await this.setConfigValue(LLM_CONFIG_KEYS.PROVIDER, config.provider, 'llm', userId);
     }
     if (config.model !== undefined) {
-      await this.setConfigValue(CONFIG_KEYS.LLM_MODEL, config.model, 'llm', userId);
+      await this.setConfigValue(LLM_CONFIG_KEYS.MODEL, config.model, 'llm', userId);
     }
     if (config.baseUrl !== undefined) {
-      if (config.baseUrl === '') {
-        await this.deleteConfigValue(CONFIG_KEYS.LLM_BASE_URL);
+      if (!config.baseUrl) {
+        await this.deleteConfigValue(LLM_CONFIG_KEYS.BASE_URL);
       } else {
-        await this.setConfigValue(CONFIG_KEYS.LLM_BASE_URL, config.baseUrl, 'llm', userId);
+        await this.setConfigValue(LLM_CONFIG_KEYS.BASE_URL, config.baseUrl, 'llm', userId);
       }
     }
     if (config.apiKey !== undefined) {
-      if (config.apiKey === '') {
-        await this.deleteConfigValue(CONFIG_KEYS.LLM_API_KEY);
+      if (!config.apiKey) {
+        await this.deleteConfigValue(LLM_CONFIG_KEYS.API_KEY);
       } else {
-        await this.setConfigValue(CONFIG_KEYS.LLM_API_KEY, config.apiKey, 'llm', userId);
+        await this.setConfigValue(LLM_CONFIG_KEYS.API_KEY, config.apiKey, 'llm', userId);
       }
     }
     if (config.temperature !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.LLM_TEMPERATURE,
-        String(config.temperature),
-        'llm',
-        userId,
-      );
+      await this.setConfigValue(LLM_CONFIG_KEYS.TEMPERATURE, String(config.temperature), 'llm', userId);
     }
     if (config.maxTokens !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.LLM_MAX_TOKENS,
-        String(config.maxTokens),
-        'llm',
-        userId,
-      );
+      await this.setConfigValue(LLM_CONFIG_KEYS.MAX_TOKENS, String(config.maxTokens), 'llm', userId);
     }
     if (config.timeout !== undefined) {
-      await this.setConfigValue(CONFIG_KEYS.LLM_TIMEOUT, String(config.timeout), 'llm', userId);
+      await this.setConfigValue(LLM_CONFIG_KEYS.TIMEOUT, String(config.timeout), 'llm', userId);
     }
 
     return this.getLLMConfig();
@@ -609,32 +520,27 @@ export class SystemConfigService {
     userId?: string,
   ): Promise<EmbeddingConfig> {
     if (config.provider !== undefined) {
-      await this.setConfigValue(CONFIG_KEYS.EMBEDDING_PROVIDER, config.provider, 'embedding', userId);
+      await this.setConfigValue(EMBEDDING_CONFIG_KEYS.PROVIDER, config.provider, 'embedding', userId);
     }
     if (config.model !== undefined) {
-      await this.setConfigValue(CONFIG_KEYS.EMBEDDING_MODEL, config.model, 'embedding', userId);
+      await this.setConfigValue(EMBEDDING_CONFIG_KEYS.MODEL, config.model, 'embedding', userId);
     }
     if (config.baseUrl !== undefined) {
-      if (config.baseUrl === '') {
-        await this.deleteConfigValue(CONFIG_KEYS.EMBEDDING_BASE_URL);
+      if (!config.baseUrl) {
+        await this.deleteConfigValue(EMBEDDING_CONFIG_KEYS.BASE_URL);
       } else {
-        await this.setConfigValue(CONFIG_KEYS.EMBEDDING_BASE_URL, config.baseUrl, 'embedding', userId);
+        await this.setConfigValue(EMBEDDING_CONFIG_KEYS.BASE_URL, config.baseUrl, 'embedding', userId);
       }
     }
     if (config.apiKey !== undefined) {
-      if (config.apiKey === '') {
-        await this.deleteConfigValue(CONFIG_KEYS.EMBEDDING_API_KEY);
+      if (!config.apiKey) {
+        await this.deleteConfigValue(EMBEDDING_CONFIG_KEYS.API_KEY);
       } else {
-        await this.setConfigValue(CONFIG_KEYS.EMBEDDING_API_KEY, config.apiKey, 'embedding', userId);
+        await this.setConfigValue(EMBEDDING_CONFIG_KEYS.API_KEY, config.apiKey, 'embedding', userId);
       }
     }
     if (config.dimensions !== undefined) {
-      await this.setConfigValue(
-        CONFIG_KEYS.EMBEDDING_DIMENSIONS,
-        String(config.dimensions),
-        'embedding',
-        userId,
-      );
+      await this.setConfigValue(EMBEDDING_CONFIG_KEYS.DIMENSIONS, String(config.dimensions), 'embedding', userId);
     }
 
     return this.getEmbeddingConfig();
@@ -652,39 +558,59 @@ export class SystemConfigService {
   }): Promise<ModelTestResult> {
     const startTime = Date.now();
     try {
-      let activeConfig, providerName;
+      let activeConfig: RuntimeLlmConfig, providerName: string;
 
-      if (overrideConfig && overrideConfig.baseUrl && overrideConfig.model) {
+      // Check if we have override config with provider and model (baseUrl may be empty for OpenAI)
+      if (overrideConfig && overrideConfig.provider && overrideConfig.model) {
+        providerName = overrideConfig.provider;
+        const isOpenAI = providerName === 'openai';
+
+        // For OpenAI, apiKey is required
+        if (isOpenAI && !overrideConfig.apiKey) {
+          return {
+            success: false,
+            message: 'OpenAI requires an API Key',
+            latency: Date.now() - startTime,
+          };
+        }
+
         // Use override config for testing (from UI form values)
         activeConfig = {
-          baseUrl: overrideConfig.baseUrl,
+          baseUrl: overrideConfig.baseUrl || (isOpenAI ? 'https://api.openai.com/v1' : ''),
           model: overrideConfig.model,
-          apiKey: overrideConfig.apiKey || 'ollama',
+          apiKey: overrideConfig.apiKey || (isOpenAI ? '' : 'ollama'),
+          temperature: 0.1,
+          maxTokens: 100,
           timeout: 30000,
         };
-        providerName = overrideConfig.provider || 'ollama';
       } else {
         // Get config from database via LlmConfigService
-        activeConfig = this.llmConfigService?.getActiveConfig();
-        providerName = this.llmConfigService?.getProviderName();
-
-        if (!activeConfig || !providerName) {
+        if (!this.llmConfigService) {
           return {
             success: false,
             message: 'LLM config service not available',
             latency: Date.now() - startTime,
           };
         }
+        activeConfig = this.llmConfigService.getActiveConfig();
+        providerName = this.llmConfigService.getProviderName();
       }
 
-      // Normalize baseUrl (add /v1 suffix if needed)
-      const normalizedBaseUrl = this.normalizeBaseUrl(activeConfig.baseUrl);
+      // Normalize baseUrl (add /v1 suffix if needed for Ollama)
+      let normalizedBaseUrl = activeConfig.baseUrl;
+      if (providerName === 'ollama' && normalizedBaseUrl) {
+        normalizedBaseUrl = normalizeOllamaBaseUrl(normalizedBaseUrl);
+      } else if (normalizedBaseUrl) {
+        normalizedBaseUrl = cleanBaseUrl(normalizedBaseUrl);
+      }
+
+      this.logger.log(`[testLLMConnection] Testing: provider=${providerName}, model=${activeConfig.model}, baseUrl=${normalizedBaseUrl || '(default)'}, hasApiKey=${!!activeConfig.apiKey}`);
 
       // Create a test client with the config
       const client = new OpenAI({
-        baseURL: normalizedBaseUrl,
+        baseURL: normalizedBaseUrl || undefined,
         apiKey: activeConfig.apiKey || 'ollama',
-        timeout: Math.min(activeConfig.timeout, 30000), // Max 30s for test
+        timeout: Math.min(activeConfig.timeout || 30000, 30000), // Max 30s for test
       });
 
       // Make a simple test request
@@ -705,9 +631,10 @@ export class SystemConfigService {
     } catch (error) {
       const latency = Date.now() - startTime;
       const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[testLLMConnection] Failed: ${message}`);
       return {
         success: false,
-        message: `Connection failed: ${message}`,
+        message,
         latency,
       };
     }
@@ -725,7 +652,7 @@ export class SystemConfigService {
   }): Promise<ModelTestResult> {
     const startTime = Date.now();
     try {
-      let embeddingConfig;
+      let embeddingConfig: Partial<EmbeddingConfig>;
 
       if (overrideConfig && overrideConfig.provider && overrideConfig.model) {
         // Use override config for testing (from UI form values)
@@ -768,9 +695,12 @@ export class SystemConfigService {
         const modelConfig = {
           ...EMBEDDING_MODELS[modelKey],
           provider: embeddingConfig.provider as EmbeddingProvider,
-          baseUrl: embeddingConfig.baseUrl,
+          // Only override baseUrl if it has a value, otherwise use default from EMBEDDING_MODELS
+          baseUrl: embeddingConfig.baseUrl || EMBEDDING_MODELS[modelKey].baseUrl,
           apiKey: embeddingConfig.apiKey,
         };
+
+        this.logger.log(`[testEmbeddingConnection] Testing with config: provider=${modelConfig.provider}, model=${modelConfig.model}, baseUrl=${modelConfig.baseUrl}`);
 
         const connected = await this.ragService.testConnection(modelConfig);
 
@@ -799,33 +729,17 @@ export class SystemConfigService {
   }
 
   /**
-   * Normalize baseUrl by adding /v1 suffix if not present
-   * Ollama's OpenAI-compatible endpoint requires /v1 prefix
-   */
-  private normalizeBaseUrl(url: string): string {
-    if (!url) return url;
-    const trimmed = url.trim();
-    if (trimmed.endsWith('/v1') || trimmed.endsWith('/v1/')) {
-      return trimmed.replace(/\/$/, '');
-    }
-    if (trimmed.endsWith('/')) {
-      return trimmed + 'v1';
-    }
-    return trimmed + '/v1';
-  }
-
-  /**
    * Reset LLM config to defaults
    */
   async resetLLMConfig(userId?: string): Promise<LLMConfig> {
     const defaultConfig: LLMConfig = {
-      provider: DEFAULT_CONFIG.llmProvider,
-      model: DEFAULT_CONFIG.llmModel,
+      provider: 'ollama',
+      model: PROVIDER_DEFAULTS.ollama.model,
       baseUrl: undefined,
       apiKey: undefined,
-      temperature: DEFAULT_CONFIG.llmTemperature,
-      maxTokens: DEFAULT_CONFIG.llmMaxTokens,
-      timeout: DEFAULT_CONFIG.llmTimeout,
+      temperature: DEFAULT_LLM_PARAMS.temperature,
+      maxTokens: DEFAULT_LLM_PARAMS.maxTokens,
+      timeout: DEFAULT_LLM_PARAMS.timeout,
     };
 
     return this.saveLLMConfig(defaultConfig, userId);
@@ -836,11 +750,11 @@ export class SystemConfigService {
    */
   async resetEmbeddingConfig(userId?: string): Promise<EmbeddingConfig> {
     const defaultConfig: EmbeddingConfig = {
-      provider: DEFAULT_CONFIG.embeddingProvider,
-      model: DEFAULT_CONFIG.embeddingModel,
+      provider: DEFAULT_EMBEDDING_CONFIG.provider,
+      model: DEFAULT_EMBEDDING_CONFIG.model,
       baseUrl: undefined,
       apiKey: undefined,
-      dimensions: DEFAULT_CONFIG.embeddingDimensions,
+      dimensions: DEFAULT_EMBEDDING_CONFIG.dimensions,
     };
 
     return this.saveEmbeddingConfig(defaultConfig, userId);
@@ -850,10 +764,10 @@ export class SystemConfigService {
    * Get OCR configuration
    */
   async getOCRConfig(): Promise<OCRConfig> {
-    const engine = await this.getConfigValue(CONFIG_KEYS.OCR_ENGINE);
+    const engine = await this.getConfigValue(OCR_CONFIG_KEYS.ENGINE);
 
     return {
-      engine: (engine as OCRConfig['engine']) || DEFAULT_CONFIG.ocrEngine,
+      engine: (engine as OCRConfig['engine']) || DEFAULT_OCR_CONFIG.engine,
     };
   }
 
@@ -865,7 +779,7 @@ export class SystemConfigService {
     userId?: string,
   ): Promise<OCRConfig> {
     if (config.engine !== undefined) {
-      await this.setConfigValue(CONFIG_KEYS.OCR_ENGINE, config.engine, 'ocr', userId);
+      await this.setConfigValue(OCR_CONFIG_KEYS.ENGINE, config.engine, 'ocr', userId);
     }
 
     return this.getOCRConfig();
@@ -876,9 +790,156 @@ export class SystemConfigService {
    */
   async resetOCRConfig(userId?: string): Promise<OCRConfig> {
     const defaultConfig: OCRConfig = {
-      engine: DEFAULT_CONFIG.ocrEngine,
+      engine: DEFAULT_OCR_CONFIG.engine,
     };
 
     return this.saveOCRConfig(defaultConfig, userId);
+  }
+
+  /**
+   * Test Instructor compatibility with current LLM config
+   *
+   * This tests whether the current OpenAI-compatible API supports
+   * the Instructor library for structured output extraction.
+   *
+   * @param overrideConfig - Optional config to test with instead of database config
+   * @returns Test result with success status and message
+   */
+  async testInstructorSupport(overrideConfig?: {
+    provider?: string;
+    model?: string;
+    baseUrl?: string;
+    apiKey?: string;
+  }): Promise<ModelTestResult> {
+    const startTime = Date.now();
+
+    try {
+      // Dynamic import to avoid loading Instructor if not needed
+      const { default: Instructor } = await import('@instructor-ai/instructor');
+      const { z } = await import('zod');
+
+      let activeConfig: RuntimeLlmConfig, providerName: string;
+
+      if (overrideConfig && overrideConfig.provider && overrideConfig.model) {
+        providerName = overrideConfig.provider;
+        const isOpenAI = providerName === 'openai';
+
+        activeConfig = {
+          baseUrl: overrideConfig.baseUrl || (isOpenAI ? 'https://api.openai.com/v1' : ''),
+          model: overrideConfig.model,
+          apiKey: overrideConfig.apiKey || (isOpenAI ? '' : 'ollama'),
+          temperature: 0.1,
+          maxTokens: 100,
+          timeout: 30000,
+        };
+      } else {
+        if (!this.llmConfigService) {
+          return {
+            success: false,
+            message: 'LLM config service not available',
+            latency: Date.now() - startTime,
+          };
+        }
+        activeConfig = this.llmConfigService.getActiveConfig();
+        providerName = this.llmConfigService.getProviderName();
+      }
+
+      // Normalize baseUrl
+      let normalizedBaseUrl = activeConfig.baseUrl;
+      if (providerName === 'ollama' && normalizedBaseUrl) {
+        normalizedBaseUrl = normalizeOllamaBaseUrl(normalizedBaseUrl);
+      } else if (normalizedBaseUrl) {
+        normalizedBaseUrl = cleanBaseUrl(normalizedBaseUrl);
+      }
+
+      this.logger.log(
+        `[testInstructorSupport] Testing: provider=${providerName}, model=${activeConfig.model}`
+      );
+
+      // Create OpenAI client
+      const openaiClient = new OpenAI({
+        baseURL: normalizedBaseUrl || undefined,
+        apiKey: activeConfig.apiKey || 'ollama',
+        timeout: 30000,
+      });
+
+      // Create Instructor client
+      // Use TOOLS mode for OpenAI (more reliable), JSON mode for others
+      const mode = providerName === 'openai' ? 'TOOLS' : 'JSON';
+      const instructorClient = Instructor({
+        client: openaiClient,
+        mode,
+      });
+
+      // Test Schema
+      const TestSchema = z.object({
+        name: z.string().describe('提取的名称'),
+        value: z.number().describe('提取的数值'),
+      });
+
+      // Test extraction
+      const result = await instructorClient.chat.completions.create({
+        model: activeConfig.model,
+        temperature: 0.1,
+        max_tokens: 100,
+        messages: [
+          { role: 'system', content: '请从文本中提取产品名称和价格。' },
+          { role: 'user', content: '产品名称是"测试产品"，价格是99元。' },
+        ],
+        response_model: {
+          schema: TestSchema,
+          name: 'InstructorTest',
+        },
+        max_retries: 1,
+      });
+
+      const latency = Date.now() - startTime;
+
+      // Validate result
+      if (result && typeof result.name === 'string' && typeof result.value === 'number') {
+        // Save test result to config
+        await this.setConfigValue('llm.instructorSupported', 'true', 'llm');
+
+        return {
+          success: true,
+          message: `Instructor 兼容性测试通过 (mode: ${mode})。提取结果: name="${result.name}", value=${result.value}`,
+          latency,
+        };
+      } else {
+        await this.setConfigValue('llm.instructorSupported', 'false', 'llm');
+        return {
+          success: false,
+          message: '返回结果格式不符合预期',
+          latency,
+        };
+      }
+    } catch (error) {
+      const latency = Date.now() - startTime;
+      const message = error instanceof Error ? error.message : String(error);
+
+      // Save test failure to config
+      try {
+        await this.setConfigValue('llm.instructorSupported', 'false', 'llm');
+      } catch {
+        // Ignore save errors
+      }
+
+      this.logger.error(`[testInstructorSupport] Failed: ${message}`);
+      return {
+        success: false,
+        message: `Instructor 不兼容: ${message}`,
+        latency,
+      };
+    }
+  }
+
+  /**
+   * Check if Instructor is supported based on previous test result
+   *
+   * @returns true if Instructor is supported
+   */
+  async isInstructorSupported(): Promise<boolean> {
+    const value = await this.getConfigValue('llm.instructorSupported');
+    return value === 'true';
   }
 }

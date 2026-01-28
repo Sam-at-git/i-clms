@@ -143,7 +143,7 @@ describe('LLM Parser - Contact Fields Integration Test', () => {
 
       const result = await taskBasedParser.parseByTasks(
         testContractText,
-        undefined, // contractType - 让系统自动检测
+        'PROJECT_OUTSOURCING', // 项目外包
         [InfoType.BASIC_INFO], // 只执行 BASIC_INFO 任务
         'test-session-basic-info',
         '项目外包服务合同.md'
@@ -195,7 +195,7 @@ describe('LLM Parser - Contact Fields Integration Test', () => {
 
       const result = await taskBasedParser.parseByTasks(
         testContractText,
-        'PROJECT_OUTSOURCING', // 明确指定合同类型
+        'PROJECT_OUTSOURCING', // 项目外包
         undefined, // 使用合同类型对应的所有任务
         'test-session-full',
         '项目外包服务合同.md'

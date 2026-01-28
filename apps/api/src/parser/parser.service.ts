@@ -71,10 +71,16 @@ export class ParserService {
   }
 
   async parseDocument(objectName: string): Promise<ParseResult> {
+    this.logger.log(`========== 文档解析开始 ==========`);
+    this.logger.log(`文件名: ${objectName}`);
+
     try {
       // Determine mime type from extension
       const mimeType = this.getMimeTypeFromExtension(objectName);
+      this.logger.log(`MIME类型: ${mimeType || '(未识别)'}`);
+
       if (!mimeType) {
+        this.logger.error(`不支持的文件类型: ${objectName}`);
         return {
           success: false,
           error: `Unsupported file type for: ${objectName}`,
@@ -82,14 +88,29 @@ export class ParserService {
       }
 
       // Download file from storage
+      this.logger.log(`正在从存储服务下载文件...`);
       const buffer = await this.storageService.downloadFile(objectName);
+      this.logger.log(`文件下载完成, 大小: ${buffer.length} 字节`);
 
-      return this.parseBuffer(buffer, mimeType);
+      const result = await this.parseBuffer(buffer, mimeType);
+      this.logger.log(`========== 文档解析结束 ==========`);
+      this.logger.log(`解析结果: ${result.success ? '成功' : '失败'}`);
+      if (result.success) {
+        this.logger.log(`提取文本长度: ${result.text?.length || 0} 字符`);
+        this.logger.log(`页数: ${result.pageCount || '(未知)'}`);
+        this.logger.log(`提取字段数: ${Object.keys(result.extractedFields || {}).length}`);
+      } else {
+        this.logger.error(`解析失败原因: ${result.error}`);
+      }
+
+      return result;
     } catch (error) {
-      this.logger.error(`Failed to parse document: ${objectName}`, error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`文档解析异常: ${errorMsg}`, error instanceof Error ? error.stack : '');
+      this.logger.log(`========== 文档解析结束 ==========`);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMsg,
       };
     }
   }
@@ -192,17 +213,21 @@ export class ParserService {
    * Extract PDF with Docling (preferred) or fallback to pdf-parse
    */
   private async extractPdf(buffer: Buffer): Promise<{ text: string; pageCount: number; method: string }> {
+    this.logger.log(`[PDF提取] 开始, 文件大小: ${buffer.length} 字节`);
+
     // Method 1: Try Docling first
     if (this.doclingService.isAvailable()) {
-      this.logger.debug('Attempting PDF extraction with Docling...');
+      this.logger.log('[PDF提取] 尝试使用 Docling...');
       try {
         const tempFile = await this.saveToTempFile(buffer, 'pdf');
+        this.logger.log(`[PDF提取] 临时文件: ${tempFile}`);
         try {
           const result = await this.doclingService.convertToMarkdown(tempFile, {
             preserveHeaders: true,
             withTables: true,
           });
           if (result.success && result.markdown) {
+            this.logger.log(`[PDF提取] Docling 成功, 提取 ${result.markdown.length} 字符, ${result.pages} 页`);
             return {
               text: result.markdown,
               pageCount: result.pages,
@@ -210,21 +235,23 @@ export class ParserService {
             };
           }
           // Docling returned success=false, fall through to pdf-parse
-          this.logger.warn('Docling parsing returned no content, falling back to pdf-parse');
+          this.logger.warn('[PDF提取] Docling 返回空内容, 降级到 pdf-parse');
         } finally {
           await this.cleanupTempFile(tempFile);
         }
       } catch (error) {
-        this.logger.warn(`Docling extraction failed, falling back to pdf-parse: ${error}`);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`[PDF提取] Docling 失败: ${errorMsg}, 降级到 pdf-parse`);
         // Fall through to pdf-parse
       }
     } else {
-      this.logger.debug('Docling not available, using pdf-parse');
+      this.logger.log('[PDF提取] Docling 不可用, 使用 pdf-parse');
     }
 
     // Method 2: Fallback to pdf-parse
-    this.logger.debug('Attempting PDF extraction with pdf-parse...');
+    this.logger.log('[PDF提取] 尝试使用 pdf-parse...');
     const pdfResult = await this.pdfExtractor.extract(buffer);
+    this.logger.log(`[PDF提取] pdf-parse 成功, 提取 ${pdfResult.text.length} 字符, ${pdfResult.pageCount} 页`);
     return {
       text: pdfResult.text,
       pageCount: pdfResult.pageCount,
@@ -233,7 +260,13 @@ export class ParserService {
   }
 
   extractFields(text: string): ExtractedFields {
-    return this.fieldExtractor.extract(text);
+    this.logger.log(`[字段提取] 开始, 文本长度: ${text.length} 字符`);
+    const fields = this.fieldExtractor.extract(text);
+    const foundFields = Object.entries(fields)
+      .filter(([k, v]) => v !== null && v !== undefined && v !== '' && k !== 'rawMatches')
+      .map(([k]) => k);
+    this.logger.log(`[字段提取] 完成, 找到 ${foundFields.length} 个字段: ${foundFields.join(', ')}`);
+    return fields;
   }
 
   private getMimeTypeFromExtension(filename: string): string | null {

@@ -12,6 +12,9 @@ export interface SemanticChunk {
     articleNumber?: string; // 条款编号
     priority: number;      // 优先级（用于排序）
     fieldRelevance: string[]; // 相关字段
+    // Spec 41.3 新增字段
+    contractName?: string;     // 从第一个标题提取的合同名称
+    positionHint?: 'start' | 'middle' | 'end';  // 位置提示
   };
   position: {
     start: number;
@@ -48,6 +51,10 @@ export class SemanticChunkerService {
 
   // 默认最大chunk长度（字符数）
   private readonly DEFAULT_MAX_CHUNK_LENGTH = 1000;
+  // 二次分割时的重叠区域（字符数）
+  private readonly CHUNK_OVERLAP = 200;
+  // 短文档阈值：低于此值不分块
+  private readonly SINGLE_CALL_MAX_LENGTH = 3000;
 
   // 章节模式定义
   private readonly SECTION_PATTERNS: SemanticSegmentDetection[] = [
@@ -137,25 +144,79 @@ export class SemanticChunkerService {
    * @returns 语义分段的chunk数组
    */
   chunkBySemanticStructure(text: string, minChunkSize = 500, maxLength = this.DEFAULT_MAX_CHUNK_LENGTH): SemanticChunk[] {
-    this.logger.log(`[SemanticChunking] Starting: ${text.length} chars, maxLength: ${maxLength}`);
+    this.logger.log(`========== SemanticChunker 分块开始 ==========`);
+    this.logger.log(`文档长度: ${text.length} 字符`);
+    this.logger.log(`文档行数: ${text.split('\n').length} 行`);
+    this.logger.log(`最小分块大小: ${minChunkSize}`);
+    this.logger.log(`最大分块长度: ${maxLength}`);
+    this.logger.log(`短文档阈值: ${this.SINGLE_CALL_MAX_LENGTH} 字符`);
+
+    // Spec 41.3: 提取合同名称
+    const contractName = this.extractContractName(text);
+    if (contractName) {
+      this.logger.log(`提取的合同名称: ${contractName}`);
+    }
+
+    // 短文档不分块，直接返回单个chunk
+    if (text.length <= this.SINGLE_CALL_MAX_LENGTH) {
+      this.logger.log(`策略: SINGLE (文档长度 ${text.length} <= ${this.SINGLE_CALL_MAX_LENGTH}，不分块)`);
+      this.logger.log(`========== SemanticChunker 分块完成 ==========`);
+      return [{
+        id: 'chunk-0',
+        text: text,
+        metadata: {
+          type: 'other',
+          title: '完整文档',
+          priority: 50,
+          fieldRelevance: [],
+          contractName,  // Spec 41.3
+          positionHint: 'start',  // Spec 41.3: 单个chunk是开始
+        },
+        position: {
+          start: 0,
+          end: text.length,
+        },
+      }];
+    }
 
     // 尝试按章节结构分割（优先）
     const chapterChunks = this.chunkByChapterStructure(text);
+    this.logger.log(`章节识别结果: ${chapterChunks.length} 个章节`);
+
     if (chapterChunks.length > 1) {
-      this.logger.log(`[SemanticChunking] Using chapter-based splitting: ${chapterChunks.length} chapters`);
+      this.logger.log(`使用章节分割策略`);
+      chapterChunks.forEach((ch, i) => {
+        this.logger.log(`  章节 ${i + 1}: 标题="${ch.title || '(无)'}", 级别=${ch.level}, 长度=${ch.text.length}`);
+      });
 
       // 先添加元数据
-      let chunks = this.enrichChunksWithMetadata(chapterChunks);
+      let chunks = this.enrichChunksWithMetadata(chapterChunks, contractName, text.length);
 
       // 检查并分割过长的章节
+      const beforeSplit = chunks.length;
       chunks = this.splitLongChucks(chunks, maxLength);
+      this.logger.log(`长章节分割: ${beforeSplit} → ${chunks.length} 个分块`);
+
+      this.logger.log(`========== SemanticChunker 分块完成 ==========`);
+      this.logger.log(`最终分块数: ${chunks.length}`);
+      chunks.forEach((ch, i) => {
+        this.logger.log(`  [${ch.id}] 类型=${ch.metadata.type}, 长度=${ch.text.length}, 优先级=${ch.metadata.priority}`);
+      });
 
       return chunks;
     }
 
     // 如果没有识别出章节，回退到按合同结构分割
-    this.logger.log(`[SemanticChunking] No chapters found, using structure-based splitting`);
-    return this.chunkByContractStructure(text, minChunkSize, maxLength);
+    this.logger.log(`未识别出章节，使用合同结构分割策略`);
+    const structureChunks = this.chunkByContractStructure(text, minChunkSize, maxLength, contractName);
+
+    this.logger.log(`========== SemanticChunker 分块完成 ==========`);
+    this.logger.log(`最终分块数: ${structureChunks.length}`);
+    structureChunks.forEach((ch, i) => {
+      this.logger.log(`  [${ch.id}] 类型=${ch.metadata.type}, 长度=${ch.text.length}, 优先级=${ch.metadata.priority}`);
+    });
+
+    return structureChunks;
   }
 
   /**
@@ -220,11 +281,23 @@ export class SemanticChunkerService {
    * 为章节chunks添加语义元数据
    */
   private enrichChunksWithMetadata(
-    chapters: Array<{ text: string; title?: string; level: number }>
+    chapters: Array<{ text: string; title?: string; level: number }>,
+    contractName?: string,
+    fullTextLength?: number
   ): SemanticChunk[] {
+    // 计算累积位置以确定positionHint
+    let currentPosition = 0;
+
     return chapters.map((chapter, index) => {
       // 根据标题和内容推断语义类型
       const detected = this.inferChunkType(chapter.title || '', chapter.text);
+
+      const chunkStart = currentPosition;
+      const chunkEnd = currentPosition + chapter.text.length;
+      currentPosition = chunkEnd;
+
+      // Spec 41.3: 计算位置提示
+      const positionHint = this.calculatePositionHint(chunkStart, fullTextLength || 0);
 
       return {
         id: `chunk-${index}`,
@@ -234,10 +307,12 @@ export class SemanticChunkerService {
           title: chapter.title,
           priority: detected.priority,
           fieldRelevance: detected.fieldRelevance,
+          contractName,  // Spec 41.3: 所有chunk共享同一个合同名称
+          positionHint,  // Spec 41.3: 位置提示
         },
         position: {
-          start: 0,
-          end: chapter.text.length,
+          start: chunkStart,
+          end: chunkEnd,
         },
       };
     });
@@ -308,7 +383,12 @@ export class SemanticChunkerService {
   /**
    * 按合同结构切分（回退方案，当无法识别章节时使用）
    */
-  private chunkByContractStructure(text: string, minChunkSize: number, maxLength = this.DEFAULT_MAX_CHUNK_LENGTH): SemanticChunk[] {
+  private chunkByContractStructure(
+    text: string,
+    minChunkSize: number,
+    maxLength = this.DEFAULT_MAX_CHUNK_LENGTH,
+    contractName?: string
+  ): SemanticChunk[] {
     this.logger.log(`[SemanticChunking] Using contract structure splitting`);
 
     const chunks: SemanticChunk[] = [];
@@ -369,6 +449,8 @@ export class SemanticChunkerService {
             articleNumber: currentArticleNumber,
             priority: detection.priority,
             fieldRelevance: detection.fieldRelevance,
+            contractName,  // Spec 41.3
+            positionHint: this.calculatePositionHint(lineStart, text.length),  // Spec 41.3
           },
           position: {
             start: lineStart,
@@ -495,6 +577,8 @@ export class SemanticChunkerService {
         articleNumber: chunk.metadata?.articleNumber,
         priority: chunk.metadata?.priority || 0,
         fieldRelevance: chunk.metadata?.fieldRelevance || [],
+        contractName: chunk.metadata?.contractName,  // Spec 41.3
+        positionHint: chunk.metadata?.positionHint,  // Spec 41.3
       },
       position: {
         start: chunk.position?.start || 0,
@@ -555,6 +639,7 @@ export class SemanticChunkerService {
    */
   private splitLongChucks(chunks: SemanticChunk[], maxLength: number): SemanticChunk[] {
     const result: SemanticChunk[] = [];
+    let totalSplit = 0;
 
     for (const chunk of chunks) {
       if (chunk.text.length <= maxLength) {
@@ -563,10 +648,19 @@ export class SemanticChunkerService {
       }
 
       // Chunk过长，需要分割
-      this.logger.debug(`[SemanticChunking] Splitting long chunk ${chunk.id}: ${chunk.text.length} chars > ${maxLength}`);
+      this.logger.log(`[长分块分割] ${chunk.id}: ${chunk.text.length} 字符 > ${maxLength} (类型=${chunk.metadata.type})`);
 
       const subChunks = this.splitLongChunk(chunk, maxLength);
+      this.logger.log(`  → 分割为 ${subChunks.length} 个子分块`);
+      subChunks.forEach((sc, i) => {
+        this.logger.log(`    子分块 ${i + 1}: ${sc.text.length} 字符`);
+      });
       result.push(...subChunks);
+      totalSplit++;
+    }
+
+    if (totalSplit > 0) {
+      this.logger.log(`[长分块分割] 共处理 ${totalSplit} 个过长分块，最终 ${result.length} 个分块`);
     }
 
     // 更新chunk ID
@@ -690,6 +784,7 @@ export class SemanticChunkerService {
 
     let currentText = '';
     let currentIndex = 0;
+    let overlapText = ''; // 用于存储重叠文本
 
     for (const para of paragraphs) {
       const trimmedPara = para.trim();
@@ -700,8 +795,16 @@ export class SemanticChunkerService {
       if (currentText && potentialLength > maxLength) {
         // 当前段落已满，保存并开始新的
         chunks.push(this.createSubChunk(currentText, {}, currentIndex, currentIndex + currentText.length, chunks.length));
-        currentIndex += currentText.length + 2;
-        currentText = trimmedPara;
+
+        // 计算重叠区域：取当前文本末尾的 CHUNK_OVERLAP 字符
+        if (currentText.length > this.CHUNK_OVERLAP) {
+          overlapText = currentText.substring(currentText.length - this.CHUNK_OVERLAP);
+        } else {
+          overlapText = currentText;
+        }
+
+        currentIndex += currentText.length - overlapText.length;
+        currentText = overlapText + '\n\n' + trimmedPara;
       } else {
         // 继续累积
         currentText = currentText ? `${currentText}\n\n${trimmedPara}` : trimmedPara;
@@ -712,6 +815,8 @@ export class SemanticChunkerService {
     if (currentText) {
       chunks.push(this.createSubChunk(currentText, {}, currentIndex, currentIndex + currentText.length, chunks.length));
     }
+
+    this.logger.log(`[splitByParagraphs] 分割为 ${chunks.length} 个段落分块，重叠区域: ${this.CHUNK_OVERLAP} 字符`);
 
     return chunks;
   }
@@ -742,12 +847,85 @@ export class SemanticChunkerService {
         articleNumber: parentMetadata.articleNumber,
         priority: parentMetadata.priority || 50,
         fieldRelevance: parentMetadata.fieldRelevance || [],
+        contractName: parentMetadata.contractName,  // Spec 41.3: 继承合同名称
+        positionHint: parentMetadata.positionHint,  // Spec 41.3: 继承位置提示
       },
       position: {
         start,
         end,
       },
     };
+  }
+
+  /**
+   * Spec 41.3: 提取合同名称
+   *
+   * 从合同文本中提取合同名称，按优先级尝试：
+   * 1. 第一个一级标题（# 标题）
+   * 2. 第一个二级标题（## 标题）
+   * 3. 包含"合同"、"协议"等关键词的行
+   *
+   * @param text 合同全文
+   * @returns 合同名称（可能为undefined）
+   */
+  private extractContractName(text: string): string | undefined {
+    const lines = text.split('\n');
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      // 检查Markdown标题格式
+      const headerMatch = trimmed.match(/^#{1,2}\s+(.+)$/);
+      if (headerMatch) {
+        const title = headerMatch[1].trim();
+        // 过滤掉过于通用的标题
+        if (title && title.length > 3 && title.length < 100 &&
+!['合同当事人', '甲乙双方', '双方信息', '第一条', '签署信息'].includes(title)
+) {
+          return title;
+        }
+      }
+
+      // 检查包含合同/协议关键词的行（但排除具体的条款行）
+      if (trimmed.includes('合同名称') || trimmed.includes('项目名称')) {
+        const match = trimmed.match(/[:：]\s*(.+)$/);
+        if (match) {
+          const name = match[1].trim();
+          if (name && name.length > 3 && name.length < 100) {
+            return name;
+          }
+        }
+      }
+
+      // 只检查前30行
+      if (lines.indexOf(line) > 30) {
+        break;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Spec 41.3: 计算位置提示
+   *
+   * 根据chunk在文档中的位置返回位置提示
+   * - start: 前30%的位置
+   * - middle: 30%-70%的位置
+   * - end: 后30%的位置
+   *
+   * @param chunkStart chunk起始位置
+   * @param fullTextLength 全文长度
+   * @returns 位置提示
+   */
+  private calculatePositionHint(chunkStart: number, fullTextLength: number): 'start' | 'middle' | 'end' {
+    if (fullTextLength === 0) return 'start';
+
+    const relativePosition = chunkStart / fullTextLength;
+
+    if (relativePosition < 0.3) return 'start';
+    if (relativePosition > 0.7) return 'end';
+    return 'middle';
   }
 
   /**
@@ -797,7 +975,10 @@ export class SemanticChunkerService {
   getChunksSummary(chunks: SemanticChunk[]): string {
     return chunks.map(c =>
       `[${c.id}] ${c.metadata.type}${c.metadata.title ? `: ${c.metadata.title}` : ''} ` +
-      `(${c.text.length} chars, priority=${c.metadata.priority})`
+      `(${c.text.length} chars, priority=${c.metadata.priority}` +
+      `${c.metadata.contractName ? `, contract=${c.metadata.contractName}` : ''}` +
+      `${c.metadata.positionHint ? `, position=${c.metadata.positionHint}` : ''}` +
+      `)`
     ).join('\n');
   }
 
@@ -824,6 +1005,8 @@ export class SemanticChunkerService {
           articleNumber: chunk.metadata.articleNumber,
           priority: chunk.metadata.priority,
           fieldRelevance: chunk.metadata.fieldRelevance,
+          contractName: chunk.metadata.contractName,  // Spec 41.3
+          positionHint: chunk.metadata.positionHint,  // Spec 41.3
           length: chunk.text.length,
           startIndex: chunk.position.start,
           endIndex: chunk.position.end,

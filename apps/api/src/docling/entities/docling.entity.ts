@@ -43,6 +43,9 @@ export class DoclingConvertResult {
 
   @Field(() => String, { nullable: true })
   error?: string;
+
+  @Field(() => Boolean, { nullable: true, description: '结果是否来自缓存' })
+  fromCache?: boolean;
 }
 
 @ObjectType('DoclingExtractResult')

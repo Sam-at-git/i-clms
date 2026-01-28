@@ -20,12 +20,12 @@ export class OllamaEmbeddingClient implements EmbeddingClient {
   constructor(config: EmbeddingModelConfig, configService: ConfigService) {
     // Normalize baseUrl: remove /v1 suffix since OllamaEmbeddingClient uses native API (/api/*)
     // The /v1 suffix is needed for OpenAI-compatible endpoints, but not for native Ollama API
-    this.baseUrl = this.normalizeBaseUrl(
-      config.baseUrl || configService.get('OLLAMA_EMBEDDING_BASE_URL') || 'http://localhost:11434',
-    );
+    const rawBaseUrl = config.baseUrl || configService.get('OLLAMA_EMBEDDING_BASE_URL') || 'http://localhost:11434';
+    this.baseUrl = this.normalizeBaseUrl(rawBaseUrl);
     this.model = config.model;
     this.dimensions = config.dimensions;
     this.timeout = configService.get('LLM_TIMEOUT') || 120000;
+    this.logger.log(`[OllamaEmbeddingClient] Initialized with baseUrl=${this.baseUrl} (raw: ${rawBaseUrl}), model=${this.model}, dimensions=${this.dimensions}`);
   }
 
   /**
@@ -108,6 +108,8 @@ export class OllamaEmbeddingClient implements EmbeddingClient {
    */
   async testConnection(): Promise<boolean> {
     try {
+      this.logger.log(`[testConnection] Testing connection to ${this.baseUrl}/api/tags for model ${this.model}`);
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -118,6 +120,7 @@ export class OllamaEmbeddingClient implements EmbeddingClient {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        this.logger.warn(`[testConnection] Ollama API returned ${response.status} ${response.statusText}`);
         return false;
       }
 
@@ -125,11 +128,19 @@ export class OllamaEmbeddingClient implements EmbeddingClient {
 
       // Check if model exists
       if (data.models) {
-        return data.models.some(m => m.name.includes(this.model));
+        const modelNames = data.models.map(m => m.name);
+        const found = data.models.some(m => m.name.includes(this.model));
+        this.logger.log(`[testConnection] Models found: ${modelNames.length}. Looking for "${this.model}": ${found ? 'FOUND' : 'NOT FOUND'}`);
+        if (!found) {
+          this.logger.log(`[testConnection] Available models: ${modelNames.slice(0, 5).join(', ')}${modelNames.length > 5 ? '...' : ''}`);
+        }
+        return found;
       }
 
+      this.logger.warn(`[testConnection] No models list in response`);
       return true;
-    } catch {
+    } catch (error) {
+      this.logger.error(`[testConnection] Connection failed: ${this.errorMessage(error)}`);
       return false;
     }
   }

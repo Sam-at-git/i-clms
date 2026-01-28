@@ -64,6 +64,7 @@ export class ContractService {
               tag: true,
             },
           },
+          basicInfo: true,
         },
       }),
       this.prisma.contract.count({ where }),
@@ -115,6 +116,7 @@ export class ContractService {
             tag: true,
           },
         },
+        basicInfo: true,
       },
     });
 
@@ -153,6 +155,7 @@ export class ContractService {
             lineItems: true,
           },
         },
+        basicInfo: true,
       },
     });
 
@@ -191,8 +194,37 @@ export class ContractService {
         name: input.name,
         type: input.type,
         status: input.status || 'DRAFT',
+        // ==================== 合同元数据（扩展） ====================
+        version: input.version,
+        governingLanguage: input.governingLanguage || '中文',
+        // ==================== 签约方信息 ====================
         ourEntity: input.ourEntity,
         customerId: customerId,
+        // ==================== 甲方扩展信息（合同级别） ====================
+        clientLegalRep: input.clientLegalRep,
+        clientRegistrationNumber: input.clientRegistrationNumber,
+        clientBusinessLicense: input.clientBusinessLicense,
+        clientAddress: input.clientAddress,
+        clientContactPerson: input.clientContactPerson,
+        clientPhone: input.clientPhone,
+        clientEmail: input.clientEmail,
+        clientFax: input.clientFax,
+        clientBankName: input.clientBankName,
+        clientBankAccount: input.clientBankAccount,
+        clientAccountName: input.clientAccountName,
+        // ==================== 乙方信息 ====================
+        vendorLegalRep: input.vendorLegalRep,
+        vendorRegistrationNumber: input.vendorRegistrationNumber,
+        vendorBusinessLicense: input.vendorBusinessLicense,
+        vendorAddress: input.vendorAddress,
+        vendorContactPerson: input.vendorContactPerson,
+        vendorPhone: input.vendorPhone,
+        vendorEmail: input.vendorEmail,
+        vendorFax: input.vendorFax,
+        vendorBankName: input.vendorBankName,
+        vendorBankAccount: input.vendorBankAccount,
+        vendorAccountName: input.vendorAccountName,
+        // ==================== 财务条款 ====================
         amountWithTax: new Prisma.Decimal(input.amountWithTax),
         amountWithoutTax: input.amountWithoutTax
           ? new Prisma.Decimal(input.amountWithoutTax)
@@ -202,15 +234,22 @@ export class ContractService {
         taxAmount: input.taxAmount ? new Prisma.Decimal(input.taxAmount) : null,
         paymentMethod: input.paymentMethod,
         paymentTerms: input.paymentTerms,
+        // ==================== 财务条款（扩展） ====================
+        isTaxInclusive: input.isTaxInclusive ?? true,
+        pricingModel: input.pricingModel,
+        // ==================== 时间周期 ====================
         signedAt: input.signedAt,
         effectiveAt: input.effectiveAt,
         expiresAt: input.expiresAt,
         duration: input.duration,
+        // ==================== 物理属性 ====================
         fileUrl: input.fileUrl,
         fileType: input.fileType,
         departmentId: input.departmentId,
         salesPerson: input.salesPerson,
         industry: input.industry,
+        signLocation: input.signLocation,
+        copies: input.copies,
         uploadedById: input.uploadedById,
         parentContractId: input.parentContractId,
         markdownText: input.markdownText, // 保存markdown文本用于向量化
@@ -240,11 +279,15 @@ export class ContractService {
             lineItems: true,
           },
         },
+        basicInfo: true,
       },
     });
 
     // 创建类型特定详情（如果提供了数据）
     await this.createTypeSpecificDetails(contract.id, contract.type as ContractType, input);
+
+    // 创建基本信息详情（如果提供了数据）
+    await this.createContractBasicInfo(contract.id, input);
 
     // 重新查询以获取包含详情的完整数据
     const fullContract = await this.prisma.contract.findUnique({
@@ -274,6 +317,7 @@ export class ContractService {
             lineItems: true,
           },
         },
+        basicInfo: true,
       },
     });
 
@@ -436,6 +480,98 @@ export class ContractService {
     }
   }
 
+  /**
+   * 创建合同基本信息详情（项目、时间、验收、保密、条款等）
+   */
+  private async createContractBasicInfo(
+    contractId: string,
+    input: CreateContractInput
+  ): Promise<void> {
+    const basicInfoInput = input.basicInfo;
+    if (!basicInfoInput) return;
+
+    try {
+      await this.prisma.contractBasicInfo.create({
+        data: {
+          contractId,
+          projectName: basicInfoInput.projectName,
+          projectOverview: basicInfoInput.projectOverview,
+          projectStartDate: basicInfoInput.projectStartDate,
+          projectEndDate: basicInfoInput.projectEndDate,
+          warrantyStartDate: basicInfoInput.warrantyStartDate,
+          warrantyPeriodMonths: basicInfoInput.warrantyPeriodMonths ?? 12,
+          acceptanceMethod: basicInfoInput.acceptanceMethod,
+          acceptancePeriodDays: basicInfoInput.acceptancePeriodDays ?? 15,
+          deemedAcceptanceRule: basicInfoInput.deemedAcceptanceRule,
+          confidentialityTermYears: basicInfoInput.confidentialityTermYears ?? 3,
+          confidentialityDefinition: basicInfoInput.confidentialityDefinition,
+          confidentialityObligation: basicInfoInput.confidentialityObligation,
+          governingLaw: basicInfoInput.governingLaw,
+          disputeResolutionMethod: basicInfoInput.disputeResolutionMethod,
+          noticeRequirements: basicInfoInput.noticeRequirements,
+        },
+      });
+      this.logger.log(`Created basic info for contract ${contractId}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to create basic info: ${errorMessage}`);
+      // 不抛出错误，允许合同创建成功
+    }
+  }
+
+  /**
+   * 更新合同基本信息详情
+   */
+  private async updateContractBasicInfo(
+    contractId: string,
+    basicInfoInput: any
+  ): Promise<void> {
+    // 检查是否已存在 basicInfo 记录
+    const existing = await this.prisma.contractBasicInfo.findUnique({
+      where: { contractId },
+    });
+
+    const updateData: any = {};
+    if (basicInfoInput.projectName !== undefined) updateData.projectName = basicInfoInput.projectName;
+    if (basicInfoInput.projectOverview !== undefined) updateData.projectOverview = basicInfoInput.projectOverview;
+    if (basicInfoInput.projectStartDate !== undefined) updateData.projectStartDate = basicInfoInput.projectStartDate;
+    if (basicInfoInput.projectEndDate !== undefined) updateData.projectEndDate = basicInfoInput.projectEndDate;
+    if (basicInfoInput.warrantyStartDate !== undefined) updateData.warrantyStartDate = basicInfoInput.warrantyStartDate;
+    if (basicInfoInput.warrantyPeriodMonths !== undefined) updateData.warrantyPeriodMonths = basicInfoInput.warrantyPeriodMonths;
+    if (basicInfoInput.acceptanceMethod !== undefined) updateData.acceptanceMethod = basicInfoInput.acceptanceMethod;
+    if (basicInfoInput.acceptancePeriodDays !== undefined) updateData.acceptancePeriodDays = basicInfoInput.acceptancePeriodDays;
+    if (basicInfoInput.deemedAcceptanceRule !== undefined) updateData.deemedAcceptanceRule = basicInfoInput.deemedAcceptanceRule;
+    if (basicInfoInput.confidentialityTermYears !== undefined) updateData.confidentialityTermYears = basicInfoInput.confidentialityTermYears;
+    if (basicInfoInput.confidentialityDefinition !== undefined) updateData.confidentialityDefinition = basicInfoInput.confidentialityDefinition;
+    if (basicInfoInput.confidentialityObligation !== undefined) updateData.confidentialityObligation = basicInfoInput.confidentialityObligation;
+    if (basicInfoInput.governingLaw !== undefined) updateData.governingLaw = basicInfoInput.governingLaw;
+    if (basicInfoInput.disputeResolutionMethod !== undefined) updateData.disputeResolutionMethod = basicInfoInput.disputeResolutionMethod;
+    if (basicInfoInput.noticeRequirements !== undefined) updateData.noticeRequirements = basicInfoInput.noticeRequirements;
+
+    try {
+      if (existing) {
+        // 更新现有记录
+        await this.prisma.contractBasicInfo.update({
+          where: { contractId },
+          data: updateData,
+        });
+        this.logger.log(`Updated basic info for contract ${contractId}`);
+      } else {
+        // 创建新记录
+        await this.prisma.contractBasicInfo.create({
+          data: {
+            contractId,
+            ...updateData,
+          },
+        });
+        this.logger.log(`Created basic info for contract ${contractId}`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to update basic info: ${errorMessage}`);
+    }
+  }
+
   async update(id: string, input: UpdateContractInput) {
     const existing = await this.prisma.contract.findUnique({ where: { id } });
     if (!existing) {
@@ -497,6 +633,32 @@ export class ContractService {
     if (input.needsManualReview !== undefined)
       updateData.needsManualReview = input.needsManualReview;
 
+    // ==================== 合同元数据（扩展） ====================
+    if (input.version !== undefined) updateData.version = input.version;
+    if (input.governingLanguage !== undefined) updateData.governingLanguage = input.governingLanguage;
+    // ==================== 甲方扩展信息（合同级别） ====================
+    if (input.clientLegalRep !== undefined) updateData.clientLegalRep = input.clientLegalRep;
+    if (input.clientBusinessLicense !== undefined) updateData.clientBusinessLicense = input.clientBusinessLicense;
+    if (input.clientFax !== undefined) updateData.clientFax = input.clientFax;
+    if (input.clientBankName !== undefined) updateData.clientBankName = input.clientBankName;
+    if (input.clientBankAccount !== undefined) updateData.clientBankAccount = input.clientBankAccount;
+    if (input.clientAccountName !== undefined) updateData.clientAccountName = input.clientAccountName;
+    // ==================== 乙方信息 ====================
+    if (input.vendorLegalRep !== undefined) updateData.vendorLegalRep = input.vendorLegalRep;
+    if (input.vendorRegistrationNumber !== undefined) updateData.vendorRegistrationNumber = input.vendorRegistrationNumber;
+    if (input.vendorBusinessLicense !== undefined) updateData.vendorBusinessLicense = input.vendorBusinessLicense;
+    if (input.vendorAddress !== undefined) updateData.vendorAddress = input.vendorAddress;
+    if (input.vendorContactPerson !== undefined) updateData.vendorContactPerson = input.vendorContactPerson;
+    if (input.vendorPhone !== undefined) updateData.vendorPhone = input.vendorPhone;
+    if (input.vendorEmail !== undefined) updateData.vendorEmail = input.vendorEmail;
+    if (input.vendorFax !== undefined) updateData.vendorFax = input.vendorFax;
+    if (input.vendorBankName !== undefined) updateData.vendorBankName = input.vendorBankName;
+    if (input.vendorBankAccount !== undefined) updateData.vendorBankAccount = input.vendorBankAccount;
+    if (input.vendorAccountName !== undefined) updateData.vendorAccountName = input.vendorAccountName;
+    // ==================== 财务条款（扩展） ====================
+    if (input.isTaxInclusive !== undefined) updateData.isTaxInclusive = input.isTaxInclusive;
+    if (input.pricingModel !== undefined) updateData.pricingModel = input.pricingModel;
+
     const contract = await this.prisma.contract.update({
       where: { id },
       data: updateData,
@@ -525,8 +687,14 @@ export class ContractService {
             lineItems: true,
           },
         },
+        basicInfo: true,
       },
     });
+
+    // 更新基本信息详情（如果提供了数据）
+    if (input.basicInfo) {
+      await this.updateContractBasicInfo(id, input.basicInfo);
+    }
 
     return this.transformContract(contract);
   }
@@ -555,6 +723,7 @@ export class ContractService {
             department: true,
           },
         },
+        basicInfo: true,
       },
     });
 
@@ -630,6 +799,33 @@ export class ContractService {
         departmentId: input.departmentId,
         salesPerson: input.salesPerson,
         industry: input.industry,
+        // ==================== 合同元数据（扩展） ====================
+        version: input.version,
+        governingLanguage: input.governingLanguage,
+        // ==================== 甲方扩展信息 ====================
+        clientLegalRep: input.clientLegalRep,
+        clientBusinessLicense: input.clientBusinessLicense,
+        clientFax: input.clientFax,
+        clientBankName: input.clientBankName,
+        clientBankAccount: input.clientBankAccount,
+        clientAccountName: input.clientAccountName,
+        // ==================== 乙方信息 ====================
+        vendorLegalRep: input.vendorLegalRep,
+        vendorRegistrationNumber: input.vendorRegistrationNumber,
+        vendorBusinessLicense: input.vendorBusinessLicense,
+        vendorAddress: input.vendorAddress,
+        vendorContactPerson: input.vendorContactPerson,
+        vendorPhone: input.vendorPhone,
+        vendorEmail: input.vendorEmail,
+        vendorFax: input.vendorFax,
+        vendorBankName: input.vendorBankName,
+        vendorBankAccount: input.vendorBankAccount,
+        vendorAccountName: input.vendorAccountName,
+        // ==================== 财务条款（扩展） ====================
+        isTaxInclusive: input.isTaxInclusive,
+        pricingModel: input.pricingModel,
+        // ==================== 基本信息 ====================
+        basicInfo: input.basicInfo,
       };
 
       return this.update(duplicateCheck.existingContract.id, updateInput);
@@ -782,6 +978,8 @@ export class ContractService {
       staffAugmentationDetail: contract.staffAugmentation || null,
       projectOutsourcingDetail: contract.projectOutsourcing || null,
       productSalesDetail: contract.productSales || null,
+      // Basic info is already in the correct format
+      basicInfo: contract.basicInfo || null,
     };
   }
 }

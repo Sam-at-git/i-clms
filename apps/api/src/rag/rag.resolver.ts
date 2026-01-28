@@ -117,4 +117,17 @@ export class RAGResolver {
   ): Promise<RAGQuestionAnswerResult[]> {
     return this.rag.questionAnswer(question, limit || 10, threshold || 0.5);
   }
+
+  @Mutation(() => Boolean, {
+    description: 'Refresh embedding client connection (retry after configuration change)',
+  })
+  @UseGuards(GqlAuthGuard)
+  async refreshEmbeddingClient(): Promise<boolean> {
+    try {
+      await this.rag.refreshEmbeddingClient();
+      return this.rag.isAvailable();
+    } catch {
+      return false;
+    }
+  }
 }

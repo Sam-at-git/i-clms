@@ -1,51 +1,42 @@
-import { ObjectType, Field, Int, Float, registerEnumType } from '@nestjs/graphql';
+import { ObjectType, Field, Int, registerEnumType, InputType } from '@nestjs/graphql';
 
 /**
- * Docling Table
+ * OCR Cleanup Result
  */
-@ObjectType({ description: 'Docling提取的表格信息' })
-export class DoclingTable {
-  @Field(() => String, { description: 'Markdown格式的表格内容' })
-  markdown!: string;
+@ObjectType({ description: 'OCR清洗结果' })
+export class OcrCleanupResult {
+  @Field(() => String, { description: '清洗后的文本' })
+  cleanedText!: string;
 
-  @Field(() => Int, { description: '行数' })
-  rows!: number;
+  @Field(() => Int, { description: '原始文本长度' })
+  originalLength!: number;
 
-  @Field(() => Int, { description: '列数' })
-  cols!: number;
+  @Field(() => Int, { description: '清洗后文本长度' })
+  cleanedLength!: number;
+
+  @Field(() => Int, { description: '删除的行数' })
+  linesRemoved!: number;
+
+  @Field(() => [String], { description: '清洗操作描述' })
+  corrections!: string[];
+
+  @Field(() => String, { description: '清洗方法: rule/llm/hybrid' })
+  method!: string;
+
+  @Field(() => Int, { nullable: true, description: 'LLM消耗的token数' })
+  llmTokensUsed?: number;
 }
 
 /**
- * Docling Image
+ * Cleanup Result with Contract Update
  */
-@ObjectType({ description: 'Docling提取的图片信息' })
-export class DoclingImage {
-  @Field(() => Int, { description: '页码' })
-  page!: number;
-
-  @Field(() => Int, { description: '宽度' })
-  width!: number;
-
-  @Field(() => Int, { description: '高度' })
-  height!: number;
-}
-
-/**
- * Docling Convert Result
- */
-@ObjectType({ description: 'Docling文档转换结果' })
-export class DoclingConvertResult {
-  @Field(() => String, { description: 'Markdown内容' })
+@ObjectType({ description: '清洗Markdown并更新合同的结果' })
+export class CleanupMarkdownResult {
+  @Field(() => String, { description: '清洗后的markdown文本' })
   markdown!: string;
 
-  @Field(() => [DoclingTable], { description: '提取的表格' })
-  tables!: DoclingTable[];
-
-  @Field(() => Int, { description: '页数' })
-  pages!: number;
-
-  @Field(() => [DoclingImage], { description: '提取的图片' })
-  images!: DoclingImage[];
+  @Field(() => OcrCleanupResult, { description: '清洗详情' })
+  cleanupInfo!: OcrCleanupResult;
 
   @Field(() => Boolean, { description: '是否成功' })
   success!: boolean;
@@ -53,31 +44,3 @@ export class DoclingConvertResult {
   @Field(() => String, { nullable: true, description: '错误信息' })
   error?: string;
 }
-
-/**
- * Docling Extract Result
- */
-@ObjectType({ description: 'Docling字段提取结果' })
-export class DoclingExtractResult {
-  @Field(() => String, { description: 'JSON格式的字段数据' })
-  fields!: string;
-
-  @Field(() => Boolean, { description: '是否成功' })
-  success!: boolean;
-
-  @Field(() => String, { nullable: true, description: '错误信息' })
-  error?: string;
-}
-
-/**
- * Docling Convert Options
- */
-export enum DoclingOcrOption {
-  ENABLED = 'ENABLED',
-  DISABLED = 'DISABLED',
-}
-
-registerEnumType(DoclingOcrOption, {
-  name: 'DoclingOcrOption',
-  description: 'Docling OCR选项'
-});

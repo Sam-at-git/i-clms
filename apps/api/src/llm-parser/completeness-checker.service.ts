@@ -70,16 +70,26 @@ export class CompletenessCheckerService {
    * Calculate completeness score from extracted fields
    */
   calculateScore(extractedFields: Record<string, unknown>): CompletenessScore {
+    this.logger.log(`========== 完整性评分开始 ==========`);
+
     // Normalize field names using mapping
     const normalizedFields = this.normalizeFields(extractedFields);
 
     let totalScore = 0;
     const details: FieldScoreDetail[] = [];
+    const foundFields: string[] = [];
+    const missingFields: string[] = [];
 
     for (const fw of FIELD_WEIGHTS) {
       const hasValue = this.hasValidValue(normalizedFields[fw.field]);
       const actualScore = hasValue ? fw.weight : 0;
       totalScore += actualScore;
+
+      if (hasValue) {
+        foundFields.push(`${fw.field}(+${fw.weight})`);
+      } else {
+        missingFields.push(`${fw.field}(-${fw.weight})`);
+      }
 
       details.push({
         field: fw.field,
@@ -95,11 +105,11 @@ export class CompletenessCheckerService {
     const categoryScores = this.calculateCategoryScores(details);
     const strategy = this.determineStrategy(totalScore);
 
-    this.logger.log(
-      `Completeness: ${totalScore}/100, strategy: ${strategy}, ` +
-        `categories: basic=${categoryScores.basic}, financial=${categoryScores.financial}, ` +
-        `temporal=${categoryScores.temporal}, other=${categoryScores.other}`,
-    );
+    this.logger.log(`已找到字段 (${foundFields.length}): ${foundFields.join(', ')}`);
+    this.logger.log(`缺失字段 (${missingFields.length}): ${missingFields.join(', ')}`);
+    this.logger.log(`分类得分: 基本信息=${categoryScores.basic}/40, 财务=${categoryScores.financial}/30, 时间=${categoryScores.temporal}/20, 其他=${categoryScores.other}/10`);
+    this.logger.log(`总分: ${totalScore}/100, 策略: ${strategy}`);
+    this.logger.log(`========== 完整性评分结束 ==========`);
 
     return {
       totalScore,

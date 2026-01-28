@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { useParams, Link } from 'react-router-dom';
-import { GetContractWithTagsQuery, useVectorizeContractMutation } from '@i-clms/shared/generated/graphql';
+import { GetContractWithTagsQuery, useVectorizeContractMutation, useCleanupMarkdownMutation } from '@i-clms/shared/generated/graphql';
 import { ContractEdit } from './ContractEdit';
 import { ContractDelete } from './ContractDelete';
 import { ContractTags } from './ContractTags';
@@ -12,6 +12,7 @@ import { SimilarContracts } from './SimilarContracts';
 import { ContractPrint } from './ContractPrint';
 import { ContractTypeSpecificDetails } from './ContractTypeSpecificDetails';
 import { LegalClausesCard } from './LegalClausesCard';
+import { GenerateCaseStudyModal } from './GenerateCaseStudyModal';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 
 const GET_CONTRACT = gql`
@@ -134,9 +135,46 @@ const GET_CONTRACT = gql`
         name
         email
       }
+      basicInfo {
+        id
+        projectName
+        projectOverview
+        projectStartDate
+        projectEndDate
+        warrantyStartDate
+        warrantyPeriodMonths
+        acceptanceMethod
+        acceptancePeriodDays
+        deemedAcceptanceRule
+        confidentialityTermYears
+        confidentialityDefinition
+        confidentialityObligation
+        governingLaw
+        disputeResolutionMethod
+        noticeRequirements
+      }
     }
   }
 `;
+
+interface ContractBasicInfo {
+  id: string;
+  projectName?: string | null;
+  projectOverview?: string | null;
+  projectStartDate?: string | null;
+  projectEndDate?: string | null;
+  warrantyStartDate?: string | null;
+  warrantyPeriodMonths?: number | null;
+  acceptanceMethod?: string | null;
+  acceptancePeriodDays?: number | null;
+  deemedAcceptanceRule?: string | null;
+  confidentialityTermYears?: number | null;
+  confidentialityDefinition?: string | null;
+  confidentialityObligation?: string | null;
+  governingLaw?: string | null;
+  disputeResolutionMethod?: string | null;
+  noticeRequirements?: string | null;
+}
 
 interface Contract {
   id: string;
@@ -199,6 +237,7 @@ interface Contract {
     name: string;
     email: string;
   };
+  basicInfo?: ContractBasicInfo | null;
 }
 
 interface ContractData {
@@ -234,6 +273,8 @@ export function ContractDetailEnhanced() {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
+  const [showCaseStudyModal, setShowCaseStudyModal] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
   const { loading, error, data, refetch } = useQuery<ContractData>(GET_CONTRACT, {
     variables: { id },
     skip: !id,
@@ -252,6 +293,30 @@ export function ContractDetailEnhanced() {
       alert(`向量化出错: ${error.message}`);
     },
   });
+
+  const [cleanupMarkdown] = useCleanupMarkdownMutation({
+    onCompleted: (data) => {
+      if (data.cleanupMarkdown?.success) {
+        const info = data.cleanupMarkdown.cleanupInfo;
+        const method = info.method === 'llm' ? 'LLM' : info.method === 'hybrid' ? '混合' : '规则';
+        alert(`清洗完成！\n方法: ${method}\n删除行数: ${info.linesRemoved}\n字符纠错: ${info.corrections.length}处\n文本大小: ${info.originalLength} → ${info.cleanedLength}`);
+        refetch();
+      } else {
+        alert(`清洗失败: ${data.cleanupMarkdown?.error || '未知错误'}`);
+      }
+      setCleaning(false);
+    },
+    onError: (error) => {
+      alert(`清洗出错: ${error.message}`);
+      setCleaning(false);
+    },
+  });
+
+  const handleCleanup = async (useLlm: boolean) => {
+    if (!id) return;
+    setCleaning(true);
+    await cleanupMarkdown({ variables: { contractId: id, useLlm } });
+  };
 
   if (loading) return <div style={styles.loading}>加载中...</div>;
   if (error) return <div style={styles.error}>错误: {error.message}</div>;
@@ -312,6 +377,12 @@ export function ContractDetailEnhanced() {
           <button onClick={() => setShowPrint(!showPrint)} style={styles.printButton}>
             🖨 打印
           </button>
+          <button onClick={() => setShowCaseStudyModal(true)} style={styles.caseStudyButton}>
+            📝 生成案例
+          </button>
+          <button onClick={() => handleCleanup(false)} disabled={cleaning} style={styles.cleanupButton}>
+            {cleaning ? '清洗中...' : '✨ 清洗文本'}
+          </button>
           <button onClick={() => setShowEdit(true)} style={styles.editButton}>
             编辑
           </button>
@@ -350,6 +421,30 @@ export function ContractDetailEnhanced() {
               <Field label="所属行业" value={contract.industry} />
             </div>
           </div>
+
+          {/* Project Details (Basic Info) */}
+          {contract.basicInfo && (
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>项目详情</h2>
+              <div style={styles.fieldGrid}>
+                <Field label="项目名称" value={contract.basicInfo.projectName} />
+                <Field label="项目概述" value={contract.basicInfo.projectOverview} />
+                <Field label="项目开始日期" value={formatDate(contract.basicInfo.projectStartDate)} />
+                <Field label="项目结束日期" value={formatDate(contract.basicInfo.projectEndDate)} />
+                <Field label="质保期开始日期" value={formatDate(contract.basicInfo.warrantyStartDate)} />
+                <Field label="质保期" value={contract.basicInfo.warrantyPeriodMonths ? `${contract.basicInfo.warrantyPeriodMonths} 个月` : null} />
+                <Field label="验收方法" value={contract.basicInfo.acceptanceMethod} />
+                <Field label="验收期" value={contract.basicInfo.acceptancePeriodDays ? `${contract.basicInfo.acceptancePeriodDays} 天` : null} />
+                <Field label="视为验收规则" value={contract.basicInfo.deemedAcceptanceRule} />
+                <Field label="保密期限" value={contract.basicInfo.confidentialityTermYears ? `${contract.basicInfo.confidentialityTermYears} 年` : null} />
+                <Field label="保密信息定义" value={contract.basicInfo.confidentialityDefinition} />
+                <Field label="保密义务描述" value={contract.basicInfo.confidentialityObligation} />
+                <Field label="管辖法律" value={contract.basicInfo.governingLaw} />
+                <Field label="争议解决方式" value={contract.basicInfo.disputeResolutionMethod} />
+                <Field label="通知要求" value={contract.basicInfo.noticeRequirements} />
+              </div>
+            </div>
+          )}
 
           {/* Contract Type-Specific Details */}
           <ContractTypeSpecificDetails
@@ -515,6 +610,18 @@ export function ContractDetailEnhanced() {
           onClose={() => setShowDelete(false)}
         />
       )}
+
+      {showCaseStudyModal && (
+        <GenerateCaseStudyModal
+          isOpen={showCaseStudyModal}
+          onClose={() => setShowCaseStudyModal(false)}
+          contractId={contract.id}
+          contractName={contract.name}
+          customerName={contract.customer.name}
+          industry={contract.industry || undefined}
+          onSuccess={() => setShowCaseStudyModal(false)}
+        />
+      )}
     </div>
   );
 }
@@ -563,6 +670,28 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid #d1d5db',
     borderRadius: '6px',
     cursor: 'pointer',
+  },
+  caseStudyButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    color: '#7c3aed',
+    backgroundColor: '#f5f3ff',
+    border: '1px solid #a78bfa',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  cleanupButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    color: '#059669',
+    backgroundColor: '#ecfdf5',
+    border: '1px solid #10b981',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    ':disabled': {
+      opacity: 0.6,
+      cursor: 'not-allowed',
+    },
   },
   editButton: {
     padding: '8px 16px',

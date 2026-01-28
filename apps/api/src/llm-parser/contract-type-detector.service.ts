@@ -25,13 +25,30 @@ export interface ContractTypeDetectionResult {
 @Injectable()
 export class ContractTypeDetectorService {
   private readonly logger = new Logger(ContractTypeDetectorService.name);
-  private openai: OpenAI;
+  private openai!: OpenAI; // Initialized in constructor via refreshClient()
 
   constructor(private readonly llmConfigService: LlmConfigService) {
+    this.refreshClient();
+  }
+
+  /**
+   * 刷新 OpenAI 客户端（配置变更时调用）
+   */
+  refreshClient(): void {
+    const config = this.llmConfigService.getActiveConfig();
+    const timeout = config.timeout || 120000; // 默认120秒
+
     this.openai = new OpenAI({
-      baseURL: this.llmConfigService.getActiveConfig().baseUrl,
-      apiKey: this.llmConfigService.getActiveConfig().apiKey,
+      baseURL: config.baseUrl,
+      apiKey: config.apiKey,
+      timeout: timeout,
+      maxRetries: 0,
     });
+
+    this.logger.log(
+      `[ContractTypeDetector] OpenAI client refreshed: baseUrl="${config.baseUrl}", ` +
+      `model="${config.model}", timeout=${timeout}ms`
+    );
   }
 
   /**
@@ -87,6 +104,8 @@ export class ContractTypeDetectorService {
 
       this.logger.log(`[Contract Type Detection from Filename] Analyzing filename: "${cleanFileName}"`);
 
+      this.logger.log(`[Contract Type Detection from Filename] Calling LLM: model=${config.model}, baseUrl=${config.baseUrl}`);
+
       const response = await this.openai.chat.completions.create(
         {
           model: config.model,
@@ -95,15 +114,18 @@ export class ContractTypeDetectorService {
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.1,
-          max_tokens: 300,
+          max_tokens: 2000,  // 增加以适应 GLM 的推理模式
         },
         {
           timeout: config.timeout || 60000,
         },
       );
 
+      // 详细日志：检查响应结构
+      this.logger.log(`[Contract Type Detection from Filename] Response received: choices=${response.choices?.length}, finish_reason=${response.choices?.[0]?.finish_reason}, usage=${JSON.stringify(response.usage)}`);
+
       const rawResponse = response.choices[0]?.message?.content || '';
-      this.logger.log(`[Contract Type Detection from Filename] Raw response: ${rawResponse}`);
+      this.logger.log(`[Contract Type Detection from Filename] Raw response (${rawResponse.length} chars): ${rawResponse.substring(0, 500)}`);
 
       // 提取JSON（处理可能的markdown代码块包裹）
       const jsonMatch = rawResponse.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) ||
@@ -209,7 +231,7 @@ ${sampleText}
 }
 \`\`\``;
 
-      this.logger.log('[Contract Type Detection] Sending request to LLM...');
+      this.logger.log(`[Contract Type Detection] Sending request to LLM: model=${config.model}, baseUrl=${config.baseUrl}`);
 
       const response = await this.openai.chat.completions.create(
         {
@@ -219,15 +241,18 @@ ${sampleText}
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.1,
-          max_tokens: 500,
+          max_tokens: 2000,  // 增加以适应 GLM 的推理模式
         },
         {
           timeout: config.timeout || 60000,
         },
       );
 
+      // 详细日志：检查响应结构
+      this.logger.log(`[Contract Type Detection] Response: choices=${response.choices?.length}, finish_reason=${response.choices?.[0]?.finish_reason}, usage=${JSON.stringify(response.usage)}`);
+
       const rawResponse = response.choices[0]?.message?.content || '';
-      this.logger.log(`[Contract Type Detection] Raw response: ${rawResponse}`);
+      this.logger.log(`[Contract Type Detection] Raw response (${rawResponse.length} chars): ${rawResponse.substring(0, 500)}`);
 
       // 提取JSON（处理可能的markdown代码块包裹）
       const jsonMatch = rawResponse.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) ||
@@ -287,29 +312,37 @@ ${sampleText}
     fileName?: string,
     confidenceThreshold: number = 0.75,
   ): Promise<ContractTypeDetectionResult> {
+    this.logger.log(`========== 合同类型检测 ==========`);
+    this.logger.log(`文件名: ${fileName || '(无)'}`);
+    this.logger.log(`文本长度: ${text.length} 字符`);
+    this.logger.log(`置信度阈值: ${confidenceThreshold}`);
+
     // 如果提供了文件名，先尝试基于文件名判断
     if (fileName) {
-      this.logger.log(`[Contract Type Detection] Trying filename-based detection first: "${fileName}"`);
+      this.logger.log(`[步骤1] 尝试文件名检测...`);
       const fileNameResult = await this.detectContractTypeFromFileName(fileName, confidenceThreshold);
 
       // 如果文件名判断置信度足够高，直接返回
       if (fileNameResult.detectedType && fileNameResult.confidence >= confidenceThreshold) {
-        this.logger.log(
-          `[Contract Type Detection] Filename-based detection succeeded with high confidence: ` +
-          `${fileNameResult.detectedType} (${fileNameResult.confidence})`
-        );
+        this.logger.log(`[结果] 文件名检测成功: ${fileNameResult.detectedType} (置信度: ${fileNameResult.confidence})`);
+        this.logger.log(`[原因] ${fileNameResult.reasoning}`);
+        this.logger.log(`====================================`);
         return fileNameResult;
       }
 
       // 置信度不够，继续使用文本分析
-      this.logger.log(
-        `[Contract Type Detection] Filename-based detection confidence too low (${fileNameResult.confidence}), ` +
-        `falling back to text analysis`
-      );
+      this.logger.log(`[步骤1] 文件名检测置信度不足 (${fileNameResult.confidence} < ${confidenceThreshold})`);
+    } else {
+      this.logger.log(`[步骤1] 跳过文件名检测 (未提供文件名)`);
     }
 
     // 降级到文本内容分析
-    return this.detectContractTypeFromText(text);
+    this.logger.log(`[步骤2] 使用文本内容检测...`);
+    const textResult = await this.detectContractTypeFromText(text);
+    this.logger.log(`[结果] 文本检测: ${textResult.detectedType} (置信度: ${textResult.confidence})`);
+    this.logger.log(`[原因] ${textResult.reasoning}`);
+    this.logger.log(`====================================`);
+    return textResult;
   }
 
   /**

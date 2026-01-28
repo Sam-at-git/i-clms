@@ -55,19 +55,30 @@ export class CaseStudyService implements OnModuleInit {
   async onModuleInit() {
     await this.llmConfigService.refreshCache();
     this.refreshClient();
+
+    const config = this.llmConfigService.getActiveConfig();
+    this.logger.log(`========== CaseStudyService 初始化 ==========`);
+    this.logger.log(`LLM Provider: ${this.llmConfigService.getProviderName()}`);
+    this.logger.log(`LLM Model: ${config.model}`);
+    this.logger.log(`LLM Base URL: ${config.baseUrl}`);
+    this.logger.log(`OpenAI Client: ${this.openai ? '✓' : '✗'}`);
+    this.logger.log(`==============================================`);
   }
 
   /**
    * Refresh the OpenAI client with current configuration
+   * Case study generation requires longer timeout due to complex prompts
    */
   refreshClient() {
     const config = this.llmConfigService.getActiveConfig();
+    // Case study generation needs longer timeout (at least 3 minutes)
+    const caseStudyTimeout = Math.max(config.timeout, 180000);
     this.openai = new OpenAI({
       baseURL: config.baseUrl,
       apiKey: config.apiKey,
-      timeout: config.timeout,
+      timeout: caseStudyTimeout,
     });
-    this.logger.log(`CaseStudy OpenAI client initialized with model: ${config.model}`);
+    this.logger.log(`CaseStudy OpenAI client initialized with model: ${config.model}, timeout: ${caseStudyTimeout}ms`);
   }
 
   private getClient(): OpenAI {
@@ -83,7 +94,13 @@ export class CaseStudyService implements OnModuleInit {
   async generate(options: GenerateCaseStudyOptions) {
     const { contractId, createdById } = options;
 
+    this.logger.log(`========== 案例生成开始 ==========`);
+    this.logger.log(`合同ID: ${contractId}`);
+    this.logger.log(`创建者ID: ${createdById}`);
+    this.logger.log(`脱敏: ${options.desensitize ?? true}`);
+
     // Fetch the contract with all related data
+    this.logger.log(`正在获取合同数据...`);
     const contract = await this.prisma.contract.findUnique({
       where: { id: contractId },
       include: {
@@ -101,8 +118,14 @@ export class CaseStudyService implements OnModuleInit {
     });
 
     if (!contract) {
+      this.logger.error(`合同不存在: ${contractId}`);
       throw new NotFoundException(`Contract with ID ${contractId} not found`);
     }
+
+    this.logger.log(`合同名称: ${contract.name}`);
+    this.logger.log(`合同类型: ${contract.type}`);
+    this.logger.log(`客户: ${contract.customer?.name || '(无)'}`);
+    this.logger.log(`金额: ${contract.amountWithTax || '(无)'}`);
 
     // Build the prompt
     const userPrompt = buildUserPrompt(contract, {
@@ -117,26 +140,65 @@ export class CaseStudyService implements OnModuleInit {
       includeTestimonial: options.includeTestimonial ?? false,
     });
 
+    this.logger.log(`Prompt长度: ${userPrompt.length} 字符`);
     this.logger.debug('Generating case study with prompt', { contractId, userPrompt });
 
     // Call LLM
     const config = this.llmConfigService.getActiveConfig();
     const client = this.getClient();
+    const caseStudyTimeout = Math.max(config.timeout, 180000);
 
     try {
-      const response = await client.chat.completions.create({
-        model: config.model,
-        messages: [
-          { role: 'system', content: CASE_STUDY_SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: config.temperature,
-        max_tokens: config.maxTokens,
-      });
+      this.logger.log(`========== 调用 LLM 生成案例 ==========`);
+      this.logger.log(`Model: ${config.model}`);
+      this.logger.log(`BaseUrl: ${config.baseUrl}`);
+      this.logger.log(`Timeout: ${caseStudyTimeout}ms`);
+      this.logger.log(`MaxTokens: ${config.maxTokens}`);
+      this.logger.log(`Temperature: ${config.temperature}`);
+
+      let response;
+      const llmStartTime = Date.now();
+      try {
+        response = await client.chat.completions.create({
+          model: config.model,
+          messages: [
+            { role: 'system', content: CASE_STUDY_SYSTEM_PROMPT },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: config.temperature,
+          max_tokens: config.maxTokens,
+        });
+        const llmDuration = Date.now() - llmStartTime;
+        this.logger.log(`LLM响应时间: ${llmDuration}ms`);
+      } catch (apiError) {
+        const llmDuration = Date.now() - llmStartTime;
+        // Handle specific API errors
+        const errorMessage = apiError instanceof Error ? apiError.message : 'Unknown API error';
+        const errorStack = apiError instanceof Error ? apiError.stack : '';
+        this.logger.error(`========== LLM 调用失败 ==========`);
+        this.logger.error(`耗时: ${llmDuration}ms`);
+        this.logger.error(`错误: ${errorMessage}`);
+        this.logger.error(`堆栈: ${errorStack}`);
+
+        if (errorMessage.includes('Unexpected end of JSON') || errorMessage.includes('connection')) {
+          throw new Error('LLM服务连接超时或中断，请检查Ollama服务是否正常运行，或稍后重试');
+        }
+        if (errorMessage.includes('ECONNREFUSED')) {
+          throw new Error('无法连接到LLM服务，请确认Ollama服务已启动');
+        }
+        throw new Error(`LLM调用失败: ${errorMessage}`);
+      }
 
       const content = response.choices[0]?.message?.content;
+      this.logger.log(`LLM响应内容长度: ${content?.length || 0} 字符`);
+      this.logger.log(`结束原因: ${response.choices[0]?.finish_reason}`);
+      if (response.usage) {
+        this.logger.log(`Token使用: prompt=${response.usage.prompt_tokens}, completion=${response.usage.completion_tokens}, total=${response.usage.total_tokens}`);
+      }
+
       if (!content) {
-        throw new Error('LLM returned empty response');
+        this.logger.error('LLM返回空响应');
+        throw new Error('LLM返回了空响应，请稍后重试');
       }
 
       // Parse the JSON response
@@ -226,15 +288,24 @@ export class CaseStudyService implements OnModuleInit {
         },
       });
 
+      this.logger.log(`========== 案例生成成功 ==========`);
+      this.logger.log(`案例ID: ${caseStudy.id}`);
+      this.logger.log(`案例标题: ${caseStudy.title}`);
+      this.logger.log(`状态: ${caseStudy.status}`);
+
       return {
         success: true,
         caseStudy,
       };
     } catch (error) {
-      this.logger.error('Failed to generate case study', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorStack = error instanceof Error ? error.stack : '';
+      this.logger.error(`========== 案例生成失败 ==========`);
+      this.logger.error(`错误: ${errorMsg}`);
+      this.logger.error(`堆栈: ${errorStack}`);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: errorMsg,
       };
     }
   }
@@ -243,23 +314,50 @@ export class CaseStudyService implements OnModuleInit {
    * Extract JSON from LLM response (handles markdown code blocks)
    */
   private extractJsonFromResponse(content: string): any {
+    if (!content || content.trim().length === 0) {
+      this.logger.warn('Empty LLM response content');
+      return null;
+    }
+
+    this.logger.debug('Extracting JSON from response', {
+      contentLength: content.length,
+      contentPreview: content.substring(0, 200)
+    });
+
     // Try to extract JSON from markdown code block
     const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
     const jsonStr = jsonMatch ? jsonMatch[1].trim() : content.trim();
 
+    if (!jsonStr || jsonStr.length === 0) {
+      this.logger.warn('No JSON content found in response');
+      return null;
+    }
+
     try {
       return JSON.parse(jsonStr);
-    } catch {
-      this.logger.warn('Failed to parse JSON, trying to extract object pattern');
+    } catch (parseError) {
+      this.logger.warn('Failed to parse JSON directly', {
+        error: parseError instanceof Error ? parseError.message : 'Unknown parse error',
+        jsonStrLength: jsonStr.length,
+        jsonStrPreview: jsonStr.substring(0, 300)
+      });
+
       // Try to find JSON object pattern
       const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (objectMatch) {
         try {
           return JSON.parse(objectMatch[0]);
-        } catch {
+        } catch (secondParseError) {
+          this.logger.error('Failed to parse extracted JSON object', {
+            error: secondParseError instanceof Error ? secondParseError.message : 'Unknown',
+            extractedLength: objectMatch[0].length,
+            extractedPreview: objectMatch[0].substring(0, 300)
+          });
           return null;
         }
       }
+
+      this.logger.warn('No JSON object pattern found in response');
       return null;
     }
   }

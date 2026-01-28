@@ -80,6 +80,24 @@ query GetContract($id: ID!) {
       name
       email
     }
+    basicInfo {
+      id
+      projectName
+      projectOverview
+      projectStartDate
+      projectEndDate
+      warrantyStartDate
+      warrantyPeriodMonths
+      acceptanceMethod
+      acceptancePeriodDays
+      deemedAcceptanceRule
+      confidentialityTermYears
+      confidentialityDefinition
+      confidentialityObligation
+      governingLaw
+      disputeResolutionMethod
+      noticeRequirements
+    }
   }
 }
 
@@ -126,8 +144,8 @@ mutation ParseAndExtract($objectName: String!) {
   }
 }
 
-mutation ConvertUploadedFileToMarkdown($objectName: String!, $options: DoclingConvertOptions) {
-  convertUploadedFileToMarkdown(objectName: $objectName, options: $options) {
+mutation ConvertUploadedFileToMarkdown($objectName: String!, $options: DoclingConvertOptions, $skipCache: Boolean) {
+  convertUploadedFileToMarkdown(objectName: $objectName, options: $options, skipCache: $skipCache) {
     success
     markdown
     pages
@@ -142,6 +160,7 @@ mutation ConvertUploadedFileToMarkdown($objectName: String!, $options: DoclingCo
       height
     }
     error
+    fromCache
   }
 }
 
@@ -170,6 +189,56 @@ mutation ParseContractWithLlm($objectName: String!) {
         ourEntity
         customerName
         status
+        # 合同元数据
+        version
+        governingLanguage
+        # 甲方详细信息
+        clientLegalRep
+        clientRegistrationNumber
+        clientBusinessLicense
+        clientAddress
+        clientContactPerson
+        clientPhone
+        clientEmail
+        clientFax
+        clientBankName
+        clientBankAccount
+        clientAccountName
+        # 乙方详细信息
+        vendorLegalRep
+        vendorRegistrationNumber
+        vendorBusinessLicense
+        vendorAddress
+        vendorContactPerson
+        vendorPhone
+        vendorEmail
+        vendorFax
+        vendorBankName
+        vendorBankAccount
+        vendorAccountName
+        # 项目基本信息
+        projectName
+        projectOverview
+        # 项目时间信息
+        projectStartDate
+        projectEndDate
+        warrantyStartDate
+        warrantyPeriodMonths
+        # 财务信息
+        isTaxInclusive
+        pricingModel
+        # 验收信息
+        acceptanceMethod
+        acceptancePeriodDays
+        deemedAcceptanceRule
+        # 保密条款
+        confidentialityTermYears
+        confidentialityDefinition
+        confidentialityObligation
+        # 通用条款
+        governingLaw
+        disputeResolutionMethod
+        noticeRequirements
       }
       financialInfo {
         amountWithTax
@@ -249,6 +318,9 @@ query GetParseProgress($sessionId: String!) {
     error
     extractedFieldsCount
     estimatedRemainingSeconds
+    currentTokenSpeed
+    averageTokenSpeed
+    totalTokensUsed
     resultData
   }
 }
@@ -297,5 +369,39 @@ mutation CreateOrUpdateContract($input: CreateContractInput!, $forceUpdate: Bool
       id
       name
     }
+  }
+}
+
+mutation CleanupMarkdown($contractId: String!, $useLlm: Boolean) {
+  cleanupMarkdown(contractId: $contractId, useLlm: $useLlm) {
+    markdown
+    cleanupInfo {
+      cleanedText
+      originalLength
+      cleanedLength
+      linesRemoved
+      corrections
+      method
+      llmTokensUsed
+    }
+    success
+    error
+  }
+}
+
+mutation CleanupMarkdownText($markdownText: String!, $useLlm: Boolean) {
+  cleanupMarkdownText(markdownText: $markdownText, useLlm: $useLlm) {
+    markdown
+    cleanupInfo {
+      cleanedText
+      originalLength
+      cleanedLength
+      linesRemoved
+      corrections
+      method
+      llmTokensUsed
+    }
+    success
+    error
   }
 }

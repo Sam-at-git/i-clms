@@ -199,6 +199,12 @@ export class JsonTolerantParser {
   private static extractFromCodeBlock(content: string): string {
     let extracted = content;
 
+    // 先移除 DeepSeek-R1 的思考标签
+    // 格式1: <think>...</think> (英文标签)
+    extracted = extracted.replace(/<think>\s*[\s\S]*?<\/think>/gi, '');
+    // 格式2: <思考>...</思考> (中文标签)
+    extracted = extracted.replace(/<思考>\s*[\s\S]*?<\/思考>/gi, '');
+
     // 提取 ```json ... ``` 代码块
     const codeBlockRegex = /```(?:json)?\s*\n?([\s\S]*?)\n?```/;
     const match = extracted.match(codeBlockRegex);
@@ -213,7 +219,7 @@ export class JsonTolerantParser {
       extracted = tagMatch[1].trim();
     }
 
-    // 查找第一个 { 和最后一个 } 之间的内容
+    // 查找第一个 { 和最后一个 } 之间的内容（兜底方案）
     if (!match && !tagMatch) {
       const firstBrace = extracted.indexOf('{');
       const lastBrace = extracted.lastIndexOf('}');

@@ -10,11 +10,33 @@ import {
   useGetParseProgressQuery,
   useConvertUploadedFileToMarkdownMutation,
   useDetectContractTypeMutation,
+  useCleanupMarkdownTextMutation,
   ContractStatus,
 } from '@i-clms/shared/generated/graphql';
 import { JsonPreviewStep } from './JsonPreviewStep';
 import { StrategySelector } from './StrategySelector';
 import { MarkdownPreview } from './MarkdownPreview';
+
+// Spec 40: Helper functions for formatting
+const formatNumber = (num: number): string => {
+  return num.toLocaleString('zh-CN');
+};
+
+const formatTokenSpeed = (tokensPerSecond: number): string => {
+  return `${formatNumber(tokensPerSecond)} tok/s`;
+};
+
+const formatRemainingTime = (seconds: number): string => {
+  if (seconds < 60) {
+    return `${Math.ceil(seconds)}秒`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.ceil(seconds % 60);
+  if (remainingSeconds === 0) {
+    return `${minutes}分钟`;
+  }
+  return `${minutes}分${remainingSeconds}秒`;
+};
 
 interface ContractUploadProps {
   onClose: () => void;
@@ -51,6 +73,10 @@ interface ParseProgress {
     data?: any;
   }>;
   estimatedRemainingSeconds?: number;
+  // Spec 40: Token speed tracking
+  currentTokenSpeed?: number;
+  averageTokenSpeed?: number;
+  totalTokensUsed?: number;
 }
 
 // Extracted data types for LLM parsing
@@ -62,6 +88,26 @@ interface LlmExtractedData {
     ourEntity?: string | null;
     customerName?: string | null;
     status?: string | null;
+    // 项目基本信息
+    projectName?: string | null;
+    projectOverview?: string | null;
+    // 项目时间信息
+    projectStartDate?: string | null;
+    projectEndDate?: string | null;
+    warrantyStartDate?: string | null;
+    warrantyPeriodMonths?: number | null;
+    // 验收信息
+    acceptanceMethod?: string | null;
+    acceptancePeriodDays?: number | null;
+    deemedAcceptanceRule?: string | null;
+    // 保密条款
+    confidentialityTermYears?: number | null;
+    confidentialityDefinition?: string | null;
+    confidentialityObligation?: string | null;
+    // 通用条款
+    governingLaw?: string | null;
+    disputeResolutionMethod?: string | null;
+    noticeRequirements?: string | null;
   } | null;
   financialInfo?: {
     amountWithTax?: string | null;
@@ -139,7 +185,20 @@ export function ContractUploadUnified({
   const [parseProgress, setParseProgress] = useState<ParseProgress | null>(null);
   const [progressPolling, setProgressPolling] = useState(false);
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
+  const [isMarkdownFromCache, setIsMarkdownFromCache] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [originalFileName, setOriginalFileName] = useState<string | null>(null); // 保存原始文件名用于类型检测
+
+  // Markdown cleanup state
+  const [isCleaning, setIsCleaning] = useState(false);
+  const [cleanupInfo, setCleanupInfo] = useState<{
+    originalLength: number;
+    cleanedLength: number;
+    linesRemoved: number;
+    corrections: string[];
+    method: string;
+    llmTokensUsed?: number;
+  } | null>(null);
 
   // LLM parsing state
   const [extractedData, setExtractedData] = useState<LlmExtractedData | null>(null);
@@ -172,6 +231,22 @@ export function ContractUploadUnified({
     paymentTerms: '',
     salesPerson: '',
     industry: '',
+    // Basic Info (project details)
+    projectName: '',
+    projectOverview: '',
+    projectStartDate: '',
+    projectEndDate: '',
+    warrantyStartDate: '',
+    warrantyPeriodMonths: 12,
+    acceptanceMethod: '',
+    acceptancePeriodDays: 15,
+    deemedAcceptanceRule: '',
+    confidentialityTermYears: 3,
+    confidentialityDefinition: '',
+    confidentialityObligation: '',
+    governingLaw: '',
+    disputeResolutionMethod: '',
+    noticeRequirements: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -188,6 +263,9 @@ export function ContractUploadUnified({
   // Docling conversion mutation
   const [convertToMarkdown] = useConvertUploadedFileToMarkdownMutation();
   const [converting, setConverting] = useState(false);
+
+  // Markdown cleanup mutation
+  const [cleanupMarkdownText] = useCleanupMarkdownTextMutation();
 
   // Contract type detection mutation
   const [detectContractType] = useDetectContractTypeMutation();
@@ -248,6 +326,9 @@ export function ContractUploadUnified({
                       error
                     }
                     estimatedRemainingSeconds
+                    currentTokenSpeed
+                    averageTokenSpeed
+                    totalTokensUsed
                     resultData
                     markdownContent
                   }
@@ -283,21 +364,60 @@ export function ContractUploadUnified({
                 setTypeSpecificDetails(extracted.typeSpecificDetails || null);
                 setLlmFullResponse(llmResult);
 
+                // 辅助函数：清理可能的 "null" 字符串
+                const cleanValue = <T,>(value: T | null | undefined, defaultValue: T): T => {
+                  if (value === null || value === undefined) return defaultValue;
+                  if (typeof value === 'string' && value.toLowerCase() === 'null') return defaultValue;
+                  return value;
+                };
+
+                // 辅助函数：确保值为字符串（用于金额等字段）
+                const ensureString = (value: any, defaultValue: string = ''): string => {
+                  if (value === null || value === undefined) return defaultValue;
+                  if (typeof value === 'string') {
+                    return value.toLowerCase() === 'null' ? defaultValue : value;
+                  }
+                  return String(value);
+                };
+
+                // 验证 contractType 是有效的枚举值
+                const validContractTypes = ['STAFF_AUGMENTATION', 'PROJECT_OUTSOURCING', 'PRODUCT_SALES', 'MIXED'];
+                const contractType = cleanValue(extracted.contractType, 'PROJECT_OUTSOURCING');
+                const safeContractType = validContractTypes.includes(contractType.toUpperCase())
+                  ? contractType.toUpperCase()
+                  : 'PROJECT_OUTSOURCING';
+
                 // Fill form with LLM extracted data
                 setFormData({
-                  contractNo: extracted.basicInfo?.contractNo || '',
-                  name: extracted.basicInfo?.contractName || '',
-                  type: (extracted.contractType as any) || 'PROJECT_OUTSOURCING',
-                  ourEntity: extracted.basicInfo?.ourEntity || '',
-                  customerName: extracted.basicInfo?.customerName || '',
-                  amountWithTax: extracted.financialInfo?.amountWithTax || '',
-                  signedAt: extracted.timeInfo?.signedAt || '',
-                  effectiveAt: extracted.timeInfo?.effectiveAt || '',
-                  expiresAt: extracted.timeInfo?.expiresAt || '',
-                  paymentMethod: extracted.financialInfo?.paymentMethod || '',
-                  paymentTerms: extracted.financialInfo?.paymentTerms || '',
-                  salesPerson: extracted.otherInfo?.salesPerson || '',
-                  industry: extracted.otherInfo?.industry || '',
+                  contractNo: cleanValue(extracted.basicInfo?.contractNo, ''),
+                  name: cleanValue(extracted.basicInfo?.contractName, ''),
+                  type: safeContractType as any,
+                  ourEntity: cleanValue(extracted.basicInfo?.ourEntity, ''),
+                  customerName: cleanValue(extracted.basicInfo?.customerName, ''),
+                  amountWithTax: ensureString(extracted.financialInfo?.amountWithTax, ''),
+                  signedAt: cleanValue(extracted.timeInfo?.signedAt, ''),
+                  effectiveAt: cleanValue(extracted.timeInfo?.effectiveAt, ''),
+                  expiresAt: cleanValue(extracted.timeInfo?.expiresAt, ''),
+                  paymentMethod: cleanValue(extracted.financialInfo?.paymentMethod, ''),
+                  paymentTerms: cleanValue(extracted.financialInfo?.paymentTerms, ''),
+                  salesPerson: cleanValue(extracted.otherInfo?.salesPerson, ''),
+                  industry: cleanValue(extracted.otherInfo?.industry, ''),
+                  // Basic Info (project details)
+                  projectName: cleanValue(extracted.basicInfo?.projectName, ''),
+                  projectOverview: cleanValue(extracted.basicInfo?.projectOverview, ''),
+                  projectStartDate: cleanValue(extracted.basicInfo?.projectStartDate, ''),
+                  projectEndDate: cleanValue(extracted.basicInfo?.projectEndDate, ''),
+                  warrantyStartDate: '',
+                  warrantyPeriodMonths: cleanValue(extracted.basicInfo?.warrantyPeriodMonths, 12),
+                  acceptanceMethod: cleanValue(extracted.basicInfo?.acceptanceMethod, ''),
+                  acceptancePeriodDays: cleanValue(extracted.basicInfo?.acceptancePeriodDays, 15),
+                  deemedAcceptanceRule: cleanValue(extracted.basicInfo?.deemedAcceptanceRule, ''),
+                  confidentialityTermYears: cleanValue(extracted.basicInfo?.confidentialityTermYears, 3),
+                  confidentialityDefinition: cleanValue(extracted.basicInfo?.confidentialityDefinition, ''),
+                  confidentialityObligation: cleanValue(extracted.basicInfo?.confidentialityObligation, ''),
+                  governingLaw: cleanValue(extracted.basicInfo?.governingLaw, ''),
+                  disputeResolutionMethod: cleanValue(extracted.basicInfo?.disputeResolutionMethod, ''),
+                  noticeRequirements: cleanValue(extracted.basicInfo?.noticeRequirements, ''),
                 });
 
                 // 解析完成后跳转到信息整合步骤（review）
@@ -417,6 +537,7 @@ export function ContractUploadUnified({
 
       // 3. Store markdown content for preview
       setMarkdownContent(result.markdown);
+      setIsMarkdownFromCache(result.fromCache || false);
 
       // 4. Go to markdown preview step first
       setStep('markdown_preview');
@@ -427,6 +548,96 @@ export function ContractUploadUnified({
     } finally {
       setUploading(false);
       setConverting(false);
+    }
+  };
+
+  // 重新生成 Markdown（跳过缓存）
+  const handleRegenerateMarkdown = async () => {
+    if (!objectName) {
+      setError('缺少文件信息');
+      return;
+    }
+
+    setIsRegenerating(true);
+    setError('');
+
+    try {
+      const convertResult = await convertToMarkdown({
+        variables: {
+          objectName,
+          options: {
+            ocr: true,
+            withTables: true,
+            withImages: true,
+          },
+          skipCache: true, // 强制跳过缓存
+        },
+      });
+
+      if (convertResult.error) {
+        throw new Error(convertResult.error.message);
+      }
+
+      const result = convertResult.data?.convertUploadedFileToMarkdown;
+      if (!result || !result.success) {
+        throw new Error(result?.error || '重新生成失败');
+      }
+
+      setMarkdownContent(result.markdown);
+      setIsMarkdownFromCache(false); // 重新生成的结果不是来自缓存
+    } catch (err) {
+      console.error('[Regenerate] Error:', err);
+      setError(err instanceof Error ? err.message : '重新生成失败');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  // 清洗 Markdown 文本
+  const handleCleanupMarkdown = async (useLlm: boolean) => {
+    if (!markdownContent) {
+      setError('缺少Markdown内容');
+      return;
+    }
+
+    setIsCleaning(true);
+    setError('');
+
+    try {
+      const result = await cleanupMarkdownText({
+        variables: {
+          markdownText: markdownContent,
+          useLlm,
+        },
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      const data = result.data?.cleanupMarkdownText;
+      if (!data || !data.success) {
+        throw new Error(data?.error || '清洗失败');
+      }
+
+      // 更新Markdown内容
+      setMarkdownContent(data.markdown);
+      // 保存清洗信息
+      if (data.cleanupInfo) {
+        setCleanupInfo({
+          originalLength: data.cleanupInfo.originalLength,
+          cleanedLength: data.cleanupInfo.cleanedLength,
+          linesRemoved: data.cleanupInfo.linesRemoved,
+          corrections: data.cleanupInfo.corrections || [],
+          method: data.cleanupInfo.method,
+          llmTokensUsed: data.cleanupInfo.llmTokensUsed || undefined,
+        });
+      }
+    } catch (err) {
+      console.error('[Cleanup] Error:', err);
+      setError(err instanceof Error ? err.message : '清洗失败');
+    } finally {
+      setIsCleaning(false);
     }
   };
 
@@ -494,8 +705,8 @@ export function ContractUploadUnified({
           },
           body: JSON.stringify({
             query: `
-              mutation StartParseContractAsync($objectName: String!, $strategy: ParseStrategyType, $markdown: String, $contractType: String) {
-                startParseContractAsync(objectName: $objectName, strategy: $strategy, markdown: $markdown, contractType: $contractType) {
+              mutation StartParseContractAsync($objectName: String!, $strategy: ParseStrategyType, $markdown: String, $contractType: String, $originalFileName: String) {
+                startParseContractAsync(objectName: $objectName, strategy: $strategy, markdown: $markdown, contractType: $contractType, originalFileName: $originalFileName) {
                   sessionId
                   message
                 }
@@ -506,6 +717,7 @@ export function ContractUploadUnified({
               strategy,
               markdown: markdownContent || null,
               contractType: contractType || null,
+              originalFileName: originalFileName || null,
             },
           }),
         },
@@ -718,6 +930,29 @@ export function ContractUploadUnified({
             departmentId: user.department.id,
             uploadedById: user.id,
             markdownText: markdownContent || undefined, // 保存markdown用于向量化
+            basicInfo: {
+              projectName: formData.projectName || null,
+              projectOverview: formData.projectOverview || null,
+              projectStartDate: formData.projectStartDate || null,
+              projectEndDate: formData.projectEndDate || null,
+              warrantyStartDate: formData.warrantyStartDate || null,
+              warrantyPeriodMonths: typeof formData.warrantyPeriodMonths === 'number'
+                ? formData.warrantyPeriodMonths
+                : parseInt(formData.warrantyPeriodMonths as string) || 12,
+              acceptanceMethod: formData.acceptanceMethod || null,
+              acceptancePeriodDays: typeof formData.acceptancePeriodDays === 'number'
+                ? formData.acceptancePeriodDays
+                : parseInt(formData.acceptancePeriodDays as string) || 15,
+              deemedAcceptanceRule: formData.deemedAcceptanceRule || null,
+              confidentialityTermYears: typeof formData.confidentialityTermYears === 'number'
+                ? formData.confidentialityTermYears
+                : parseInt(formData.confidentialityTermYears as string) || 3,
+              confidentialityDefinition: formData.confidentialityDefinition || null,
+              confidentialityObligation: formData.confidentialityObligation || null,
+              governingLaw: formData.governingLaw || null,
+              disputeResolutionMethod: formData.disputeResolutionMethod || null,
+              noticeRequirements: formData.noticeRequirements || null,
+            },
             ...typeSpecificInput,
           },
           forceUpdate,
@@ -906,10 +1141,29 @@ export function ContractUploadUnified({
                   ) : (
                     <span>处理中...</span>
                   )}
-                  {parseProgress.estimatedRemainingSeconds !== undefined && (
-                    <span>预计剩余: {Math.ceil(parseProgress.estimatedRemainingSeconds)}秒</span>
+                  {parseProgress.estimatedRemainingSeconds !== undefined && parseProgress.estimatedRemainingSeconds > 0 && (
+                    <span>预计剩余: {formatRemainingTime(parseProgress.estimatedRemainingSeconds)}</span>
                   )}
                 </div>
+
+                {/* Spec 40: Token速度信息 - 显示当前速度、平均速度和累计Token */}
+                {(
+                  (parseProgress.currentTokenSpeed && parseProgress.currentTokenSpeed > 0) ||
+                  (parseProgress.averageTokenSpeed && parseProgress.averageTokenSpeed > 0) ||
+                  (parseProgress.totalTokensUsed && parseProgress.totalTokensUsed > 0)
+                ) && (
+                  <div style={styles.tokenSpeedInfo}>
+                    {parseProgress.currentTokenSpeed && parseProgress.currentTokenSpeed > 0 && (
+                      <span>当前速度: {formatTokenSpeed(parseProgress.currentTokenSpeed)}</span>
+                    )}
+                    {parseProgress.averageTokenSpeed && parseProgress.averageTokenSpeed > 0 && (
+                      <span>平均速度: {formatTokenSpeed(parseProgress.averageTokenSpeed)}</span>
+                    )}
+                    {parseProgress.totalTokensUsed && parseProgress.totalTokensUsed > 0 && (
+                      <span>累计Token: {formatNumber(parseProgress.totalTokensUsed)}</span>
+                    )}
+                  </div>
+                )}
 
                 {/* 横向进度条 */}
                 <div style={styles.progressBarWrapper}>
@@ -954,6 +1208,12 @@ export function ContractUploadUnified({
               fileName={objectName}
               onBack={() => setStep('upload')}
               onContinue={handleTypeDetection}
+              onRegenerate={handleRegenerateMarkdown}
+              isRegenerating={isRegenerating}
+              isFromCache={isMarkdownFromCache}
+              onCleanup={handleCleanupMarkdown}
+              isCleaning={isCleaning}
+              cleanupInfo={cleanupInfo}
             />
           </>
         )}
@@ -1687,6 +1947,14 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '8px',
     fontSize: '13px',
     color: '#6b7280',
+  },
+  tokenSpeedInfo: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: '8px',
+    fontSize: '12px',
+    color: '#9ca3af',
+    gap: '16px',
   },
   progressBarWrapper: {
     display: 'flex',

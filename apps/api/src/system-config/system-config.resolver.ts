@@ -1,5 +1,5 @@
 import { Resolver, Query, Mutation, Args, ArgsType, Field } from '@nestjs/graphql';
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, Optional, Inject, forwardRef } from '@nestjs/common';
 import { GqlAuthGuard } from '../auth/guards/gql-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -8,6 +8,7 @@ import { UserRole } from '../graphql/types/enums';
 import { SystemConfigService } from './system-config.service';
 import { LlmConfigService } from '../llm-parser/config/llm-config.service';
 import { LlmParserService } from '../llm-parser/llm-parser.service';
+import { RAGService } from '../rag/rag.service';
 import {
   SystemConfig,
   SystemHealth,
@@ -26,6 +27,8 @@ export class SystemConfigResolver {
     private readonly systemConfigService: SystemConfigService,
     private readonly llmConfigService: LlmConfigService,
     private readonly llmParserService: LlmParserService,
+    @Optional() @Inject(forwardRef(() => RAGService))
+    private readonly ragService?: RAGService,
   ) {}
 
   /**
@@ -173,7 +176,14 @@ export class SystemConfigResolver {
       dimensions,
     };
 
-    return this.systemConfigService.saveEmbeddingConfig(config, user?.id);
+    const result = await this.systemConfigService.saveEmbeddingConfig(config, user?.id);
+
+    // Refresh RAGService embedding client
+    if (this.ragService) {
+      await this.ragService.refreshEmbeddingClient();
+    }
+
+    return result;
   }
 
   /**
@@ -209,6 +219,33 @@ export class SystemConfigResolver {
   }
 
   /**
+   * Test Instructor compatibility for structured output
+   * Tests whether the current LLM config supports Instructor library
+   * This is relevant for OpenAI-compatible APIs
+   */
+  @Mutation(() => ModelTestResult, { description: '测试 Instructor 结构化输出兼容性' })
+  @UseGuards(GqlAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async testInstructorSupport(
+    @Args('provider', { type: () => String, nullable: true }) provider?: string,
+    @Args('model', { type: () => String, nullable: true }) model?: string,
+    @Args('baseUrl', { type: () => String, nullable: true }) baseUrl?: string,
+    @Args('apiKey', { type: () => String, nullable: true }) apiKey?: string,
+  ): Promise<ModelTestResult> {
+    return this.systemConfigService.testInstructorSupport({ provider, model, baseUrl, apiKey });
+  }
+
+  /**
+   * Check if Instructor is supported based on previous test result
+   */
+  @Query(() => Boolean, { description: '检查是否支持 Instructor 结构化输出' })
+  @UseGuards(GqlAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async isInstructorSupported(): Promise<boolean> {
+    return this.systemConfigService.isInstructorSupported();
+  }
+
+  /**
    * Reset LLM configuration
    */
   @Mutation(() => LLMConfig, { description: '重置LLM配置为默认值' })
@@ -231,7 +268,14 @@ export class SystemConfigResolver {
   @UseGuards(GqlAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async resetEmbeddingConfig(@CurrentUser() user?: any): Promise<EmbeddingConfig> {
-    return this.systemConfigService.resetEmbeddingConfig(user?.id);
+    const result = await this.systemConfigService.resetEmbeddingConfig(user?.id);
+
+    // Refresh RAGService embedding client
+    if (this.ragService) {
+      await this.ragService.refreshEmbeddingClient();
+    }
+
+    return result;
   }
 
   /**

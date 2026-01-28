@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional, Inject, forwardRef } from '@nestjs/common';
 import OpenAI from 'openai';
 import { randomUUID } from 'crypto';
 import { LlmConfigService } from './config/llm-config.service';
@@ -9,6 +9,7 @@ import { ParseProgressService } from './parse-progress.service';
 import { TaskBasedParserService } from './task-based-parser.service';
 import { LlmParseResult } from './dto/llm-parse-result.dto';
 import { ContractExtractedData } from './dto/contract-extracted-data.dto';
+import { ContractType } from '../contract/models/enums';
 import {
   SYSTEM_PROMPT,
   USER_PROMPT_TEMPLATE,
@@ -29,13 +30,17 @@ export class LlmParserService implements OnModuleInit {
   // 是否使用任务化解析（默认true，效果更好）
   private readonly USE_TASK_BASED_PARSING = true;
 
+  // 是否强制使用LLM解析（跳过程序提取和完整性检查）
+  // 设置为true后，所有合同解析都使用LLM，不再使用正则表达式
+  private readonly FORCE_LLM_ONLY = true;
+
   constructor(
     private configService: LlmConfigService,
     private parserService: ParserService,
     private completenessChecker: CompletenessCheckerService,
     private chunkingStrategy: ChunkingStrategyService,
     @Optional() private progressService: ParseProgressService,
-    @Optional() private taskBasedParser: TaskBasedParserService,
+    @Optional() @Inject(forwardRef(() => TaskBasedParserService)) private taskBasedParser: TaskBasedParserService,
   ) {
     // Client will be initialized in onModuleInit after database config is loaded
   }
@@ -47,7 +52,29 @@ export class LlmParserService implements OnModuleInit {
     // Ensure LlmConfigService has loaded database config before we create the client
     await this.configService.refreshCache();
     this.refreshClient();
-    this.logger.log(`Initialized with LLM provider: ${this.configService.getProviderName()}`);
+
+    // 详细的初始化日志
+    const config = this.configService.getActiveConfig();
+    this.logger.log(`========== LlmParserService 初始化 ==========`);
+    this.logger.log(`LLM Provider: ${this.configService.getProviderName()}`);
+    this.logger.log(`LLM Model: ${config.model}`);
+    this.logger.log(`LLM Base URL: ${config.baseUrl}`);
+    this.logger.log(`LLM Timeout: ${config.timeout}ms`);
+    this.logger.log(`TaskBasedParser 注入状态: ${this.taskBasedParser ? '✓ 已注入' : '✗ 未注入'}`);
+    this.logger.log(`ProgressService 注入状态: ${this.progressService ? '✓ 已注入' : '✗ 未注入'}`);
+    this.logger.log(`USE_TASK_BASED_PARSING: ${this.USE_TASK_BASED_PARSING}`);
+    this.logger.log(`FORCE_LLM_ONLY: ${this.FORCE_LLM_ONLY} (强制使用LLM，跳过程序提取)`);
+    this.logger.log(`==============================================`);
+
+    this.debugLog('[LlmParserService] Initialized', {
+      provider: this.configService.getProviderName(),
+      model: config.model,
+      baseUrl: config.baseUrl,
+      timeout: config.timeout,
+      hasTaskBasedParser: !!this.taskBasedParser,
+      hasProgressService: !!this.progressService,
+      USE_TASK_BASED_PARSING: this.USE_TASK_BASED_PARSING,
+    });
   }
 
   /**
@@ -65,6 +92,12 @@ export class LlmParserService implements OnModuleInit {
       `OpenAI client refreshed: provider="${this.configService.getProviderName()}", ` +
       `model="${config.model}", baseUrl="${config.baseUrl}"`
     );
+
+    // Also refresh TaskBasedParserService client
+    if (this.taskBasedParser) {
+      this.taskBasedParser.refreshClient();
+      this.logger.log(`TaskBasedParserService client also refreshed`);
+    }
   }
 
   /**
@@ -75,6 +108,92 @@ export class LlmParserService implements OnModuleInit {
     const logMessage = `[${timestamp}] ${message}${data ? '\n' + JSON.stringify(data, null, 2) : ''}\n`;
     fs.appendFileSync(this.debugLogFile, logMessage);
     this.logger.debug(message);
+  }
+
+  /**
+   * 执行LLM解析（用于FORCE_LLM_ONLY模式）
+   * 直接使用任务化解析器提取所有字段，跳过程序提取和完整性检查
+   */
+  private async executeLlmParsing(
+    documentText: string,
+    emptyFields: Record<string, any>,
+    sessionId: string | undefined,
+    contractType: string | undefined,
+    fileName: string,
+    startTime: number
+  ): Promise<LlmParseResult> {
+    this.logger.log(`[LLM-Only Mode] 开始使用LLM提取完整合同信息 (${documentText.length} chars)`);
+
+    let llmExtractedData: ContractExtractedData;
+
+    // 使用任务化解析
+    if (this.USE_TASK_BASED_PARSING && this.taskBasedParser) {
+      this.logger.log('[LLM-Only Mode] Using task-based parsing strategy');
+      sessionId && this.progressService?.updateStage(sessionId, 'llm_processing', 'AI正在分类提取信息');
+
+      const taskResult = await this.taskBasedParser.parseByTasks(
+        documentText,
+        contractType,
+        undefined,
+        sessionId,
+        fileName
+      );
+
+      this.logger.log(
+        `[LLM-Only Mode] Task-based parsing completed: ` +
+        `${taskResult.summary.successfulTasks}/${taskResult.summary.totalTasks} tasks, ` +
+        `${taskResult.summary.totalTokensUsed} tokens, ${taskResult.summary.totalTimeMs}ms`
+      );
+
+      llmExtractedData = this.convertTaskBasedResultToContractData(taskResult.data);
+    } else {
+      // 降级方案：使用单次LLM调用
+      this.logger.warn('[LLM-Only Mode] TaskBasedParser not available, using single LLM call');
+      sessionId && this.progressService?.updateStage(sessionId, 'llm_processing', 'LLM正在提取合同信息');
+
+      const partialData = await this.callLlmForFullExtraction(documentText, []);
+      // 确保必需字段存在
+      llmExtractedData = {
+        contractType: partialData.contractType || ContractType.PROJECT_OUTSOURCING,
+        basicInfo: partialData.basicInfo || { contractNo: '', contractName: '', ourEntity: '', customerName: '', status: 'DRAFT' },
+        financialInfo: partialData.financialInfo,
+        timeInfo: partialData.timeInfo,
+        otherInfo: partialData.otherInfo,
+        typeSpecificDetails: partialData.typeSpecificDetails,
+        metadata: partialData.metadata,
+      };
+    }
+
+    // 构建结果（无需合并，因为程序提取结果是空的）
+    const processingTimeMs = Date.now() - startTime;
+    const config = this.configService.getActiveConfig();
+
+    const result: LlmParseResult = {
+      success: true,
+      extractedData: llmExtractedData,
+      rawText: documentText,
+      pageCount: 0,
+      llmModel: config.model,
+      llmProvider: this.configService.getProviderName(),
+      processingTimeMs,
+      sessionId: sessionId ?? undefined,
+      hybridStrategy: {
+        usedLlm: true,
+        usedValidation: false,
+        reason: 'LLM-Only模式：跳过程序提取，直接使用LLM提取完整信息',
+        programParseScore: 0,
+        llmChunks: 0,
+        enhancedFields: [],
+      },
+    };
+
+    // 保存结果到进度服务
+    if (sessionId && this.progressService) {
+      this.progressService.setSessionResult(sessionId, result);
+      this.progressService.completeSession(sessionId, result);
+    }
+
+    return result;
   }
 
   /**
@@ -93,6 +212,7 @@ export class LlmParserService implements OnModuleInit {
     externalSessionId?: string,
     preConvertedMarkdown?: string,
     contractType?: string,
+    originalFileName?: string,
   ): Promise<LlmParseResult> {
     const startTime = Date.now();
 
@@ -152,7 +272,49 @@ export class LlmParserService implements OnModuleInit {
       }
       const documentText = parseResult.text;
 
-      // ========== 阶段2: 完整性检查 ==========
+      // ========== 阶段2: LLM-only模式检查 ==========
+      if (this.FORCE_LLM_ONLY) {
+        this.logger.log(`[LLM-Only Mode] 跳过程序提取和完整性检查，直接使用LLM解析`);
+        sessionId && this.progressService?.updateStage(sessionId, 'llm_processing', 'AI正在提取完整合同信息');
+
+        // 初始化空的程序提取结果（用于后续合并）
+        const emptyFields: Record<string, any> = {
+          contractNo: undefined,
+          name: undefined,
+          customerName: undefined,
+          ourEntity: undefined,
+          type: undefined,
+          status: undefined,
+          amountWithTax: undefined,
+          amountWithoutTax: undefined,
+          taxRate: undefined,
+          paymentTerms: undefined,
+          paymentMethod: undefined,
+          signedAt: undefined,
+          effectiveAt: undefined,
+          expiresAt: undefined,
+          duration: undefined,
+          salesPerson: undefined,
+          industry: undefined,
+          signLocation: undefined,
+          copies: undefined,
+          currency: undefined,
+        };
+
+        // 直接跳转到LLM解析
+        const llmResult = await this.executeLlmParsing(
+          documentText,
+          emptyFields,
+          sessionId ?? undefined,
+          contractType,
+          originalFileName || objectName,
+          startTime
+        );
+
+        return llmResult;
+      }
+
+      // ========== 阶段3: 完整性检查（混合模式）==========
       const fields = parseResult.extractedFields || {
         contractNo: undefined,
         name: undefined,
@@ -333,7 +495,7 @@ export class LlmParserService implements OnModuleInit {
           contractType, // contractType (如果提供则使用，否则自动检测)
           undefined, // enabledTaskTypes (未提供，将根据 contractType 自动确定)
           sessionId ?? undefined,
-          objectName // fileName (用于优先判断合同类型)
+          originalFileName || objectName // fileName (用于优先判断合同类型，优先使用原始文件名)
         );
         this.logger.log(
           `[Task-based Parsing] Completed: ${taskResult.summary.successfulTasks}/${taskResult.summary.totalTasks} tasks successful, ` +
@@ -382,11 +544,6 @@ export class LlmParserService implements OnModuleInit {
         `[Hybrid Strategy] Completed in ${processingTimeMs}ms, ` +
         `used ${chunkingResult.chunks.length} LLM call(s)`
       );
-
-      // 完成进度会话
-      if (sessionId) {
-        this.progressService?.completeSession(sessionId, { chunksProcessed: chunkingResult.chunks.length });
-      }
 
       const result = {
         success: true,
@@ -449,6 +606,56 @@ export class LlmParserService implements OnModuleInit {
     let llmTokensUsed = 0;
 
     try {
+      // LLM-Only模式：跳过完整性检查，直接使用LLM
+      if (this.FORCE_LLM_ONLY) {
+        this.logger.log(`[LLM-Only Mode] parseWithMixedStrategy: 强制使用LLM解析`);
+
+        // 使用任务化解析
+        let llmExtractedData: ContractExtractedData;
+        if (this.USE_TASK_BASED_PARSING && this.taskBasedParser) {
+          this.logger.log('[LLM-Only Mode] Using task-based parsing');
+          const taskResult = await this.taskBasedParser.parseByTasks(
+            textContent,
+            undefined,
+            undefined,
+            undefined,
+            'contract.txt'
+          );
+          llmExtractedData = this.convertTaskBasedResultToContractData(taskResult.data);
+        } else {
+          const partialData = await this.callLlmForFullExtraction(textContent, []);
+          // 确保必需字段存在
+          llmExtractedData = {
+            contractType: partialData.contractType || ContractType.PROJECT_OUTSOURCING,
+            basicInfo: partialData.basicInfo || { contractNo: '', contractName: '', ourEntity: '', customerName: '', status: 'DRAFT' },
+            financialInfo: partialData.financialInfo,
+            timeInfo: partialData.timeInfo,
+            otherInfo: partialData.otherInfo,
+            typeSpecificDetails: partialData.typeSpecificDetails,
+            metadata: partialData.metadata,
+          };
+        }
+
+        const processingTimeMs = Date.now() - startTime;
+        return {
+          success: true,
+          extractedDataJson: this.flattenContractExtractedData(llmExtractedData),
+          strategyUsed: ParseStrategy.LLM_FULL_EXTRACTION,
+          confidence: 0.9,
+          processingTimeMs,
+          llmTokensUsed,
+          llmModel: this.configService.getActiveConfig().model,
+          llmProvider: this.configService.getProviderName(),
+          warnings: warnings.length > 0 ? warnings : undefined,
+          hybridStrategy: {
+            usedLlm: true,
+            usedValidation: false,
+            reason: 'LLM-Only模式：强制使用LLM解析',
+            programParseScore: 0,
+          },
+        };
+      }
+
       // 1. Calculate completeness score
       const extractedFields = programmaticResult || {};
       const completenessScore = this.completenessChecker.calculateScore(extractedFields);
@@ -1474,6 +1681,65 @@ ${JSON.stringify(CONTRACT_JSON_SCHEMA, null, 2)}
   }
 
   /**
+   * 确保值为字符串类型
+   * 用于 GraphQL schema 定义为 String 但 LLM 可能返回数字的字段（如 amountWithTax）
+   */
+  private ensureString(value: any): string | undefined {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'string') {
+      // 处理 "null" 字符串
+      if (value.toLowerCase() === 'null') return undefined;
+      return value;
+    }
+    if (typeof value === 'number') {
+      return String(value);
+    }
+    return String(value);
+  }
+
+  /**
+   * 将ContractExtractedData扁平化为普通对象
+   * 用于parseWithMixedStrategy的extractedDataJson字段
+   */
+  private flattenContractExtractedData(data: ContractExtractedData): Record<string, unknown> {
+    const flattened: Record<string, unknown> = {
+      contractType: data.contractType,
+    };
+
+    // 展开basicInfo
+    if (data.basicInfo) {
+      Object.assign(flattened, data.basicInfo);
+    }
+
+    // 展开financialInfo（带前缀避免冲突）
+    if (data.financialInfo) {
+      Object.assign(flattened, data.financialInfo);
+    }
+
+    // 展开timeInfo
+    if (data.timeInfo) {
+      Object.assign(flattened, data.timeInfo);
+    }
+
+    // 展开otherInfo
+    if (data.otherInfo) {
+      Object.assign(flattened, data.otherInfo);
+    }
+
+    // 保留typeSpecificDetails
+    if (data.typeSpecificDetails) {
+      flattened.typeSpecificDetails = data.typeSpecificDetails;
+    }
+
+    // 保留metadata
+    if (data.metadata) {
+      flattened.metadata = data.metadata;
+    }
+
+    return flattened;
+  }
+
+  /**
    * 将ExtractedFields转换为ContractExtractedData
    * 支持两种字段命名约定：
    * 1. 旧格式（FieldExtractor返回）: contractNumber, contractName, partyA, partyB, signDate, amount
@@ -1535,41 +1801,114 @@ ${JSON.stringify(CONTRACT_JSON_SCHEMA, null, 2)}
     //   contractType?: string
     // }
 
-    // 首先提取contractType
-    const contractType = taskData.contractType || taskData.basicInfo?.contractType || 'PROJECT_OUTSOURCING';
+    // 首先提取contractType，注意处理 LLM 可能返回的 "null" 字符串
+    const rawContractType = taskData.contractType || taskData.basicInfo?.contractType;
+    const isValidContractType = rawContractType &&
+      typeof rawContractType === 'string' &&
+      rawContractType.toLowerCase() !== 'null' &&
+      ['STAFF_AUGMENTATION', 'PROJECT_OUTSOURCING', 'PRODUCT_SALES', 'MIXED'].includes(rawContractType.toUpperCase());
+    const contractType = isValidContractType ? rawContractType.toUpperCase() : 'PROJECT_OUTSOURCING';
 
     // 规范化typeSpecificDetails - 处理可能的数组转字符串问题
     const typeSpecificDetails = this.normalizeTypeSpecificDetails(taskData.typeSpecificDetails || {});
 
+    // 字段名映射：处理可能返回的旧字段名
+    const basicInfo = taskData.basicInfo || {};
+    const financialInfo = taskData.financialInfo || {};
+    const timeInfo = taskData.timeInfo || {};
+    const otherInfo = taskData.otherInfo || {};
+
     return {
       contractType: contractType as any,
       basicInfo: {
-        contractNo: taskData.basicInfo?.contractNo,
-        contractName: taskData.basicInfo?.contractName,
-        // 清理我方主体和客户名称字段，移除Markdown格式符号
-        ourEntity: this.cleanTextField(taskData.basicInfo?.ourEntity),
-        customerName: this.cleanTextField(taskData.basicInfo?.customerName),
+        // ===== 现有字段 =====
+        contractNo: basicInfo.contractNo,
+        contractName: basicInfo.contractName,
+        // 字段映射：firstPartyName/secondPartyName -> customerName/ourEntity
+        ourEntity: this.cleanTextField(basicInfo.ourEntity || basicInfo.secondPartyName),
+        customerName: this.cleanTextField(basicInfo.customerName || basicInfo.firstPartyName),
         status: 'DRAFT',
+
+        // ===== 合同元数据 =====
+        version: basicInfo.version,
+        governingLanguage: basicInfo.governingLanguage || '中文',
+
+        // ===== 甲方详细信息 =====
+        clientLegalRep: basicInfo.clientLegalRep,
+        clientRegistrationNumber: basicInfo.clientRegistrationNumber,
+        clientBusinessLicense: basicInfo.clientBusinessLicense,
+        clientAddress: basicInfo.clientAddress,
+        clientContactPerson: basicInfo.clientContactPerson,
+        clientPhone: basicInfo.clientPhone,
+        clientEmail: basicInfo.clientEmail,
+        clientFax: basicInfo.clientFax,
+        clientBankName: basicInfo.clientBankName,
+        clientBankAccount: basicInfo.clientBankAccount,
+        clientAccountName: basicInfo.clientAccountName,
+
+        // ===== 乙方详细信息 =====
+        vendorLegalRep: basicInfo.vendorLegalRep,
+        vendorRegistrationNumber: basicInfo.vendorRegistrationNumber,
+        vendorBusinessLicense: basicInfo.vendorBusinessLicense,
+        vendorAddress: basicInfo.vendorAddress,
+        vendorContactPerson: basicInfo.vendorContactPerson,
+        vendorPhone: basicInfo.vendorPhone,
+        vendorEmail: basicInfo.vendorEmail,
+        vendorFax: basicInfo.vendorFax,
+        vendorBankName: basicInfo.vendorBankName,
+        vendorBankAccount: basicInfo.vendorBankAccount,
+        vendorAccountName: basicInfo.vendorAccountName,
+
+        // ===== 项目基本信息 =====
+        projectName: basicInfo.projectName,
+        projectOverview: basicInfo.projectOverview,
+
+        // ===== 时间信息 =====
+        projectStartDate: basicInfo.projectStartDate,
+        projectEndDate: basicInfo.projectEndDate,
+        warrantyStartDate: basicInfo.warrantyStartDate,
+        warrantyPeriodMonths: basicInfo.warrantyPeriodMonths,
+
+        // ===== 财务信息 =====
+        isTaxInclusive: basicInfo.isTaxInclusive ?? true,
+        pricingModel: basicInfo.pricingModel,
+
+        // ===== 验收信息 =====
+        acceptanceMethod: basicInfo.acceptanceMethod,
+        acceptancePeriodDays: basicInfo.acceptancePeriodDays,
+        deemedAcceptanceRule: basicInfo.deemedAcceptanceRule,
+
+        // ===== 保密条款 =====
+        confidentialityTermYears: basicInfo.confidentialityTermYears,
+        confidentialityDefinition: basicInfo.confidentialityDefinition,
+        confidentialityObligation: basicInfo.confidentialityObligation,
+
+        // ===== 通用条款 =====
+        governingLaw: basicInfo.governingLaw,
+        disputeResolutionMethod: basicInfo.disputeResolutionMethod,
+        noticeRequirements: basicInfo.noticeRequirements,
       },
       financialInfo: {
-        amountWithTax: taskData.financialInfo?.amountWithTax,
-        amountWithoutTax: taskData.financialInfo?.amountWithoutTax,
-        taxRate: taskData.financialInfo?.taxRate,
-        currency: taskData.financialInfo?.currency || 'CNY',
-        paymentMethod: taskData.financialInfo?.paymentMethod,
-        paymentTerms: taskData.financialInfo?.paymentTerms,
+        // 确保金额字段为字符串类型（GraphQL schema 定义为 String）
+        amountWithTax: this.ensureString(financialInfo.amountWithTax),
+        amountWithoutTax: this.ensureString(financialInfo.amountWithoutTax),
+        taxRate: this.ensureString(financialInfo.taxRate),
+        currency: financialInfo.currency || 'CNY',
+        paymentMethod: financialInfo.paymentMethod,
+        paymentTerms: financialInfo.paymentTerms,
       },
       timeInfo: {
-        signedAt: taskData.timeInfo?.signedAt,
-        effectiveAt: taskData.timeInfo?.effectiveAt,
-        expiresAt: taskData.timeInfo?.expiresAt,
-        duration: taskData.timeInfo?.duration,
+        // 字段映射：signDate -> signedAt, startDate -> effectiveAt, endDate -> expiresAt
+        signedAt: timeInfo.signedAt || timeInfo.signDate,
+        effectiveAt: timeInfo.effectiveAt || timeInfo.startDate,
+        expiresAt: timeInfo.expiresAt || timeInfo.endDate,
+        duration: timeInfo.duration,
       },
       otherInfo: {
-        salesPerson: taskData.otherInfo?.salesPerson,
-        industry: taskData.otherInfo?.industry,
-        signLocation: taskData.otherInfo?.signLocation,
-        copies: taskData.otherInfo?.copies,
+        salesPerson: otherInfo.salesPerson,
+        industry: otherInfo.industry,
+        signLocation: otherInfo.signLocation,
+        copies: otherInfo.copies,
       },
       // 使用规范化后的typeSpecificDetails
       typeSpecificDetails,

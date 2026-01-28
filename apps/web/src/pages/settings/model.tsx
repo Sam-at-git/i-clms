@@ -37,33 +37,33 @@ const LLM_PRESETS: Record<string, Partial<LLMConfig>> = {
     model: 'gemma3:27b',
     baseUrl: '',
     temperature: 0.1,
-    maxTokens: 4000,
+    maxTokens: 8000,
   },
   'ollama-llama': {
     provider: 'ollama',
     model: 'llama3.2',
     baseUrl: '',
     temperature: 0.1,
-    maxTokens: 4000,
+    maxTokens: 8000,
   },
   'ollama-qwen': {
     provider: 'ollama',
     model: 'qwen2.5',
     baseUrl: '',
     temperature: 0.1,
-    maxTokens: 4000,
+    maxTokens: 8000,
   },
   'openai-gpt4': {
     provider: 'openai',
     model: 'gpt-4o',
     temperature: 0.1,
-    maxTokens: 4000,
+    maxTokens: 8000,
   },
   'openai-gpt35': {
     provider: 'openai',
     model: 'gpt-4o-mini',
     temperature: 0.1,
-    maxTokens: 4000,
+    maxTokens: 8000,
   },
 };
 
@@ -100,6 +100,7 @@ const GET_LLM_CONFIG = gql`
       provider
       model
       baseUrl
+      apiKey
       temperature
       maxTokens
     }
@@ -112,6 +113,7 @@ const GET_EMBEDDING_CONFIG = gql`
       provider
       model
       baseUrl
+      apiKey
       dimensions
     }
   }
@@ -123,6 +125,7 @@ const SAVE_LLM_CONFIG = gql`
       provider
       model
       baseUrl
+      apiKey
       temperature
       maxTokens
     }
@@ -147,6 +150,7 @@ const SAVE_EMBEDDING_CONFIG = gql`
       provider
       model
       baseUrl
+      apiKey
       dimensions
     }
   }
@@ -192,12 +196,33 @@ const TEST_EMBEDDING_CONNECTION = gql`
   }
 `;
 
+const TEST_INSTRUCTOR_SUPPORT = gql`
+  mutation TestInstructorSupport(
+    $provider: String
+    $model: String
+    $baseUrl: String
+    $apiKey: String
+  ) {
+    testInstructorSupport(
+      provider: $provider
+      model: $model
+      baseUrl: $baseUrl
+      apiKey: $apiKey
+    ) {
+      success
+      message
+      latency
+    }
+  }
+`;
+
 const RESET_LLM_CONFIG = gql`
   mutation ResetLLMConfig {
     resetLLMConfig {
       provider
       model
       baseUrl
+      apiKey
       temperature
       maxTokens
     }
@@ -210,6 +235,7 @@ const RESET_EMBEDDING_CONFIG = gql`
       provider
       model
       baseUrl
+      apiKey
       dimensions
     }
   }
@@ -250,9 +276,10 @@ export function ModelConfigPage() {
     model: 'gemma3:27b',
     baseUrl: '',
     temperature: 0.1,
-    maxTokens: 4000,
+    maxTokens: 8000,
   });
   const [llmTestResult, setLlmTestResult] = useState<ModelTestResult | null>(null);
+  const [instructorTestResult, setInstructorTestResult] = useState<ModelTestResult | null>(null);
 
   // Embedding Config State
   const [embeddingConfig, setEmbeddingConfig] = useState<EmbeddingConfig>({
@@ -341,6 +368,15 @@ export function ModelConfigPage() {
     },
   });
 
+  const [testInstructorSupport, { loading: testingInstructor }] = useMutation(TEST_INSTRUCTOR_SUPPORT, {
+    onCompleted: (data: any) => {
+      setInstructorTestResult(data.testInstructorSupport);
+    },
+    onError: (err) => {
+      setInstructorTestResult({ success: false, message: err.message });
+    },
+  });
+
   const [resetLLMConfig] = useMutation(RESET_LLM_CONFIG, {
     onCompleted: (data: any) => {
       setLlmConfig(data.resetLLMConfig as LLMConfig);
@@ -412,6 +448,7 @@ export function ModelConfigPage() {
           llmProvider: llmConfig.provider,
           llmModel: llmConfig.model,
           llmBaseUrl: llmConfig.baseUrl,
+          llmApiKey: llmConfig.apiKey,
           llmTemperature: llmConfig.temperature,
           llmMaxTokens: llmConfig.maxTokens,
         },
@@ -427,6 +464,7 @@ export function ModelConfigPage() {
         provider: embeddingConfig.provider,
         model: embeddingConfig.model,
         baseUrl: embeddingConfig.baseUrl,
+        apiKey: embeddingConfig.apiKey,
         dimensions: embeddingConfig.dimensions,
       },
     });
@@ -454,6 +492,19 @@ export function ModelConfigPage() {
         model: embeddingConfig.model,
         baseUrl: embeddingConfig.baseUrl,
         apiKey: embeddingConfig.apiKey,
+      },
+    });
+  };
+
+  const handleTestInstructor = async () => {
+    setInstructorTestResult(null);
+    // Test with current form values
+    await testInstructorSupport({
+      variables: {
+        provider: llmConfig.provider,
+        model: llmConfig.model,
+        baseUrl: llmConfig.baseUrl,
+        apiKey: llmConfig.apiKey,
       },
     });
   };
@@ -613,6 +664,23 @@ export function ModelConfigPage() {
               </div>
             </div>
 
+            {/* API Key - Only show for OpenAI */}
+            {llmConfig.provider === 'openai' && (
+              <div style={styles.field}>
+                <label style={styles.label}>API Key</label>
+                <input
+                  type="password"
+                  style={styles.input}
+                  value={llmConfig.apiKey || ''}
+                  onChange={(e) => setLlmConfig({ ...llmConfig, apiKey: e.target.value })}
+                  placeholder="sk-..."
+                />
+                <div style={styles.help}>
+                  OpenAI API密钥，从 https://platform.openai.com/api-keys 获取
+                </div>
+              </div>
+            )}
+
             {/* Temperature */}
             <div style={styles.field}>
               <label style={styles.label}>
@@ -660,6 +728,35 @@ export function ModelConfigPage() {
               </div>
             )}
 
+            {/* Instructor Test Result (OpenAI only) */}
+            {instructorTestResult && llmConfig.provider === 'openai' && (
+              <div style={{
+                ...styles.testResult,
+                backgroundColor: instructorTestResult.success ? '#dbeafe' : '#fef2f2',
+                color: instructorTestResult.success ? '#1e40af' : '#dc2626',
+              }}>
+                <div style={styles.testResultTitle}>
+                  {instructorTestResult.success ? '✓ 结构化输出测试通过' : '✗ 结构化输出测试失败'}
+                </div>
+                {instructorTestResult.message && <div style={styles.testResultMessage}>{instructorTestResult.message}</div>}
+                {instructorTestResult.latency && <div style={styles.testResultMessage}>延迟: {instructorTestResult.latency}ms</div>}
+              </div>
+            )}
+
+            {/* Ollama Native Format Info */}
+            {llmConfig.provider === 'ollama' && llmTestResult?.success && (
+              <div style={{
+                ...styles.testResult,
+                backgroundColor: '#eff6ff',
+                color: '#1e40af',
+              }}>
+                <div style={styles.testResultTitle}>ℹ️ 结构化输出模式</div>
+                <div style={styles.testResultMessage}>
+                  Ollama 将使用原生 format 参数进行结构化输出，无需额外测试
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
             <div style={styles.actions}>
               <button onClick={handleSaveLLM} disabled={savingLLM} style={styles.primaryButton}>
@@ -668,6 +765,12 @@ export function ModelConfigPage() {
               <button onClick={handleTestLLM} disabled={testingLLM} style={styles.secondaryButton}>
                 {testingLLM ? '测试中...' : '测试连接'}
               </button>
+              {/* Instructor Test Button (OpenAI only) */}
+              {llmConfig.provider === 'openai' && (
+                <button onClick={handleTestInstructor} disabled={testingInstructor} style={styles.secondaryButton}>
+                  {testingInstructor ? '测试中...' : '测试结构化输出'}
+                </button>
+              )}
               <button onClick={() => resetLLMConfig()} style={styles.textButton}>
                 重置为默认
               </button>
@@ -760,6 +863,23 @@ export function ModelConfigPage() {
                 placeholder={embeddingConfig.provider === 'openai' ? 'https://api.openai.com/v1' : 'http://localhost:11434/v1'}
               />
             </div>
+
+            {/* API Key - Only show for OpenAI */}
+            {embeddingConfig.provider === 'openai' && (
+              <div style={styles.field}>
+                <label style={styles.label}>API Key</label>
+                <input
+                  type="password"
+                  style={styles.input}
+                  value={embeddingConfig.apiKey || ''}
+                  onChange={(e) => setEmbeddingConfig({ ...embeddingConfig, apiKey: e.target.value })}
+                  placeholder="sk-..."
+                />
+                <div style={styles.help}>
+                  OpenAI API密钥，从 https://platform.openai.com/api-keys 获取
+                </div>
+              </div>
+            )}
 
             {/* Dimensions */}
             <div style={styles.field}>

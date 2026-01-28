@@ -43,6 +43,10 @@ export interface TaskProgress {
   endTime?: number;
   error?: string;
   data?: any; // 该任务提取的数据（可选）
+  // 任务内分块进度
+  totalTaskChunks?: number; // 该任务需处理的分块总数
+  completedTaskChunks?: number; // 该任务已完成的分块数
+  currentTaskChunk?: number; // 当前处理的分块索引（1-based）
 }
 
 /**
@@ -83,6 +87,15 @@ export interface ParseSessionProgress {
   extractedFieldsCount?: number; // 已提取的字段数量
   resultData?: any; // 存储解析完成后的完整结果
   markdownContent?: string; // 文档的Markdown格式内容
+
+  // Spec 40: Token and Time Tracking
+  totalTokensUsed: number;           // 累计使用的token数
+  currentTaskTokens: number;         // 当前任务使用的token数
+  currentTaskStartTime: number;      // 当前任务开始时间（timestamp）
+  sessionStartTime: number;          // 会话开始时间（timestamp）
+  totalEstimatedChunks: number;      // 所有任务的总chunk数
+  initialEstimatedSeconds: number;   // 初始预估秒数
+  averageChunkTimeMs: number;        // 平均单chunk耗时（毫秒）
 }
 
 /**
@@ -111,6 +124,7 @@ export class ParseProgressService {
    */
   createSession(objectName: string): string {
     const sessionId = uuidv4();
+    const now = Date.now();
     const session: ParseSessionProgress = {
       sessionId,
       objectName,
@@ -124,7 +138,15 @@ export class ParseProgressService {
       totalTasks: 0,
       completedTasks: 0,
       tasks: [],
-      startTime: Date.now(),
+      startTime: now,
+      // Spec 40: Token and Time Tracking initialization
+      totalTokensUsed: 0,
+      currentTaskTokens: 0,
+      currentTaskStartTime: 0,
+      sessionStartTime: now,
+      totalEstimatedChunks: 0,
+      initialEstimatedSeconds: 0,
+      averageChunkTimeMs: 0,
     };
 
     this.sessions.set(sessionId, session);
@@ -273,6 +295,60 @@ export class ParseProgressService {
 
       this.logEvent(sessionId, 'task_failed', { infoType, infoTypeName: task.infoTypeName, error });
       this.logger.warn(`[ParseProgress] Session ${sessionId}: task ${task.infoTypeName} failed - ${error}`);
+    }
+  }
+
+  /**
+   * 设置任务内分块信息
+   * 用于跟踪单个任务处理多个分块的进度
+   */
+  setTaskChunks(sessionId: string, infoType: InfoType, totalChunks: number): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    const task = session.tasks.find(t => t.infoType === infoType);
+    if (task) {
+      task.totalTaskChunks = totalChunks;
+      task.completedTaskChunks = 0;
+      task.currentTaskChunk = 0;
+
+      this.logger.debug(`[ParseProgress] Session ${sessionId}: task ${task.infoTypeName} has ${totalChunks} chunks to process`);
+    }
+  }
+
+  /**
+   * 更新任务内分块进度
+   * @param currentChunk 当前处理的分块索引（1-based）
+   */
+  updateTaskChunkProgress(sessionId: string, infoType: InfoType, currentChunk: number): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    const task = session.tasks.find(t => t.infoType === infoType);
+    if (task && task.totalTaskChunks) {
+      task.currentTaskChunk = currentChunk;
+      session.currentStage = `${task.infoTypeName}: 处理分块 ${currentChunk}/${task.totalTaskChunks}`;
+      session.currentTaskInfo = `${task.infoTypeName} (${currentChunk}/${task.totalTaskChunks})`;
+
+      this.logger.debug(`[ParseProgress] Session ${sessionId}: ${task.infoTypeName} chunk ${currentChunk}/${task.totalTaskChunks}`);
+    }
+  }
+
+  /**
+   * 完成任务内单个分块
+   */
+  completeTaskChunk(sessionId: string, infoType: InfoType): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    const task = session.tasks.find(t => t.infoType === infoType);
+    if (task && task.totalTaskChunks) {
+      task.completedTaskChunks = (task.completedTaskChunks || 0) + 1;
+
+      this.logger.debug(
+        `[ParseProgress] Session ${sessionId}: ${task.infoTypeName} completed chunk ` +
+        `${task.completedTaskChunks}/${task.totalTaskChunks}`
+      );
     }
   }
 
@@ -456,6 +532,7 @@ export class ParseProgressService {
   /**
    * 获取进度百分比
    * 优先使用任务进度（如果有的话），否则使用分块进度
+   * 支持任务内分块进度的细粒度计算
    */
   getProgressPercentage(sessionId: string): number {
     const session = this.sessions.get(sessionId);
@@ -463,7 +540,18 @@ export class ParseProgressService {
 
     // 如果有任务进度，优先使用任务进度
     if (session.totalTasks > 0) {
-      return Math.round((session.completedTasks / session.totalTasks) * 100);
+      // 基础进度：已完成任务数
+      let progress = session.completedTasks / session.totalTasks;
+
+      // 加上当前进行中任务的分块进度（细粒度）
+      const currentTask = session.tasks.find(t => t.status === 'processing');
+      if (currentTask && currentTask.totalTaskChunks && currentTask.totalTaskChunks > 0) {
+        const taskChunkProgress = (currentTask.completedTaskChunks || 0) / currentTask.totalTaskChunks;
+        // 每个任务贡献 1/totalTasks 的进度，当前任务的分块进度贡献其中一部分
+        progress += taskChunkProgress / session.totalTasks;
+      }
+
+      return Math.round(progress * 100);
     }
 
     // 否则使用分块进度
@@ -521,5 +609,206 @@ export class ParseProgressService {
    */
   deleteSession(sessionId: string): boolean {
     return this.sessions.delete(sessionId);
+  }
+
+  // =============================================================================
+  // Spec 40: Time Estimation and Token Speed Tracking
+  // =============================================================================
+
+  /**
+   * 设置初始预估时间（基于文本长度和chunk数量）
+   */
+  setInitialEstimate(sessionId: string, textLength: number, chunkCount: number): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    // 假设: 每2000字符约25秒，每chunk约30秒，取较大值
+    const timeByText = Math.ceil((textLength / 2000) * 25);
+    const timeByChunks = chunkCount * 30;
+    session.initialEstimatedSeconds = Math.max(timeByText, timeByChunks, 60); // 最少1分钟
+    session.totalEstimatedChunks = chunkCount;
+
+    this.logger.debug(
+      `[ParseProgress] Session ${sessionId}: initial estimate ${session.initialEstimatedSeconds}s ` +
+      `(text: ${textLength} chars, chunks: ${chunkCount})`
+    );
+  }
+
+  /**
+   * 计算预估剩余时间
+   *
+   * 策略：
+   * - 阶段1 (0任务完成): 基于初始预估
+   * - 阶段2 (1任务完成): 基于实际chunk处理时间重新计算
+   * - 阶段3 (2+任务完成): 基于历史平均任务时间
+   */
+  calculateEstimatedRemainingTime(sessionId: string): number {
+    const session = this.sessions.get(sessionId);
+    if (!session) return 0;
+
+    const completedTasks = session.completedTasks || 0;
+    const totalTasks = session.totalTasks || 6;
+
+    // 阶段1: 初始阶段（0任务完成）- 返回初始预估
+    if (completedTasks === 0) {
+      return session.initialEstimatedSeconds || this.calculateInitialEstimate(session);
+    }
+
+    // 阶段2: 基本信息完成后 - 基于实际chunk数重新计算
+    if (completedTasks === 1 && session.totalEstimatedChunks > 0) {
+      return this.calculateDetailedEstimate(session);
+    }
+
+    // 阶段3: 进行中 - 基于历史平均
+    return this.calculateRunningEstimate(session);
+  }
+
+  /**
+   * 初始预估：基于文本长度和chunk数量
+   */
+  private calculateInitialEstimate(session: ParseSessionProgress): number {
+    const textLength = session.markdownContent?.length || 0;
+    const chunkCount = session.chunks?.length || session.totalEstimatedChunks || 1;
+
+    // 每2000字符约25秒，每chunk约30秒
+    const timeByText = Math.ceil((textLength / 2000) * 25);
+    const timeByChunks = chunkCount * 30;
+
+    return Math.max(timeByText, timeByChunks, 60); // 最少1分钟
+  }
+
+  /**
+   * 详细预估：基本信息完成后，基于各任务实际chunk处理时间
+   */
+  private calculateDetailedEstimate(session: ParseSessionProgress): number {
+    const tasks = session.tasks || [];
+    const completedTask = tasks.find(t => t.status === 'completed');
+
+    if (!completedTask || !completedTask.startTime || !completedTask.endTime) {
+      return this.calculateRunningEstimate(session);
+    }
+
+    // 计算已完成任务的总耗时
+    const completedTimeMs = completedTask.endTime - completedTask.startTime;
+    const completedChunks = completedTask.totalTaskChunks || 1;
+    const avgTimePerChunkMs = completedTimeMs / completedChunks;
+
+    // 更新平均chunk时间
+    session.averageChunkTimeMs = avgTimePerChunkMs;
+
+    // 计算剩余任务的总chunk数
+    let remainingChunks = 0;
+    for (const task of tasks) {
+      if (task.status !== 'completed') {
+        remainingChunks += task.totalTaskChunks || 1;
+      }
+    }
+
+    return Math.round((remainingChunks * avgTimePerChunkMs) / 1000);
+  }
+
+  /**
+   * 运行中预估：基于已完成任务的平均耗时
+   */
+  private calculateRunningEstimate(session: ParseSessionProgress): number {
+    const tasks = session.tasks || [];
+    const completedTasks = tasks.filter(t => t.status === 'completed');
+
+    if (completedTasks.length === 0) return 0;
+
+    // 计算已完成任务的平均耗时
+    const totalTimeMs = completedTasks.reduce((sum, t) => {
+      const taskTime = (t.endTime || 0) - (t.startTime || 0);
+      return sum + (taskTime > 0 ? taskTime : 0);
+    }, 0);
+
+    const avgTimePerTaskMs = totalTimeMs / completedTasks.length;
+    const remainingTasks = (session.totalTasks || 6) - completedTasks.length;
+
+    return Math.round((remainingTasks * avgTimePerTaskMs) / 1000);
+  }
+
+  /**
+   * 计算Token速度
+   *
+   * @returns { current: 当前任务速度, average: 累计平均速度 }
+   */
+  calculateTokenSpeed(sessionId: string): { current: number; average: number } {
+    const session = this.sessions.get(sessionId);
+    if (!session) return { current: 0, average: 0 };
+
+    const now = Date.now();
+
+    // 当前任务速度
+    let currentSpeed = 0;
+    if (session.currentTaskStartTime > 0 && session.currentTaskTokens > 0) {
+      const elapsedMs = now - session.currentTaskStartTime;
+      if (elapsedMs > 0) {
+        currentSpeed = Math.round((session.currentTaskTokens / elapsedMs) * 1000);
+      }
+    }
+
+    // 累计平均速度
+    let averageSpeed = 0;
+    const sessionElapsedMs = now - session.sessionStartTime;
+    if (sessionElapsedMs > 0 && session.totalTokensUsed > 0) {
+      averageSpeed = Math.round((session.totalTokensUsed / sessionElapsedMs) * 1000);
+    }
+
+    return { current: currentSpeed, average: averageSpeed };
+  }
+
+  /**
+   * 记录Token使用
+   */
+  recordTokenUsage(sessionId: string, taskInfoType: string, tokens: number): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    // 更新累计token
+    session.totalTokensUsed = (session.totalTokensUsed || 0) + tokens;
+
+    // 更新当前任务token
+    session.currentTaskTokens = (session.currentTaskTokens || 0) + tokens;
+
+    this.logger.debug(
+      `[ParseProgress] Session ${sessionId}: recorded ${tokens} tokens for ${taskInfoType} ` +
+      `(total: ${session.totalTokensUsed})`
+    );
+  }
+
+  /**
+   * 开始任务时重置当前任务token计数
+   */
+  resetCurrentTaskTokens(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    session.currentTaskTokens = 0;
+    session.currentTaskStartTime = Date.now();
+  }
+
+  /**
+   * 获取进度信息（包含时间和速度）
+   */
+  getProgressInfo(sessionId: string): {
+    estimatedRemainingSeconds: number;
+    currentTokenSpeed: number;
+    averageTokenSpeed: number;
+    progressPercentage: number;
+  } | null {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+
+    const estimatedRemainingSeconds = this.calculateEstimatedRemainingTime(sessionId);
+    const { current: currentTokenSpeed, average: averageTokenSpeed } = this.calculateTokenSpeed(sessionId);
+    const progressPercentage = this.getProgressPercentage(sessionId);
+
+    return {
+      estimatedRemainingSeconds,
+      currentTokenSpeed,
+      averageTokenSpeed,
+      progressPercentage,
+    };
   }
 }

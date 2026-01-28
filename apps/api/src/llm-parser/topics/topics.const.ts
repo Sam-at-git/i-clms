@@ -70,16 +70,75 @@ export const EXTRACT_TOPICS: ExtractTopicDefinition[] = [
   {
     name: ExtractTopic.BASIC_INFO,
     displayName: ExtractTopicNames[ExtractTopic.BASIC_INFO],
-    description: '合同编号、名称、签约方、日期等基础信息',
+    description: '合同编号、名称、签约方、甲乙双方详细信息、项目信息、时间信息、验收信息、保密条款、通用条款等基础信息',
     weight: 4,
     order: 1,
     fields: [
-      { name: 'contractNumber', type: 'string', required: false, description: '合同编号' },
-      { name: 'title', type: 'string', required: false, description: '合同名称' },
+      // ===== 现有字段 =====
+      { name: 'contractNo', type: 'string', required: false, description: '合同编号' },
+      { name: 'contractName', type: 'string', required: false, description: '合同名称（如"外包合作项目协议"）' },
       { name: 'contractType', type: 'string', required: false, description: '合同类型' },
-      { name: 'firstPartyName', type: 'string', required: false, description: '甲方名称' },
-      { name: 'secondPartyName', type: 'string', required: false, description: '乙方名称' },
-      { name: 'industry', type: 'string', required: false, description: '所属行业' },
+      { name: 'customerName', type: 'string', required: false, description: '甲方名称=客户=委托方=发包方（不要填乙方！）' },
+      { name: 'ourEntity', type: 'string', required: false, description: '乙方名称=供应商=受托方=承包方（不要填甲方！）' },
+
+      // ===== 合同元数据 =====
+      { name: 'version', type: 'string', required: false, description: '版本号' },
+      { name: 'governingLanguage', type: 'string', required: false, description: '管辖语言' },
+
+      // ===== 甲方详细信息 =====
+      { name: 'clientLegalRep', type: 'string', required: false, description: '甲方法定代表人姓名（是人名如"张三"，不是公司名！）' },
+      { name: 'clientRegistrationNumber', type: 'string', required: false, description: '甲方注册号/统一社会信用代码' },
+      { name: 'clientBusinessLicense', type: 'string', required: false, description: '甲方营业执照号' },
+      { name: 'clientAddress', type: 'string', required: false, description: '甲方地址' },
+      { name: 'clientContactPerson', type: 'string', required: false, description: '甲方联系人' },
+      { name: 'clientPhone', type: 'string', required: false, description: '甲方电话' },
+      { name: 'clientEmail', type: 'string', required: false, description: '甲方邮箱' },
+      { name: 'clientFax', type: 'string', required: false, description: '甲方传真' },
+      { name: 'clientBankName', type: 'string', required: false, description: '甲方开户行' },
+      { name: 'clientBankAccount', type: 'string', required: false, description: '甲方银行账号' },
+      { name: 'clientAccountName', type: 'string', required: false, description: '甲方账户名称' },
+
+      // ===== 乙方详细信息 =====
+      { name: 'vendorLegalRep', type: 'string', required: false, description: '乙方法定代表人' },
+      { name: 'vendorRegistrationNumber', type: 'string', required: false, description: '乙方注册号/统一社会信用代码' },
+      { name: 'vendorBusinessLicense', type: 'string', required: false, description: '乙方营业执照号' },
+      { name: 'vendorAddress', type: 'string', required: false, description: '乙方地址' },
+      { name: 'vendorContactPerson', type: 'string', required: false, description: '乙方联系人' },
+      { name: 'vendorPhone', type: 'string', required: false, description: '乙方电话' },
+      { name: 'vendorEmail', type: 'string', required: false, description: '乙方邮箱' },
+      { name: 'vendorFax', type: 'string', required: false, description: '乙方传真' },
+      { name: 'vendorBankName', type: 'string', required: false, description: '乙方开户行' },
+      { name: 'vendorBankAccount', type: 'string', required: false, description: '乙方银行账号' },
+      { name: 'vendorAccountName', type: 'string', required: false, description: '乙方账户名称' },
+
+      // ===== 项目基本信息 =====
+      { name: 'projectName', type: 'string', required: false, description: '项目名称' },
+      { name: 'projectOverview', type: 'string', required: false, description: '项目概述' },
+
+      // ===== 时间信息 =====
+      { name: 'projectStartDate', type: 'date', required: false, description: '项目开始日期' },
+      { name: 'projectEndDate', type: 'date', required: false, description: '项目结束日期' },
+      { name: 'warrantyStartDate', type: 'date', required: false, description: '质保期开始日期' },
+      { name: 'warrantyPeriodMonths', type: 'number', required: false, description: '质保期(月)' },
+
+      // ===== 财务信息 =====
+      { name: 'isTaxInclusive', type: 'boolean', required: false, description: '是否含税' },
+      { name: 'pricingModel', type: 'string', required: false, description: '定价模式' },
+
+      // ===== 验收信息 =====
+      { name: 'acceptanceMethod', type: 'string', required: false, description: '验收方法' },
+      { name: 'acceptancePeriodDays', type: 'number', required: false, description: '验收期(天)' },
+      { name: 'deemedAcceptanceRule', type: 'string', required: false, description: '视为验收规则' },
+
+      // ===== 保密条款 =====
+      { name: 'confidentialityTermYears', type: 'number', required: false, description: '保密期限(年)' },
+      { name: 'confidentialityDefinition', type: 'string', required: false, description: '保密信息定义' },
+      { name: 'confidentialityObligation', type: 'string', required: false, description: '保密义务描述' },
+
+      // ===== 通用条款 =====
+      { name: 'governingLaw', type: 'string', required: false, description: '管辖法律' },
+      { name: 'disputeResolutionMethod', type: 'string', required: false, description: '争议解决方式' },
+      { name: 'noticeRequirements', type: 'string', required: false, description: '通知要求' },
     ],
   },
   {

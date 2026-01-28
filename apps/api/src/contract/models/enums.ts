@@ -39,6 +39,12 @@ export enum UserRole {
   ADMIN = 'ADMIN',
 }
 
+export enum PricingModel {
+  FIXED_PRICE = 'FIXED_PRICE',
+  TIME_MATERIAL = 'TIME_MATERIAL',
+  MIXED = 'MIXED',
+}
+
 registerEnumType(ContractType, {
   name: 'ContractType',
   description: 'Type of contract',
@@ -83,4 +89,14 @@ registerEnumType(DepartmentCode, {
 registerEnumType(UserRole, {
   name: 'UserRole',
   description: 'User role',
+});
+
+registerEnumType(PricingModel, {
+  name: 'PricingModel',
+  description: '合同定价模式',
+  valuesMap: {
+    FIXED_PRICE: { description: '固定价格' },
+    TIME_MATERIAL: { description: '工时材料' },
+    MIXED: { description: '混合模式' },
+  },
 });

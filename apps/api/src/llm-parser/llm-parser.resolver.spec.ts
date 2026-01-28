@@ -150,6 +150,18 @@ describe('LlmParserResolver', () => {
             failTask: jest.fn(),
             getAllSessions: jest.fn(),
             cleanupExpiredSessions: jest.fn(),
+            // Spec 40: Token and time tracking methods
+            getProgressInfo: jest.fn().mockReturnValue({
+              estimatedRemainingSeconds: 30,
+              currentTokenSpeed: 50,
+              averageTokenSpeed: 45,
+              progressPercentage: 40,
+            }),
+            setInitialEstimate: jest.fn(),
+            recordTokenUsage: jest.fn(),
+            resetCurrentTaskTokens: jest.fn(),
+            calculateEstimatedRemainingTime: jest.fn().mockReturnValue(30),
+            calculateTokenSpeed: jest.fn().mockReturnValue({ current: 50, average: 45 }),
           },
         },
         {

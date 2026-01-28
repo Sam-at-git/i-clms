@@ -306,7 +306,7 @@ export function BatchActions({
             <button
               onClick={() => !isUpdating && setShowTagMenu(!showTagMenu)}
               disabled={isUpdating}
-              style={styles.tagButton}
+              style={styles.tagActionButton}
             >
               {isUpdating ? '分配中...' : '🏷️ 标签'}
             </button>
@@ -483,7 +483,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontWeight: 500,
   },
-  tagButton: {
+  tagActionButton: {
     padding: '6px 16px',
     fontSize: '14px',
     color: '#fff',

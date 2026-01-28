@@ -1,4 +1,4 @@
-import { Field, ObjectType, Int } from '@nestjs/graphql';
+import { Field, ObjectType, Int, Float } from '@nestjs/graphql';
 
 /**
  * 合同类型检测结果
@@ -8,7 +8,7 @@ export class ContractTypeDetectionResult {
   @Field(() => String, { nullable: true, description: '检测到的合同类型' })
   detectedType!: string | null;
 
-  @Field(() => Int, { description: '置信度 (0-1)' })
+  @Field(() => Float, { description: '置信度 (0-1)' })
   confidence!: number;
 
   @Field(() => String, { description: '判断依据说明' })

@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmbeddingClient } from './embedding/embedding-client.interface';
 import { OllamaEmbeddingClient } from './embedding/ollama-embedding.client';
@@ -7,6 +7,7 @@ import { SemanticChunkerService, SemanticChunk } from '../llm-parser/semantic-ch
 import { VectorStoreService } from '../vector-store/vector-store.service';
 import { TopicRegistryService } from '../llm-parser/topics/topic-registry.service';
 import { PrismaService } from '../prisma';
+import { SystemConfigService } from '../system-config/system-config.service';
 import {
   EmbeddingModelConfig,
   EMBEDDING_MODELS,
@@ -74,52 +75,120 @@ export class RAGService implements OnModuleInit {
     private readonly vectorStore: VectorStoreService,
     private readonly topicRegistry: TopicRegistryService,
     private readonly prisma: PrismaService,
+    @Optional() @Inject(forwardRef(() => SystemConfigService))
+    private readonly systemConfigService?: SystemConfigService,
   ) {}
 
   async onModuleInit(): Promise<void> {
+    this.logger.log(`[RAGService] onModuleInit called, SystemConfigService available: ${!!this.systemConfigService}`);
     await this.initializeEmbeddingClient();
   }
 
   /**
    * Initialize embedding client based on configuration
+   * Priority: Database config > Environment variables > Defaults
    */
   async initializeEmbeddingClient(): Promise<void> {
-    const modelName = this.config.get('EMBEDDING_MODEL') || 'nomic-embed-text';
-    const config = EMBEDDING_MODELS[modelName];
+    let embeddingConfig: {
+      provider: string;
+      model: string;
+      baseUrl?: string;
+      apiKey?: string;
+      dimensions: number;
+    };
 
-    if (!config) {
-      this.logger.warn(`No embedding model config found for ${modelName}`);
-      return;
+    // Try to get config from database first (via SystemConfigService)
+    if (this.systemConfigService) {
+      try {
+        const dbConfig = await this.systemConfigService.getEmbeddingConfig();
+        embeddingConfig = {
+          provider: dbConfig.provider || 'ollama',
+          model: dbConfig.model || 'nomic-embed-text',
+          baseUrl: dbConfig.baseUrl,
+          apiKey: dbConfig.apiKey,
+          dimensions: dbConfig.dimensions || 768,
+        };
+        this.logger.log(`[RAG] Using database embedding config: provider=${embeddingConfig.provider}, model=${embeddingConfig.model}, baseUrl=${embeddingConfig.baseUrl || '(default)'}`);
+      } catch (error) {
+        this.logger.warn(`[RAG] Failed to get database config, falling back to environment variables: ${this.errorMessage(error)}`);
+        embeddingConfig = this.getConfigFromEnvironment();
+      }
+    } else {
+      this.logger.log(`[RAG] SystemConfigService not available, using environment variables`);
+      embeddingConfig = this.getConfigFromEnvironment();
     }
 
+    // Build EmbeddingModelConfig from the config
+    const modelConfig: EmbeddingModelConfig = {
+      provider: embeddingConfig.provider as EmbeddingProvider,
+      model: embeddingConfig.model,
+      dimensions: embeddingConfig.dimensions,
+      baseUrl: embeddingConfig.baseUrl,
+      apiKey: embeddingConfig.apiKey,
+    };
+
     try {
-      switch (config.provider) {
+      switch (modelConfig.provider) {
         case EmbeddingProvider.OLLAMA:
-          this.embeddingClient = new OllamaEmbeddingClient(config, this.config);
+          this.embeddingClient = new OllamaEmbeddingClient(modelConfig, this.config);
           break;
         case EmbeddingProvider.OPENAI:
-          const apiKey = this.config.get('OPENAI_API_KEY');
-          this.embeddingClient = new OpenAIEmbeddingClient({ ...config, apiKey });
+          const apiKey = modelConfig.apiKey || this.config.get('OPENAI_API_KEY');
+          this.embeddingClient = new OpenAIEmbeddingClient({ ...modelConfig, apiKey });
           break;
         default:
-          throw new Error(`Unsupported provider: ${config.provider}`);
+          throw new Error(`Unsupported provider: ${modelConfig.provider}`);
       }
 
       // Test connection
       const connected = await this.embeddingClient.testConnection();
       if (connected) {
-        this.currentConfig = config;
+        this.currentConfig = modelConfig;
         this.logger.log(
-          `Embedding client initialized: ${modelName} (${config.dimensions}d via ${config.provider})`,
+          `Embedding client initialized: ${modelConfig.model} (${modelConfig.dimensions}d via ${modelConfig.provider})`,
         );
       } else {
-        this.logger.warn(`Embedding model ${modelName} not available`);
+        this.logger.warn(`Embedding model ${modelConfig.model} not available`);
         this.embeddingClient = null;
       }
     } catch (error) {
       this.logger.error(`Failed to initialize embedding client: ${this.errorMessage(error)}`);
       this.embeddingClient = null;
     }
+  }
+
+  /**
+   * Get embedding config from environment variables (fallback)
+   */
+  private getConfigFromEnvironment(): {
+    provider: string;
+    model: string;
+    baseUrl?: string;
+    apiKey?: string;
+    dimensions: number;
+  } {
+    const modelName = this.config.get('EMBEDDING_MODEL') || 'nomic-embed-text';
+    const predefinedConfig = EMBEDDING_MODELS[modelName];
+
+    return {
+      provider: this.config.get('EMBEDDING_PROVIDER') || predefinedConfig?.provider || 'ollama',
+      model: modelName,
+      baseUrl: this.config.get('OLLAMA_EMBEDDING_BASE_URL'),
+      apiKey: this.config.get('OPENAI_API_KEY'),
+      dimensions: predefinedConfig?.dimensions || 768,
+    };
+  }
+
+  /**
+   * Refresh embedding client with current configuration
+   * Call this when embedding configuration is updated
+   */
+  async refreshEmbeddingClient(): Promise<void> {
+    this.logger.log(`[RAG] Refreshing embedding client...`);
+    this.embeddingClient = null;
+    this.currentConfig = null;
+    await this.initializeEmbeddingClient();
+    this.logger.log(`[RAG] Embedding client refreshed`);
   }
 
   /**

@@ -37,10 +37,19 @@ export class ChunkingStrategyService {
     priorityFields: string[]
   ): ChunkingResult {
     const totalLength = text.length;
+    const lineCount = text.split('\n').length;
+
+    this.logger.log(`========== 分块策略决策 ==========`);
+    this.logger.log(`文档长度: ${totalLength} 字符`);
+    this.logger.log(`文档行数: ${lineCount} 行`);
+    this.logger.log(`优先字段: ${priorityFields.join(', ')}`);
+    this.logger.log(`单次调用阈值: ${this.SINGLE_CALL_MAX_LENGTH} 字符`);
+    this.logger.log(`分块大小: ${this.CHUNK_SIZE} 字符`);
 
     // 策略1: 短文本，单次LLM调用
     if (totalLength <= this.SINGLE_CALL_MAX_LENGTH) {
-      this.logger.log(`Using SINGLE strategy: text length ${totalLength} chars`);
+      this.logger.log(`策略: SINGLE (文档较短)`);
+      this.logger.log(`====================================`);
       return {
         strategy: 'single',
         chunks: [
@@ -59,7 +68,8 @@ export class ChunkingStrategyService {
     }
 
     // 策略2: 长文本，多段智能分割
-    this.logger.log(`Using MULTI-SEGMENT strategy: text length ${totalLength} chars`);
+    this.logger.log(`策略: MULTI-SEGMENT (文档较长，需分块)`);
+    this.logger.log(`====================================`);
     return this.createSmartChunks(text, priorityFields, totalLength);
   }
 

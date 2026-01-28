@@ -10,13 +10,16 @@ importers:
     dependencies:
       '@apollo/client':
         specifier: ^4.1.0
-        version: 4.1.0(graphql-ws@6.0.6(graphql@16.12.0)(ws@8.18.3))(graphql@16.12.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(rxjs@7.8.1)(subscriptions-transport-ws@0.11.0(graphql@16.12.0))
+        version: 4.1.0(graphql-ws@6.0.6(graphql@16.12.0)(ws@8.19.0))(graphql@16.12.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(rxjs@7.8.1)(subscriptions-transport-ws@0.11.0(graphql@16.12.0))
       '@apollo/server':
         specifier: ^5.2.0
         version: 5.2.0(graphql@16.12.0)
       '@as-integrations/express5':
         specifier: ^1.1.2
         version: 1.1.2(@apollo/server@5.2.0(graphql@16.12.0))(express@5.2.1)
+      '@instructor-ai/instructor':
+        specifier: ^1.7.0
+        version: 1.7.0(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(zod@4.3.6)
       '@nestjs/apollo':
         specifier: ^13.2.3
         version: 13.2.3(@apollo/server@5.2.0(graphql@16.12.0))(@as-integrations/express5@1.1.2(@apollo/server@5.2.0(graphql@16.12.0))(express@5.2.1))(@nestjs/common@11.1.12(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@11.1.12)(@nestjs/graphql@13.2.3(@nestjs/common@11.1.12(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@11.1.12)(graphql@16.12.0)(reflect-metadata@0.1.14))(graphql@16.12.0)
@@ -79,7 +82,7 @@ importers:
         version: 8.0.6
       openai:
         specifier: ^6.16.0
-        version: 6.16.0(ws@8.18.3)
+        version: 6.16.0(ws@8.19.0)(zod@4.3.6)
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -122,6 +125,9 @@ importers:
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
       zustand:
         specifier: ^5.0.10
         version: 5.0.10(@types/react@19.2.8)(react@19.2.3)
@@ -1907,6 +1913,12 @@ packages:
     peerDependenciesMeta:
       '@types/node':
         optional: true
+
+  '@instructor-ai/instructor@1.7.0':
+    resolution: {integrity: sha512-7ifu2ZzFBMSOtkY2X5dd2RCxQvfO6Bx+Ag/9V+FkamLGGGciazlTKsEyQR6KSn7BXADLWLIDV296S+O+CifE/A==}
+    peerDependencies:
+      openai: '>=4.58.0'
+      zod: '>=3.23.8'
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -7898,6 +7910,9 @@ packages:
   rambda@9.4.2:
     resolution: {integrity: sha512-++euMfxnl7OgaEKwXh9QqThOjMeta2HH001N1v4mYQzBjJBnmXBh2BCK6dZAbICFVXOFUVD3xFG0R3ZPU0mxXw==}
 
+  ramda@0.29.1:
+    resolution: {integrity: sha512-OfxIeWzd4xdUNxlWhgFazxsA/nl3mS4/jGZI5n00uWOoSSFRhC1b6gl6xvmzUamgmqELraWp0J/qqVlXYPDPyA==}
+
   randombytes@2.1.0:
     resolution: {integrity: sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ==}
 
@@ -8300,6 +8315,11 @@ packages:
 
   scheduler@0.27.0:
     resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
+
+  schema-stream@3.2.2:
+    resolution: {integrity: sha512-7hwI/4lbo8sOs7sRbKW9Bh+5qPHOj12tVpskHq1tYakVlWEpdLgeEKXXgzGLaAP1Bw+DcoB4DmdA7/nSxGI5OA==}
+    peerDependencies:
+      zod: ^3.23.3
 
   schema-utils@3.3.0:
     resolution: {integrity: sha512-pN/yOAvcC+5rQ5nERGuwrjLlYvLTbCibnZ1I7B1LaiAz9BRBlE9GMgE/eqV30P7aJQUf7Ddimy/RsbYO/GrVGg==}
@@ -9515,6 +9535,26 @@ packages:
     resolution: {integrity: sha512-9qv4rlDiopXg4E69k+vMHjNN63YFMe9sZMrdlvKnCjlCRWeCBswPPMPUfx+ipsAWq1LXHe70RcbaHdJJpS6hyQ==}
     engines: {node: '>= 10'}
 
+  zod-stream@3.0.0:
+    resolution: {integrity: sha512-BfW8KI+FCEMQOAIf8Qgc2q67iZ+LZ/zzk7alU45FWiZIrBSt0JMxNVGuc3o1yTpGFVk3zXiHt3TZvmUiad/9nw==}
+    peerDependencies:
+      openai: 4.47.1
+      zod: ^3.23.3
+
+  zod-to-json-schema@3.25.1:
+    resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
+    peerDependencies:
+      zod: ^3.25 || ^4
+
+  zod-validation-error@3.5.4:
+    resolution: {integrity: sha512-+hEiRIiPobgyuFlEojnqjJnhFvg4r/i3cqgcm67eehZf/WBaK3g6cD02YU9mtdVxZjv8CzCA9n/Rhrs3yAAvAw==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      zod: ^3.24.4
+
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+
   zustand@5.0.10:
     resolution: {integrity: sha512-U1AiltS1O9hSy3rul+Ub82ut2fqIAefiSuwECWt6jlMVUGejvf+5omLcRBSzqbRagSM3hQZbtzdeRc6QVScXTg==}
     engines: {node: '>=12.20.0'}
@@ -9559,23 +9599,6 @@ snapshots:
   '@apollo/cache-control-types@1.0.3(graphql@16.12.0)':
     dependencies:
       graphql: 16.12.0
-
-  '@apollo/client@4.1.0(graphql-ws@6.0.6(graphql@16.12.0)(ws@8.18.3))(graphql@16.12.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(rxjs@7.8.1)(subscriptions-transport-ws@0.11.0(graphql@16.12.0))':
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.12.0)
-      '@wry/caches': 1.0.1
-      '@wry/equality': 0.5.7
-      '@wry/trie': 0.5.0
-      graphql: 16.12.0
-      graphql-tag: 2.12.6(graphql@16.12.0)
-      optimism: 0.18.1
-      rxjs: 7.8.1
-      tslib: 2.8.1
-    optionalDependencies:
-      graphql-ws: 6.0.6(graphql@16.12.0)(ws@8.18.3)
-      react: 19.2.3
-      react-dom: 19.2.3(react@19.2.3)
-      subscriptions-transport-ws: 0.11.0(graphql@16.12.0)
 
   '@apollo/client@4.1.0(graphql-ws@6.0.6(graphql@16.12.0)(ws@8.19.0))(graphql@16.12.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(rxjs@7.8.1)(subscriptions-transport-ws@0.11.0(graphql@16.12.0))':
     dependencies:
@@ -11572,6 +11595,13 @@ snapshots:
   '@inquirer/type@3.0.10(@types/node@20.19.9)':
     optionalDependencies:
       '@types/node': 20.19.9
+
+  '@instructor-ai/instructor@1.7.0(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(zod@4.3.6)':
+    dependencies:
+      openai: 6.16.0(ws@8.19.0)(zod@4.3.6)
+      zod: 4.3.6
+      zod-stream: 3.0.0(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(zod@4.3.6)
+      zod-validation-error: 3.5.4(zod@4.3.6)
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -17867,9 +17897,10 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openai@6.16.0(ws@8.18.3):
+  openai@6.16.0(ws@8.19.0)(zod@4.3.6):
     optionalDependencies:
-      ws: 8.18.3
+      ws: 8.19.0
+      zod: 4.3.6
 
   opener@1.5.2: {}
 
@@ -18646,6 +18677,8 @@ snapshots:
 
   rambda@9.4.2: {}
 
+  ramda@0.29.1: {}
+
   randombytes@2.1.0:
     dependencies:
       safe-buffer: 5.2.1
@@ -19050,6 +19083,11 @@ snapshots:
       xmlchars: 2.2.0
 
   scheduler@0.27.0: {}
+
+  schema-stream@3.2.2(zod@4.3.6):
+    dependencies:
+      ramda: 0.29.1
+      zod: 4.3.6
 
   schema-utils@3.3.0:
     dependencies:
@@ -20297,6 +20335,23 @@ snapshots:
       archiver-utils: 3.0.4
       compress-commons: 4.1.2
       readable-stream: 3.6.2
+
+  zod-stream@3.0.0(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(zod@4.3.6):
+    dependencies:
+      openai: 6.16.0(ws@8.19.0)(zod@4.3.6)
+      schema-stream: 3.2.2(zod@4.3.6)
+      zod: 4.3.6
+      zod-to-json-schema: 3.25.1(zod@4.3.6)
+
+  zod-to-json-schema@3.25.1(zod@4.3.6):
+    dependencies:
+      zod: 4.3.6
+
+  zod-validation-error@3.5.4(zod@4.3.6):
+    dependencies:
+      zod: 4.3.6
+
+  zod@4.3.6: {}
 
   zustand@5.0.10(@types/react@19.2.8)(react@19.2.3):
     optionalDependencies:

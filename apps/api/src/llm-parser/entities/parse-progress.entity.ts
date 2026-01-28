@@ -180,8 +180,17 @@ export class ParseSessionProgressInfo {
   @Field(() => Int, { nullable: true })
   extractedFieldsCount?: number;
 
-  @Field(() => Int, { nullable: true })
-  estimatedRemainingSeconds?: number; // 预估剩余时间（秒）
+  @Field(() => Int, { nullable: true, description: '预估剩余时间（秒）' })
+  estimatedRemainingSeconds?: number;
+
+  @Field(() => Int, { nullable: true, description: '当前任务Token速度（tok/s）' })
+  currentTokenSpeed?: number;
+
+  @Field(() => Int, { nullable: true, description: '累计平均Token速度（tok/s）' })
+  averageTokenSpeed?: number;
+
+  @Field(() => Int, { nullable: true, description: '累计使用的Token数' })
+  totalTokensUsed?: number;
 
   @Field(() => GraphQLJSONObject, { nullable: true })
   resultData?: any; // 存储解析完成后的完整结果

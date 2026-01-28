@@ -210,6 +210,90 @@ export const VALIDATION_PROMPT_TEMPLATE = `你是一个专业的合同信息验�
 
 请严格按照JSON格式输出，不要包含任何解释文字。`;
 
+// ========== Spec 41.4: BASIC_INFO分块Prompt（精简版）==========
+export const BASIC_INFO_CHUNK_PROMPT_TEMPLATE = (chunkText: string, contextInfo: {
+  contractName?: string;
+  chunkTitle?: string;
+  positionHint?: string;
+}): string => {
+  const cleanedText = chunkText;
+
+  // 构建上下文说明
+  let contextInfoStr = '';
+  if (contextInfo.contractName) {
+    contextInfoStr += `《${contextInfo.contractName}》`;
+  }
+  if (contextInfo.chunkTitle) {
+    contextInfoStr += ` [${contextInfo.chunkTitle}]`;
+  }
+
+  return `从合同片段中提取完整的基本信息，包括甲乙双方详细信息。
+
+⚠️ 重要：甲乙方映射必须正确
+- 甲方 = 委托方 = 发包方 = 买方 = 客户 = customerName
+- 乙方 = 受托方 = 承包方 = 卖方 = 供应商 = ourEntity
+- clientLegalRep 是甲方的【法定代表人姓名】（是人名，不是公司名）
+
+【基础字段】
+1. contractNo: 合同编号
+2. contractName: 合同名称
+3. customerName: 甲方名称 = 客户名称（乙方是供应商，不要搞反！）
+4. ourEntity: 乙方名称 = 供应商名称（甲方是客户，不要搞反！）
+5. contractType: 合同类型（STAFF_AUGMENTATION/PROJECT_OUTSOURCING/PRODUCT_SALES）
+6. version: 版本号
+7. governingLanguage: 管辖语言
+
+【甲方详细信息】
+8. clientLegalRep: 甲方法定代表人
+9. clientRegistrationNumber: 甲方统一社会信用代码/注册号
+10. clientBusinessLicense: 甲方营业执照号
+11. clientAddress: 甲方地址
+12. clientContactPerson: 甲方联系人
+13. clientPhone: 甲方电话
+14. clientEmail: 甲方邮箱
+15. clientFax: 甲方传真
+16. clientBankName: 甲方开户行
+17. clientBankAccount: 甲方银行账号
+18. clientAccountName: 甲方账户名称
+
+【乙方详细信息】
+19. vendorLegalRep: 乙方法定代表人
+20. vendorRegistrationNumber: 乙方统一社会信用代码/注册号
+21. vendorBusinessLicense: 乙方营业执照号
+22. vendorAddress: 乙方地址
+23. vendorContactPerson: 乙方联系人
+24. vendorPhone: 乙方电话
+25. vendorEmail: 乙方邮箱
+26. vendorFax: 乙方传真
+27. vendorBankName: 乙方开户行
+28. vendorBankAccount: 乙方银行账号
+29. vendorAccountName: 乙方账户名称
+
+【项目详情字段】
+30. projectName: 项目名称
+31. projectOverview: 项目概述或合作背景
+32. projectStartDate: 项目开始日期（YYYY-MM-DD）
+33. projectEndDate: 项目结束日期（YYYY-MM-DD）
+34. warrantyStartDate: 质保期开始日期（YYYY-MM-DD）
+35. warrantyPeriodMonths: 质保期（月数）
+36. isTaxInclusive: 是否含税（true/false）
+37. pricingModel: 定价模式（FIXED_PRICE/TIME_MATERIAL/MIXED）
+38. acceptanceMethod: 验收方法
+39. acceptancePeriodDays: 验收期（天数）
+40. deemedAcceptanceRule: 视为验收规则
+41. confidentialityTermYears: 保密期限（年数）
+42. confidentialityDefinition: 保密信息定义
+43. confidentialityObligation: 保密义务描述
+44. governingLaw: 管辖法律
+45. disputeResolutionMethod: 争议解决方式
+46. noticeRequirements: 通知要求
+
+上下文：${contextInfoStr || '无'}
+片段：${cleanedText}
+
+只返回JSON，不确定的字段用null。不要编造任何值。`;
+};
+
 export const VALIDATION_RESULT_SCHEMA = {
   type: 'object',
   required: ['validationResults'],
@@ -251,20 +335,84 @@ export const CONTRACT_JSON_SCHEMA = {
       description: '合同类型（必须返回英文枚举值：STAFF_AUGMENTATION/PROJECT_OUTSOURCING/PRODUCT_SALES）',
     },
 
-    // 基本信息
+    // 基本信息（扩展版）
     basicInfo: {
       type: 'object',
       properties: {
+        // ===== 现有字段 =====
         contractNo: { type: 'string', description: '合同编号' },
         contractName: { type: 'string', description: '合同名称' },
-        ourEntity: { type: 'string', description: '供应商/我方主体（乙方=受托方/承包方/卖方）' },
-        customerName: { type: 'string', description: '客户名称（甲方=委托方/发包方/买方）' },
+        ourEntity: { type: 'string', description: '供应商/乙方名称（乙方=受托方=承包方=卖方，不要和甲方搞反）' },
+        customerName: { type: 'string', description: '客户/甲方名称（甲方=委托方=发包方=买方，不要和乙方搞反）' },
         status: {
           type: 'string',
           enum: ['DRAFT', 'ACTIVE', 'PENDING_APPROVAL'],
           description: '合同状态',
           default: 'DRAFT',
         },
+
+        // ===== 合同元数据 =====
+        version: { type: 'string', description: '版本号（如：1.0、2.0）' },
+        governingLanguage: { type: 'string', description: '管辖语言（如：中文、英文）', default: '中文' },
+
+        // ===== 甲方详细信息（甲方=客户=customerName对应的方）=====
+        clientLegalRep: { type: 'string', description: '甲方法定代表人姓名（是人的姓名如"张三"，不是公司名！）' },
+        clientRegistrationNumber: { type: 'string', description: '甲方注册号/统一社会信用代码' },
+        clientBusinessLicense: { type: 'string', description: '甲方营业执照号' },
+        clientAddress: { type: 'string', description: '甲方地址' },
+        clientContactPerson: { type: 'string', description: '甲方联系人' },
+        clientPhone: { type: 'string', description: '甲方电话' },
+        clientEmail: { type: 'string', description: '甲方邮箱' },
+        clientFax: { type: 'string', description: '甲方传真' },
+        clientBankName: { type: 'string', description: '甲方开户行' },
+        clientBankAccount: { type: 'string', description: '甲方银行账号' },
+        clientAccountName: { type: 'string', description: '甲方账户名称' },
+
+        // ===== 乙方详细信息（乙方=供应商=ourEntity对应的方）=====
+        vendorLegalRep: { type: 'string', description: '乙方法定代表人姓名（是人的姓名，不是公司名！）' },
+        vendorRegistrationNumber: { type: 'string', description: '乙方注册号/统一社会信用代码' },
+        vendorBusinessLicense: { type: 'string', description: '乙方营业执照号' },
+        vendorAddress: { type: 'string', description: '乙方地址' },
+        vendorContactPerson: { type: 'string', description: '乙方联系人' },
+        vendorPhone: { type: 'string', description: '乙方电话' },
+        vendorEmail: { type: 'string', description: '乙方邮箱' },
+        vendorFax: { type: 'string', description: '乙方传真' },
+        vendorBankName: { type: 'string', description: '乙方开户行' },
+        vendorBankAccount: { type: 'string', description: '乙方银行账号' },
+        vendorAccountName: { type: 'string', description: '乙方账户名称' },
+
+        // ===== 项目基本信息 =====
+        projectName: { type: 'string', description: '项目名称' },
+        projectOverview: { type: 'string', description: '项目概述或者合作背景' },
+
+        // ===== 时间信息 =====
+        projectStartDate: { type: 'string', format: 'date', description: '项目开始日期' },
+        projectEndDate: { type: 'string', format: 'date', description: '项目结束日期' },
+        warrantyStartDate: { type: 'string', format: 'date', description: '质保期开始日期' },
+        warrantyPeriodMonths: { type: 'integer', description: '质保期(月)', default: 12 },
+
+        // ===== 财务信息 =====
+        isTaxInclusive: { type: 'boolean', description: '是否含税', default: true },
+        pricingModel: {
+          type: 'string',
+          enum: ['FIXED_PRICE', 'TIME_MATERIAL', 'MIXED'],
+          description: '定价模式: FIXED_PRICE(固定价格)/TIME_MATERIAL(工时材料)/MIXED(混合)',
+        },
+
+        // ===== 验收信息 =====
+        acceptanceMethod: { type: 'string', description: '验收方法' },
+        acceptancePeriodDays: { type: 'integer', description: '验收期(天)', default: 15 },
+        deemedAcceptanceRule: { type: 'string', description: '视为验收规则' },
+
+        // ===== 保密条款 =====
+        confidentialityTermYears: { type: 'integer', description: '保密期限(年)', default: 3 },
+        confidentialityDefinition: { type: 'string', description: '保密信息定义' },
+        confidentialityObligation: { type: 'string', description: '保密义务描述' },
+
+        // ===== 通用条款 =====
+        governingLaw: { type: 'string', description: '管辖法律' },
+        disputeResolutionMethod: { type: 'string', description: '争议解决方式' },
+        noticeRequirements: { type: 'string', description: '通知要求' },
       },
     },
 

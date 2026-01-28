@@ -1443,12 +1443,63 @@ export class TaskBasedParserService implements OnModuleInit {
 
   /**
    * 判断值是否有效（非空、非null、非undefined）
+   *
+   * 注意：某些 LLM 模型（如 DeepSeek）会返回字符串 "null" 而不是 JSON null，
+   * 这里也将其视为无效值。
    */
   private isValidValue(value: any): boolean {
     if (value === null || value === undefined) return false;
-    if (typeof value === 'string' && value.trim() === '') return false;
+    if (typeof value === 'string') {
+      const trimmed = value.trim().toLowerCase();
+      // 检查空字符串和 "null" 字符串
+      if (trimmed === '' || trimmed === 'null') return false;
+    }
     if (Array.isArray(value) && value.length === 0) return false;
     return true;
+  }
+
+  /**
+   * 清理 LLM 返回的 "null" 字符串为真正的 null
+   *
+   * 某些 LLM 模型（如 DeepSeek）会将 null 转换为字符串 "null"，
+   * 这会导致 GraphQL 类型错误（Int cannot represent "null"）。
+   *
+   * 注意：只清理 "null" 字符串，不做类型转换。类型转换应该在 GraphQL 层处理。
+   */
+  private cleanNullStrings(data: Record<string, any>): Record<string, any> {
+    if (!data || typeof data !== 'object') return data;
+
+    const cleaned: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(data)) {
+      // 处理 "null" 字符串
+      if (typeof value === 'string') {
+        const trimmed = value.trim().toLowerCase();
+        if (trimmed === 'null' || trimmed === 'undefined' || trimmed === '') {
+          cleaned[key] = null;
+          continue;
+        }
+        cleaned[key] = value;
+      } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        // 递归处理嵌套对象
+        cleaned[key] = this.cleanNullStrings(value);
+      } else if (Array.isArray(value)) {
+        // 处理数组
+        cleaned[key] = value.map(item => {
+          if (typeof item === 'string') {
+            const trimmed = item.trim().toLowerCase();
+            return (trimmed === 'null' || trimmed === 'undefined' || trimmed === '') ? null : item;
+          }
+          if (typeof item === 'object' && item !== null) {
+            return this.cleanNullStrings(item);
+          }
+          return item;
+        });
+      } else {
+        cleaned[key] = value;
+      }
+    }
+    return cleaned;
   }
 
   /**
@@ -1635,7 +1686,10 @@ export class TaskBasedParserService implements OnModuleInit {
       'gpt-4o-mini': 128000,
       'gpt-4-turbo': 128000,
       'gpt-3.5-turbo': 16385,
-      'deepseek': 8192,  // DeepSeek models
+      'deepseek': 8192,           // DeepSeek models
+      'deepseek-r1': 64000,      // DeepSeek-R1 models (64K context)
+      'deepseek-r1:32b': 64000,  // DeepSeek-R1 32B
+      'deepseek-r1:70b': 64000,  // DeepSeek-R1 70B
     };
 
     const config = this.configService.getActiveConfig();
@@ -1785,6 +1839,9 @@ export class TaskBasedParserService implements OnModuleInit {
           });
           throw new Error(`JSON解析失败: ${errorMessage}`);
         }
+
+        // 清理 LLM 返回的 "null" 字符串（某些模型如 DeepSeek 会返回字符串而非 JSON null）
+        data = this.cleanNullStrings(data);
 
         // Phase 4: 数据质量验证 - 检测并过滤明显的幻觉数据
         data = this.validateExtractedData(data, task.infoType, text);
@@ -2074,6 +2131,9 @@ export class TaskBasedParserService implements OnModuleInit {
           const jsonContent = this.extractJson(content);
           data = JSON.parse(jsonContent);
         }
+
+        // 清理 LLM 返回的 "null" 字符串（某些模型如 DeepSeek 会返回字符串而非 JSON null）
+        data = this.cleanNullStrings(data);
 
         // Phase 1: 增强调试日志 - 记录解析后的数据
         this.debugLog(`[SingleChunkWithContext] ${task.infoType} Parsed Data`, {
@@ -2400,6 +2460,9 @@ export class TaskBasedParserService implements OnModuleInit {
         this.logger.error(`[Task ${task.infoType}] Raw content (first 500 chars): ${content.substring(0, 500)}`);
         throw new Error(`LLM返回的JSON格式无效: ${errorMessage}`);
       }
+
+      // 清理 LLM 返回的 "null" 字符串（某些模型如 DeepSeek 会返回字符串而非 JSON null）
+      data = this.cleanNullStrings(data);
       this.logger.log(`[Task ${task.infoType}] JSON parsed successfully, keys=${Object.keys(data).join(',')}`);
 
       // 验证并重试（如果启用了 ResultValidatorService）
@@ -2605,7 +2668,16 @@ export class TaskBasedParserService implements OnModuleInit {
             .map((f, i) => `${i + 1}. ${f.name}: ${f.description}`)
             .join('\n');
 
-          return `你是一个合同信息提取专家。从合同中提取以下字段：
+          return `⚠️ 甲乙方映射说明（必须严格遵守）：
+- 甲方 = 委托方 = 发包方 = 买方 = 客户 = customerName
+- 乙方 = 受托方 = 承包方 = 卖方 = 供应商 = ourEntity
+
+⚠️ 常见错误避免：
+- customerName 不要填成乙方（供应商）的公司名！
+- ourEntity 不要填成甲方（客户）的公司名！
+- clientLegalRep 是甲方的【法定代表人姓名】（是人名如"张三"，不是公司名！）
+
+你是一个合同信息提取专家。从合同中提取以下字段：
 
 ${fieldDescriptions}
 

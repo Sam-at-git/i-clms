@@ -19,18 +19,19 @@ export interface JsonSchema {
 }
 
 /**
- * BASIC_INFO 主题 JSON Schema
+ * BASIC_INFO 主题 JSON Schema（扩展版）
  *
- * 提取合同基本信息：编号、名称、类型、签约方等
+ * 提取合同基本信息：编号、名称、类型、签约方、甲乙双方详细信息、项目信息、时间信息、验收信息、保密条款、通用条款等
  */
 const BASIC_INFO_SCHEMA: JsonSchema = {
   type: 'object',
   properties: {
-    contractNumber: {
+    // ===== 现有字段 =====
+    contractNo: {
       type: ['string', 'null'],
       description: '合同编号/合同号',
     },
-    title: {
+    contractName: {
       type: ['string', 'null'],
       description: '合同名称/标题',
     },
@@ -39,20 +40,207 @@ const BASIC_INFO_SCHEMA: JsonSchema = {
       enum: ['STAFF_AUGMENTATION', 'PROJECT_OUTSOURCING', 'PRODUCT_SALES', null],
       description: '合同类型: STAFF_AUGMENTATION(人力外包), PROJECT_OUTSOURCING(项目外包), PRODUCT_SALES(产品销售)',
     },
-    firstPartyName: {
+    customerName: {
       type: ['string', 'null'],
       description: '甲方名称(委托方/发包方/买方/客户)',
     },
-    secondPartyName: {
+    ourEntity: {
       type: ['string', 'null'],
       description: '乙方名称(受托方/承包方/卖方/供应商)',
     },
-    industry: {
+
+    // ===== 合同元数据 =====
+    version: {
       type: ['string', 'null'],
-      description: '所属行业',
+      description: '版本号(如: 1.0, 2.0)',
+    },
+    governingLanguage: {
+      type: ['string', 'null'],
+      description: '管辖语言(如: 中文、英文)',
+      default: '中文',
+    },
+
+    // ===== 甲方详细信息 =====
+    clientLegalRep: {
+      type: ['string', 'null'],
+      description: '甲方法定代表人',
+    },
+    clientRegistrationNumber: {
+      type: ['string', 'null'],
+      description: '甲方注册号/统一社会信用代码',
+    },
+    clientBusinessLicense: {
+      type: ['string', 'null'],
+      description: '甲方营业执照号',
+    },
+    clientAddress: {
+      type: ['string', 'null'],
+      description: '甲方地址',
+    },
+    clientContactPerson: {
+      type: ['string', 'null'],
+      description: '甲方联系人',
+    },
+    clientPhone: {
+      type: ['string', 'null'],
+      description: '甲方电话',
+    },
+    clientEmail: {
+      type: ['string', 'null'],
+      description: '甲方邮箱',
+    },
+    clientFax: {
+      type: ['string', 'null'],
+      description: '甲方传真',
+    },
+    clientBankName: {
+      type: ['string', 'null'],
+      description: '甲方开户行',
+    },
+    clientBankAccount: {
+      type: ['string', 'null'],
+      description: '甲方银行账号',
+    },
+    clientAccountName: {
+      type: ['string', 'null'],
+      description: '甲方账户名称',
+    },
+
+    // ===== 乙方详细信息 =====
+    vendorLegalRep: {
+      type: ['string', 'null'],
+      description: '乙方法定代表人',
+    },
+    vendorRegistrationNumber: {
+      type: ['string', 'null'],
+      description: '乙方注册号/统一社会信用代码',
+    },
+    vendorBusinessLicense: {
+      type: ['string', 'null'],
+      description: '乙方营业执照号',
+    },
+    vendorAddress: {
+      type: ['string', 'null'],
+      description: '乙方地址',
+    },
+    vendorContactPerson: {
+      type: ['string', 'null'],
+      description: '乙方联系人',
+    },
+    vendorPhone: {
+      type: ['string', 'null'],
+      description: '乙方电话',
+    },
+    vendorEmail: {
+      type: ['string', 'null'],
+      description: '乙方邮箱',
+    },
+    vendorFax: {
+      type: ['string', 'null'],
+      description: '乙方传真',
+    },
+    vendorBankName: {
+      type: ['string', 'null'],
+      description: '乙方开户行',
+    },
+    vendorBankAccount: {
+      type: ['string', 'null'],
+      description: '乙方银行账号',
+    },
+    vendorAccountName: {
+      type: ['string', 'null'],
+      description: '乙方账户名称',
+    },
+
+    // ===== 项目基本信息 =====
+    projectName: {
+      type: ['string', 'null'],
+      description: '项目名称',
+    },
+    projectOverview: {
+      type: ['string', 'null'],
+      description: '项目概述或者合作背景',
+    },
+
+    // ===== 时间信息 =====
+    projectStartDate: {
+      type: ['string', 'null'],
+      format: 'date',
+      description: '项目开始日期(YYYY-MM-DD格式)',
+    },
+    projectEndDate: {
+      type: ['string', 'null'],
+      format: 'date',
+      description: '项目结束日期(YYYY-MM-DD格式)',
+    },
+    warrantyStartDate: {
+      type: ['string', 'null'],
+      format: 'date',
+      description: '质保期开始日期(YYYY-MM-DD格式)',
+    },
+    warrantyPeriodMonths: {
+      type: ['integer', 'null'],
+      description: '质保期(月)',
+      default: 12,
+    },
+
+    // ===== 财务信息 =====
+    isTaxInclusive: {
+      type: ['boolean', 'null'],
+      description: '是否含税',
+      default: true,
+    },
+    pricingModel: {
+      type: ['string', 'null'],
+      enum: ['FIXED_PRICE', 'TIME_MATERIAL', 'MIXED', null],
+      description: '定价模式: FIXED_PRICE(固定价格), TIME_MATERIAL(工时材料), MIXED(混合)',
+    },
+
+    // ===== 验收信息 =====
+    acceptanceMethod: {
+      type: ['string', 'null'],
+      description: '验收方法',
+    },
+    acceptancePeriodDays: {
+      type: ['integer', 'null'],
+      description: '验收期(天)',
+      default: 15,
+    },
+    deemedAcceptanceRule: {
+      type: ['string', 'null'],
+      description: '视为验收规则',
+    },
+
+    // ===== 保密条款 =====
+    confidentialityTermYears: {
+      type: ['integer', 'null'],
+      description: '保密期限(年)',
+      default: 3,
+    },
+    confidentialityDefinition: {
+      type: ['string', 'null'],
+      description: '保密信息定义',
+    },
+    confidentialityObligation: {
+      type: ['string', 'null'],
+      description: '保密义务描述',
+    },
+
+    // ===== 通用条款 =====
+    governingLaw: {
+      type: ['string', 'null'],
+      description: '管辖法律',
+    },
+    disputeResolutionMethod: {
+      type: ['string', 'null'],
+      description: '争议解决方式',
+    },
+    noticeRequirements: {
+      type: ['string', 'null'],
+      description: '通知要求',
     },
   },
-  required: ['contractNumber', 'title', 'contractType', 'firstPartyName', 'secondPartyName'],
+  required: [],
   additionalProperties: false,
 };
 

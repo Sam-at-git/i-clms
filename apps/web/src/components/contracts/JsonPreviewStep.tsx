@@ -45,6 +45,26 @@ const FIELD_LABELS: Record<string, string> = {
   ourEntity: '供应商',
   customerName: '客户名称',
   status: '合同状态',
+  // 项目基本信息
+  projectName: '项目名称',
+  projectOverview: '项目概述',
+  // 项目时间信息
+  projectStartDate: '项目开始日期',
+  projectEndDate: '项目结束日期',
+  warrantyStartDate: '质保期开始日期',
+  warrantyPeriodMonths: '质保期（月）',
+  // 验收信息
+  acceptanceMethod: '验收方法',
+  acceptancePeriodDays: '验收期（天）',
+  deemedAcceptanceRule: '视为验收规则',
+  // 保密条款
+  confidentialityTermYears: '保密期限（年）',
+  confidentialityDefinition: '保密信息定义',
+  confidentialityObligation: '保密义务描述',
+  // 通用条款
+  governingLaw: '管辖法律',
+  disputeResolutionMethod: '争议解决方式',
+  noticeRequirements: '通知要求',
   // 财务信息
   amountWithTax: '含税金额',
   amountWithoutTax: '不含税金额',
@@ -174,7 +194,7 @@ function InfoTypeCard({
                   <span style={styles.arrayItemIndex}>#{index + 1}</span>
                 </div>
                 <div style={styles.arrayItemContent}>
-                  {typeof item === 'object' && item !== null ? (
+                  {typeof item === 'object' && item !== null && !Array.isArray(item) ? (
                     // 对象类型：显示所有字段
                     Object.entries(item).map(([key, value]) => (
                       <div key={key} style={styles.fieldRow}>
@@ -256,7 +276,7 @@ function InfoTypeDataDisplay({ extractedData }: { extractedData: any }) {
   }
 
   // 里程碑信息
-  if (extractedData.typeSpecificDetails?.milestones) {
+  if (extractedData.typeSpecificDetails?.milestones && Array.isArray(extractedData.typeSpecificDetails.milestones)) {
     infoTypeData.push({
       type: InfoType.MILESTONES,
       data: extractedData.typeSpecificDetails.milestones,
@@ -264,7 +284,7 @@ function InfoTypeDataDisplay({ extractedData }: { extractedData: any }) {
   }
 
   // 人力费率
-  if (extractedData.typeSpecificDetails?.rateItems) {
+  if (extractedData.typeSpecificDetails?.rateItems && Array.isArray(extractedData.typeSpecificDetails.rateItems)) {
     infoTypeData.push({
       type: InfoType.RATE_ITEMS,
       data: extractedData.typeSpecificDetails.rateItems,
@@ -272,7 +292,7 @@ function InfoTypeDataDisplay({ extractedData }: { extractedData: any }) {
   }
 
   // 产品清单
-  if (extractedData.typeSpecificDetails?.lineItems) {
+  if (extractedData.typeSpecificDetails?.lineItems && Array.isArray(extractedData.typeSpecificDetails.lineItems)) {
     infoTypeData.push({
       type: InfoType.LINE_ITEMS,
       data: extractedData.typeSpecificDetails.lineItems,
@@ -288,7 +308,7 @@ function InfoTypeDataDisplay({ extractedData }: { extractedData: any }) {
   }
 
   // 风险条款
-  if (extractedData.typeSpecificDetails?.riskClauses) {
+  if (extractedData.typeSpecificDetails?.riskClauses && Array.isArray(extractedData.typeSpecificDetails.riskClauses)) {
     infoTypeData.push({
       type: InfoType.RISK_CLAUSES,
       data: extractedData.typeSpecificDetails.riskClauses,

@@ -509,15 +509,16 @@ export class LlmParserResolver {
   async parseByTasks(
     @Args('text', { type: () => String }) text: string,
     @Args('taskTypes', { type: () => [String], nullable: true }) taskTypes?: string[],
+    @Args('contractType', { type: () => String, nullable: true, description: '强制指定合同类型（PROJECT_OUTSOURCING/STAFF_AUGMENTATION/PRODUCT_SALES）' }) contractType?: string,
   ): Promise<TaskBasedParseResult> {
     this.logger.log(
       `[Task-based Parse] Starting: textLength=${text.length}, ` +
-      `taskTypes=${taskTypes?.join(',') || 'all'}`
+      `taskTypes=${taskTypes?.join(',') || 'all'}, contractType=${contractType || 'auto'}`
     );
 
     const result = await this.taskBasedParser.parseByTasks(
       text,
-      undefined, // contractType
+      contractType, // 支持强制指定合同类型
       taskTypes as InfoType[]
     );
 
@@ -1192,33 +1193,6 @@ export class LlmParserResolver {
     );
 
     return result;
-  }
-
-  /**
-   * 测试 Instructor 兼容性
-   */
-  @Mutation(() => GraphQLJSONObject, {
-    description: '测试当前 LLM 配置是否兼容 Instructor',
-  })
-  @UseGuards(GqlAuthGuard)
-  async testInstructorSupport(): Promise<{
-    success: boolean;
-    message: string;
-    latency: number;
-    mode: string;
-    provider?: string;
-    model?: string;
-  }> {
-    if (!this.instructorClient || !this.instructorClient.isInitialized()) {
-      return {
-        success: false,
-        message: 'InstructorClient not available or not initialized',
-        latency: 0,
-        mode: 'N/A',
-      };
-    }
-
-    return await this.instructorClient.testCompatibility();
   }
 
   /**
